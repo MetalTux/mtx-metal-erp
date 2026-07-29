@@ -1,0 +1,186 @@
+// /prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ==========================================
+// 1. AUTENTICACIÓN Y ROLES
+// ==========================================
+model Role {
+  id    Int    @id @default(autoincrement())
+  name  String @unique // Ej: "Administrador", "Bodeguero", "Ventas"
+  users User[]
+}
+
+model User {
+  id       Int    @id @default(autoincrement())
+  name     String
+  email    String @unique
+  password String // Aquí guardaremos la contraseña encriptada (hash)
+  roleId   Int
+  role     Role   @relation(fields: [roleId], references: [id])
+}
+
+// ==========================================
+// 2. CONFIGURACIÓN DE MATERIALES
+// ==========================================
+model UnitMeasure {
+  id           Int            @id @default(autoincrement())
+  name         String         // Ej: "Gramos", "Unidades", "Mililitros"
+  abbreviation String         // Ej: "gr", "un", "ml"
+  materials    RawMaterial[]
+}
+
+model RawMaterial {
+  id            Int             @id @default(autoincrement())
+  code          String          @unique
+  name          String
+  description   String?
+  unitMeasureId Int
+  unitMeasure   UnitMeasure     @relation(fields: [unitMeasureId], references: [id])
+  
+  stocks        WarehouseStock[]
+  purchases     PurchaseDetail[]
+  workOrders    WorkOrderDetail[]
+}
+
+// ==========================================
+// 3. BODEGA Y STOCK
+// ==========================================
+model Warehouse {
+  id       Int              @id @default(autoincrement())
+  name     String
+  location String?
+  stocks   WarehouseStock[]
+}
+
+model WarehouseStock {
+  id            Int         @id @default(autoincrement())
+  quantity      Float       // Cantidad en la unidad mínima (ej. gramos)
+  warehouseId   Int
+  rawMaterialId Int
+  
+  warehouse     Warehouse   @relation(fields: [warehouseId], references: [id])
+  rawMaterial   RawMaterial @relation(fields: [rawMaterialId], references: [id])
+
+  // Evita que un mismo material esté duplicado en la misma bodega
+  @@unique([warehouseId, rawMaterialId]) 
+}
+
+// ==========================================
+// 4. PROVEEDORES Y COMPRAS
+// ==========================================
+model Supplier {
+  id        Int        @id @default(autoincrement())
+  rut       String     @unique // Identificador fiscal
+  name      String
+  email     String?
+  phone     String?
+  purchases Purchase[]
+}
+
+model Purchase {
+  id          Int              @id @default(autoincrement())
+  date        DateTime         @default(now())
+  totalAmount Float
+  supplierId  Int
+  supplier    Supplier         @relation(fields: [supplierId], references: [id])
+  details     PurchaseDetail[]
+}
+
+model PurchaseDetail {
+  id            Int         @id @default(autoincrement())
+  quantity      Float
+  unitPrice     Float
+  purchaseId    Int
+  rawMaterialId Int
+  purchase      Purchase    @relation(fields: [purchaseId], references: [id])
+  rawMaterial   RawMaterial @relation(fields: [rawMaterialId], references: [id])
+}
+
+// ==========================================
+// 5. CLIENTES Y VENTAS
+// ==========================================
+model Client {
+  id      Int      @id @default(autoincrement())
+  rut     String   @unique
+  name    String
+  contact String?
+  email   String?
+  phone   String?
+  quotes  Quote[]
+}
+
+model Quote {
+  id          Int          @id @default(autoincrement())
+  date        DateTime     @default(now())
+  status      QuoteStatus  @default(PENDIENTE)
+  totalAmount Float
+  clientId    Int
+  client      Client       @relation(fields: [clientId], references: [id])
+  salesOrders SalesOrder[]
+}
+
+enum QuoteStatus {
+  PENDIENTE
+  APROBADA
+  RECHAZADA
+}
+
+model SalesOrder {
+  id          Int          @id @default(autoincrement())
+  date        DateTime     @default(now())
+  quoteId     Int
+  pdfUrl      String?      // URL del archivo almacenado (para cuando usemos AWS S3)
+  quote       Quote        @relation(fields: [quoteId], references: [id])
+  workOrders  WorkOrder[]
+}
+
+// ==========================================
+// 6. PRODUCCIÓN Y ENTREGAS
+// ==========================================
+model WorkOrder {
+  id            Int               @id @default(autoincrement())
+  productName   String
+  status        WorkOrderStatus   @default(PENDIENTE)
+  salesOrderId  Int
+  salesOrder    SalesOrder        @relation(fields: [salesOrderId], references: [id])
+  materialsUsed WorkOrderDetail[]
+  deliveryNotes DeliveryNote[]
+}
+
+enum WorkOrderStatus {
+  PENDIENTE
+  EN_PROCESO 
+  FINALIZADO
+}
+
+model WorkOrderDetail {
+  id             Int         @id @default(autoincrement())
+  quantityNeeded Float       // Cuánto descontar de bodega
+  workOrderId    Int
+  rawMaterialId  Int
+  workOrder      WorkOrder   @relation(fields: [workOrderId], references: [id])
+  rawMaterial    RawMaterial @relation(fields: [rawMaterialId], references: [id])
+}
+
+model DeliveryNote {
+  id                 Int           @id @default(autoincrement())
+  date               DateTime      @default(now())
+  paymentStatus      PaymentStatus @default(PENDIENTE)
+  paymentPromiseDate DateTime?
+  voucherUrl         String?       // URL del comprobante de pago
+  workOrderId        Int
+  workOrder          WorkOrder     @relation(fields: [workOrderId], references: [id])
+}
+
+enum PaymentStatus {
+  PENDIENTE
+  PAGADO
+  VENCIDO
+}
