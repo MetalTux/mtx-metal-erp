@@ -11,7 +11,7 @@ MTX Metal ERP es un ERP para empresas o personas que fabrican estructuras metál
 - **Cotizaciones** a clientes.
 - **Órdenes de trabajo**, con los materiales que consumen.
 
-Usa Next.js 16 (App Router, React 19, React Compiler activado), Tailwind CSS v4 y Prisma 7 sobre PostgreSQL. La interfaz todavía es la página de ejemplo de `create-next-app`; por ahora casi todo el dominio está en el esquema de Prisma.
+Usa Next.js 16 (App Router, React 19, React Compiler activado), Tailwind CSS v4 y Prisma 7 sobre PostgreSQL. La interfaz ya cuenta con un tema oscuro y layout responsive en `src/app/(app)/`, componentes shadcn/ui, navegación centralizada en `src/config/navegacion.ts` y páginas provisionales. El Dashboard tiene estructura visual; los módulos, consultas e inicio de sesión siguen pendientes. Consultar [docs/GUIA-INTERFAZ.md](docs/GUIA-INTERFAZ.md) y el checklist [docs/AVANCES-INTERFAZ.md](docs/AVANCES-INTERFAZ.md) antes de trabajar en la interfaz.
 
 Idioma: los comentarios, los datos del seed y los valores de los enums están en español. El código nuevo debe seguir esa convención, y las respuestas al usuario también deben ser en español.
 
@@ -20,7 +20,7 @@ Idioma: los comentarios, los datos del seed y los valores de los enums están en
 El gestor de paquetes es pnpm (`pnpm-lock.yaml`, `pnpm-workspace.yaml`).
 
 ```bash
-pnpm dev                      # servidor de desarrollo de Next en http://localhost:1657
+pnpm dev                      # servidor de desarrollo de Next en http://localhost:3030
 pnpm build                    # build de producción (también revisa los tipos)
 pnpm lint                     # ESLint 9 (config flat: next core-web-vitals + typescript)
 
@@ -35,6 +35,8 @@ pnpm prisma studio
 ```
 
 Todavía no hay framework de pruebas.
+
+Después de cada validación, detén los servidores de aplicación que hayas iniciado para comprobar el cambio y verifica que sus puertos queden libres (desarrollo: 3030). Revisa los procesos existentes antes de iniciar la validación; no detengas servidores del usuario ni procesos ajenos. Si el puerto sigue ocupado por un proceso previo, informa de ello. No dejes un servidor de validación ejecutándose al terminar, salvo petición explícita del usuario.
 
 ## Arquitectura
 

@@ -1,5 +1,32 @@
 # Registro de cambios
 
+## 2026-10-06: Puerto de desarrollo 3030
+
+- Se cambió el script `dev` en `package.json` de `next dev -p 1657` a `next dev -p 3030`, a petición del usuario.
+- `pnpm dev` sirve la aplicación en `http://localhost:3030`. Se actualizaron las referencias de ejecución en `AGENTS.md` y `CLAUDE.md`.
+- Los originales de los archivos modificados se conservaron en `backups/20261006_150938_puerto_dev_3030`, excluido de git.
+- Se reinició el servidor con `pnpm dev` y se verificó una respuesta HTTP 200 en el puerto 3030.
+
+## 2026-10-06: Tema oscuro y layout del ERP
+
+**Alcance:** fases de tema y estructura de la aplicación según [GUIA-INTERFAZ.md](GUIA-INTERFAZ.md), sin modificar esa guía. Checklist y pendientes en [AVANCES-INTERFAZ.md](AVANCES-INTERFAZ.md).
+
+### Qué cambió y por qué
+
+- Se reemplazó la página inicial de Next.js por el grupo `src/app/(app)/`, con layout compartido, sidebar responsive y barra superior. La cookie conserva la expansión del menú entre recargas; su lectura en el servidor hace dinámicas estas rutas.
+- Se inicializó shadcn/ui con Radix y preset Nova. Se agregaron los componentes necesarios para navegación, diálogos y menús, conservando el código en `src/components/ui/`. Se actualizaron `package.json`, el lockfile, `components.json` y `src/lib/utils.ts`.
+- Se aplicaron los tokens de la guía, Inter y Geist Mono, modo oscuro, acentos azul/naranjo y cabeceras metálicas discretas. Se incorporaron foco, nombres accesibles, salto al contenido y respeto al movimiento reducido.
+- `src/config/navegacion.ts` centraliza 16 rutas para sidebar, breadcrumbs y buscador Ctrl+K. Las páginas de módulos muestran su título y estado «Próximamente»; se incluyeron Cobranza y Empresa conforme a las decisiones de dominio.
+- El Dashboard presenta cuatro indicadores y los paneles previstos, con estados vacíos explícitos. No hay métricas ficticias, consultas a Prisma, cambios de esquema ni escrituras en PostgreSQL. Alertas, búsqueda de registros, autenticación y módulos siguen pendientes.
+- Se crearon `PageHeader`, `SectionCard`, `EmptyState` y `ModulePlaceholder` para reutilizar la estructura en las próximas pantallas. Los componentes que requieren interacción son cliente; las páginas y el layout mantienen renderizado en el servidor.
+- Se adaptó el hook móvil a `useSyncExternalStore` para cumplir las reglas de React y mantener el breakpoint de 768 px. El buscador incluye el contenedor `Command` de cmdk y sus textos accesibles dentro del diálogo.
+
+### Respaldo y verificación
+
+Originales previos a la edición en `backups/20261006_142412_layout/`, excluidos de git, con manifiesto de hashes, capturas y resultados. Incluye la antigua página inicial, estilos, layout raíz, dependencias y documentación modificada.
+
+Pasaron ESLint, generación de tipos de rutas, TypeScript y compilación de producción. La prueba en Chromium recorrió las 16 rutas, contracción/expansión y persistencia del sidebar, Ctrl+B, Ctrl+K, menús y navegación móvil. Se revisaron anchos de 1440, 375 y 768 px, sin desbordamiento horizontal ni errores de JavaScript/hidratación.
+
 ## 2026-10-06: Cuentas por cobrar y abonos
 
 **Alcance:** estructura del punto 3 de Cobranza, migración PostgreSQL y cliente Prisma. Se conservaron los cambios anteriores de Stock Mínimo y Empresa. No se implementaron servicios, pantallas, generación automática de deuda ni operaciones de cobro.

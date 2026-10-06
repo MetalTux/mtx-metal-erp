@@ -7,7 +7,7 @@ Instrucciones para Codex y otros agentes que trabajen en este repositorio. Aplic
 - **Proyecto:** MTX Metal ERP, para fabricación de estructuras metálicas por encargo o para obra propia. Organiza bodegas, materia prima, compras, cotizaciones, producción y entregas.
 - **Idioma:** responde en español. Escribe comentarios, textos visibles y datos de ejemplo en español; conserva los nombres existentes de modelos, campos y APIs. Los valores de los enums del dominio están en español.
 - **Stack:** Next.js 16 con App Router, React 19 con React Compiler, TypeScript estricto, Tailwind CSS v4 y Prisma 7 sobre PostgreSQL 15.
-- **Estado actual:** la interfaz sigue siendo la plantilla de Next.js. El dominio está definido principalmente en Prisma; shadcn/ui, autenticación y pantallas del ERP todavía no están implementados.
+- **Estado actual:** el tema oscuro y el layout del ERP ya están implementados con shadcn/ui: sidebar responsive, barra superior, buscador de secciones y rutas provisionales. El Dashboard tiene estructura visual sin consultas. El dominio está en Prisma; los módulos, la autenticación y las métricas reales siguen pendientes.
 - Antes de editar, revisa `git status --short` y los archivos afectados. Conserva los cambios previos del usuario y limita la edición al alcance solicitado.
 - Usa **pnpm** y conserva `pnpm-lock.yaml`. Consulta `package.json` para verificar scripts y dependencias disponibles.
 
@@ -19,6 +19,7 @@ Instrucciones para Codex y otros agentes que trabajen en este repositorio. Aplic
 | `prisma.config.ts` | Conexión, ubicación de migraciones y comando del seed |
 | `src/lib/prisma.ts` | Instancia compartida del cliente de base de datos |
 | `docs/GUIA-INTERFAZ.md` | Diseño visual, navegación, Dashboard y fases propuestas; leer antes de trabajar en la interfaz |
+| `docs/AVANCES-INTERFAZ.md` | Checklist del tema, layout, verificaciones y trabajo pendiente de la interfaz |
 | `docs/PROPUESTAS-DOMINIO.md` | Alternativas, decisiones y checklists de stock mínimo, empresa y cobranza; consultar antes de implementar esos temas |
 | `diseno-01.jpeg`, `diseno-02.jpeg` | Referencias visuales de la guía |
 | `docs/CAMBIOS.md` | Decisiones y registro de cambios de esquema o arquitectura |
@@ -28,11 +29,11 @@ Distingue el estado real del código de las propuestas de la guía. Si encuentra
 
 ## Comandos
 
-Ejecuta los comandos desde la raíz. El desarrollo usa el puerto **1657**; `pnpm start` usa el puerto predeterminado de Next.js salvo configuración de entorno.
+Ejecuta los comandos desde la raíz. El desarrollo usa el puerto **3030**; `pnpm start` usa el puerto predeterminado de Next.js salvo configuración de entorno.
 
 ```bash
 pnpm install                  # instalar dependencias
-pnpm dev                      # http://localhost:1657
+pnpm dev                      # http://localhost:3030
 pnpm build                    # compilación de producción y comprobación de tipos
 pnpm start                    # servir una compilación de producción existente
 pnpm lint                     # ESLint 9: next core-web-vitals + TypeScript
@@ -101,9 +102,9 @@ Flujo principal: **Cotización → Orden de venta → Orden de trabajo → Guía
 - **Índices:** toda clave foránea nueva debe quedar cubierta por un índice apropiado. Sigue el patrón de `@@index` existente y considera la cobertura de índices compuestos o únicos.
 - **Archivos:** `SalesOrder.pdfUrl` y `DeliveryNote.voucherUrl` son campos para URLs; la integración con AWS S3 todavía está prevista para más adelante.
 
-## Base para la futura interfaz
+## Base de la interfaz
 
-La fuente detallada es `docs/GUIA-INTERFAZ.md`, cuyo estado es **propuesta para revisar, todavía sin implementar**. Respeta las decisiones posteriores del usuario al desarrollar cada fase.
+La fuente detallada es `docs/GUIA-INTERFAZ.md`, cuyas fases de tema y layout ya están implementadas; consulta el estado detallado en `docs/AVANCES-INTERFAZ.md`. Respeta las decisiones posteriores del usuario al desarrollar cada fase.
 
 - **Dirección visual propuesta:** `diseno-02` como base, tema oscuro grafito con tinte azul, acento azul para acciones y naranjo para detalles de marca. De `diseno-01` se contempla solo un toque metálico opcional en cabeceras de tarjetas. Se excluye el visualizador del producto.
 - **Sistema visual:** shadcn/ui sobre Tailwind v4, tokens CSS en `.dark` registrados en `@theme inline`, Inter como fuente principal, Geist Mono para códigos e iconos de `lucide-react`. Usa `tabular-nums` para cifras, badges con texto y barras de stock acompañadas de números. Verifica contraste y foco al implementar; no asumas que todos los valores propuestos ya cumplen accesibilidad.
@@ -112,11 +113,12 @@ La fuente detallada es `docs/GUIA-INTERFAZ.md`, cuyo estado es **propuesta para 
 - **Organización propuesta:** `src/app/(app)/` para el ERP; `(auth)` para el futuro login; `src/components/layout/` para sidebar y barra superior; `src/components/` para componentes compartidos; `src/lib/consultas/`, `src/lib/validaciones/` y `src/lib/formato.ts` para consultas, validación y formato.
 - **Datos y formularios:** consultas del Dashboard en el servidor, con agregaciones en lugar de cargar todas las filas. Envía `Decimal` como texto a componentes cliente; normaliza fechas a ISO cuando el contrato de datos lo requiera. La guía propone Server Actions y esquemas zod compartidos para formularios futuros.
 - **Formato chileno:** `es-CL`, moneda CLP, cantidades con hasta tres decimales y unidad, fechas `dd-MM-yyyy`, horas `HH:mm` y RUT con puntos y guion.
-- **Estado de las propuestas:** están implementadas y migradas las estructuras de Stock Mínimo (`WarehouseStock.minStock`), Empresa (`CompanyProfile`) y Cobranza (`AccountReceivable` y `Payment`); consulta `docs/PROPUESTAS-DOMINIO.md`. Siguen pendientes los módulos y su lógica, la interfaz, paleta, grupos del menú e indicadores. La guía mantiene su propuesta original; para estas estructuras usa el esquema actual y las decisiones registradas.
+- **Estado de las propuestas:** están implementadas y migradas las estructuras de Stock Mínimo (`WarehouseStock.minStock`), Empresa (`CompanyProfile`) y Cobranza (`AccountReceivable` y `Payment`); consulta `docs/PROPUESTAS-DOMINIO.md`. La paleta, los grupos del menú y las rutas provisionales ya están implementados, incluyendo Cobranza y Configuración → Empresa. Siguen pendientes los módulos, su lógica y los indicadores con datos reales. La guía mantiene su propuesta original; para estas estructuras usa el esquema actual y las decisiones registradas.
 - **Secuencia propuesta:** tema → layout y navegación → componentes compartidos → Dashboard → mantenedores → procesos → autenticación y roles. Instala dependencias al abordar la fase correspondiente y verifica la documentación oficial vigente de shadcn/ui antes de usar su CLI o elegir componentes.
 
 ## Validación y cierre
 
+- Después de cada validación, detén los servidores de aplicación que hayas iniciado para comprobar el cambio y verifica que sus puertos queden libres (desarrollo: 3030). Revisa los procesos existentes antes de iniciar la validación; no detengas servidores del usuario ni procesos ajenos. Si el puerto sigue ocupado por un proceso previo, informa de ello. No dejes un servidor de validación ejecutándose al terminar, salvo petición explícita del usuario.
 - Para cambios de código, ejecuta `pnpm lint` y `pnpm build`. Añade comprobaciones específicas cuando la lógica del dominio lo requiera; actualmente no hay framework de pruebas ni script `test`.
 - Para cambios de esquema, valida Prisma, genera el cliente y verifica la migración en el entorno autorizado antes de las comprobaciones de aplicación.
 - Para cambios solo de documentación, revisa contenido, rutas y diff; no es necesario ejecutar build, levantar servicios ni tocar la base de datos.
