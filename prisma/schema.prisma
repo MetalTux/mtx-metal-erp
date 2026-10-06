@@ -95,8 +95,11 @@ model Warehouse {
 // Saldo actual de un material en una bodega (en la unidad del material).
 // Debe coincidir siempre con la suma de sus StockMovement.
 model WarehouseStock {
-  id            Int     @id @default(autoincrement())
-  quantity      Decimal @default(0) @db.Decimal(14, 3)
+  id            Int      @id @default(autoincrement())
+  quantity      Decimal  @default(0) @db.Decimal(14, 3)
+  // Mínimo de reposición en la unidad del material; null significa sin configurar.
+  // La migración SQL exige un valor no negativo y distinto de NaN mediante CHECK.
+  minStock      Decimal? @db.Decimal(14, 3)
   warehouseId   Int
   rawMaterialId Int
 
@@ -260,6 +263,7 @@ model SalesOrder {
   pdfUrl     String? // URL del archivo almacenado (para cuando usemos AWS S3)
   quote      Quote       @relation(fields: [quoteId], references: [id])
   workOrders WorkOrder[]
+  accountReceivable AccountReceivable? // Una cuenta por venta; se crea al confirmar en el futuro módulo
 
   createdAt DateTime @default(now()) // Fecha de registro (no se modifica)
   updatedAt DateTime @updatedAt // Última modificación (automática)
@@ -317,6 +321,7 @@ model WorkOrderDetail {
 model DeliveryNote {
   id                 Int           @id @default(autoincrement())
   date               DateTime      @default(now())
+  // Campos heredados: se conservan para transición; la nueva cobranza usa AccountReceivable/Payment.
   paymentStatus      PaymentStatus @default(PENDIENTE)
   paymentPromiseDate DateTime?
   voucherUrl         String? // URL del comprobante de pago
@@ -333,4 +338,77 @@ enum PaymentStatus {
   PENDIENTE
   PAGADO
   VENCIDO
+}
+
+// ==========================================
+// 7. DATOS PROPIOS DE LA EMPRESA
+// ==========================================
+
+// Perfil único: el CHECK CompanyProfile_singleton_check de la migración SQL
+// permite solamente id = 1. Sin autoincremento ni datos ficticios iniciales.
+// Los datos son opcionales para configurar la empresa de forma gradual.
+// Antes de emitir documentos, la aplicación deberá exigir los datos acordados.
+model CompanyProfile {
+  id               Int     @id @default(1)
+  legalName        String? // Razón social o nombre del emisor
+  tradeName        String? // Nombre comercial
+  rut              String? // Convención: sin puntos, con guion y dígito verificador en mayúscula
+  businessActivity String? // Giro o actividad
+  address          String?
+  commune          String?
+  city             String?
+  email            String?
+  phone            String?
+  logoUrl          String? // Referencia al logo; almacenamiento por definir
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ==========================================
+// 8. CUENTAS POR COBRAR Y ABONOS
+// ==========================================
+
+// Importe acordado por venta, independiente de cuántos trabajos o despachos tenga.
+// El saldo y los estados de pago/vencimiento se calcularán; no se almacenan duplicados.
+model AccountReceivable {
+  id                 Int       @id @default(autoincrement())
+  salesOrderId       Int       @unique
+  amount             Decimal   @db.Decimal(14, 2) // No negativo ni NaN: CHECK en la migración SQL
+  issuedAt           DateTime  @default(now())
+  dueDate            DateTime? @db.Date // Fecha de calendario; puede no estar pactada
+  paymentPromiseDate DateTime? @db.Date // Promesa independiente del vencimiento original
+  voidedAt           DateTime?
+  voidReason         String? // Fecha y motivo de anulación se informan juntos: CHECK SQL
+
+  salesOrder SalesOrder @relation(fields: [salesOrderId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  payments   Payment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // salesOrderId ya queda indexado por @unique.
+  @@index([dueDate])
+}
+
+// Historial de abonos. Los registros anulados se conservan y no reducen el saldo.
+// Control de sobrepagos, concurrencia y edición/borrado: responsabilidad del futuro módulo.
+model Payment {
+  id                  Int      @id @default(autoincrement())
+  accountReceivableId Int
+  amount              Decimal  @db.Decimal(14, 2) // Estrictamente positivo y distinto de NaN: CHECK SQL
+  paidAt              DateTime @default(now())
+  method              String // Medio de pago; texto no vacío, sin catálogo cerrado por ahora
+  reference           String? // Referencia externa; no se usa como clave de idempotencia
+  voucherUrl          String?
+  idempotencyKey      String   @unique @db.Uuid // La aplicación debe reutilizarla al reintentar; sin default
+  voidedAt            DateTime?
+  voidReason          String? // Fecha y motivo obligatorios juntos al anular: CHECK SQL
+
+  accountReceivable AccountReceivable @relation(fields: [accountReceivableId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([accountReceivableId, voidedAt, paidAt])
 }

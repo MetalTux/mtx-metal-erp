@@ -2,9 +2,9 @@
 
 Fecha: **2026-10-06**.
 
-Estado: **análisis y propuestas completados; decisiones e implementación pendientes**.
+Estado: **estructuras de Stock Mínimo, Empresa y Cobranza implementadas y migradas; módulos y lógica de aplicación pendientes**.
 
-Este documento complementa [GUIA-INTERFAZ.md](GUIA-INTERFAZ.md), sin modificarla. Describe recomendaciones a partir del [esquema actual](../prisma/schema.prisma); no implica que los cambios estén aprobados o implementados.
+Este documento complementa [GUIA-INTERFAZ.md](GUIA-INTERFAZ.md), sin modificarla. Describe recomendaciones y avances sobre el [esquema actual](../prisma/schema.prisma). Solo están aprobados e implementados los alcances indicados en las checklists y en el registro de decisiones.
 
 ## Seguimiento
 
@@ -15,9 +15,9 @@ Este documento complementa [GUIA-INTERFAZ.md](GUIA-INTERFAZ.md), sin modificarla
 
 | Tema | Situación actual | Recomendación inicial |
 | --- | --- | --- |
-| Stock mínimo | Hay saldos por material y bodega; no hay umbrales | Mínimo opcional por material y bodega |
-| Empresa | No existe un perfil de la empresa que usa el ERP | Un perfil único para configuración y documentos |
-| Cobranza | Hay estado y promesa de pago en la guía, sin montos ni abonos | Cuenta por cobrar asociada a la orden de venta, con historial de pagos |
+| Stock mínimo | `WarehouseStock.minStock` migrado y cliente generado; alertas pendientes | Mínimo opcional por material y bodega |
+| Empresa | `CompanyProfile` migrado y cliente generado; tabla inicialmente vacía | Un perfil único para configuración y documentos |
+| Cobranza | `AccountReceivable` y `Payment` migrados y cliente generado; campos heredados conservados | Cuenta por orden de venta, con historial de abonos |
 
 ## 1. Stock mínimo
 
@@ -36,7 +36,11 @@ La guía propone `RawMaterial.minStock`, comparado con el saldo en cada bodega. 
 | Mínimo en `WarehouseStock` | Cada combinación tiene su propio objetivo | Requiere configurar las combinaciones relevantes |
 | Mínimo predeterminado en material y una excepción por bodega | Permite reutilizar valores con flexibilidad | Añade dos niveles de configuración y reglas de precedencia |
 
-**Recomendación:** comenzar con `WarehouseStock.minStock`, opcional y de tipo `Decimal(14,3)`. Aprovecha la combinación única de bodega y material que ya existe. Si la configuración repetida resulta pesada, se puede incorporar después un valor predeterminado en `RawMaterial`.
+**Decisión aplicada el 2026-10-06:** `WarehouseStock.minStock`, opcional y de tipo `Decimal(14,3)`, sin valor predeterminado. Aprovecha la combinación única de bodega y material que ya existe. Si la configuración repetida resulta pesada, se puede incorporar después un valor predeterminado en `RawMaterial`.
+
+La migración `20261006150652_stock_minimo_por_bodega` está aplicada en PostgreSQL local y el cliente Prisma está regenerado. El CHECK `WarehouseStock_minStock_nonnegative_check` rechaza mínimos negativos y `NaN`. Esta restricción se conserva en el SQL de la migración; no está representada como atributo en Prisma. Las filas existentes quedan con `minStock = NULL`.
+
+Esta decisión reemplaza la ubicación en `RawMaterial` mencionada en la guía de interfaz, que se conserva como referencia de la propuesta original. El alcance autorizado en esta etapa es estructura, migración, generación del cliente, respaldos y validación; no incluye desarrollar módulos ni consultas de alertas.
 
 ### Reglas propuestas
 
@@ -65,9 +69,14 @@ Ejemplo: Tubo 40×40 en metros, con saldo de 12 m y mínimo de 20 m en Producci�
 - [x] Revisar saldos, unidades y unicidad en el esquema actual.
 - [x] Comparar mínimo global, por bodega y con valor predeterminado.
 - [x] Proponer reglas para valores nulos, cero y límite de alerta.
-- [ ] Decidir la ubicación del mínimo y confirmar la regla de igualdad.
+- [x] Adoptar mínimo por material y bodega; mantener como regla para la futura alerta `saldo < mínimo` (la igualdad no dispara stock bajo).
 - [ ] Definir la política de saldos negativos y las combinaciones que se monitorean.
-- [ ] Crear la migración sin alterar los saldos existentes; mínimos iniciales sin configurar.
+- [x] Respaldar los archivos afectados, el cliente generado anterior y la base PostgreSQL antes de migrar.
+- [x] Crear y aplicar la migración sin alterar los saldos existentes; mínimos iniciales sin configurar.
+- [x] Incorporar y verificar el CHECK para mínimos no negativos y distintos de `NaN`.
+- [x] Regenerar el cliente Prisma y validar el esquema y su correspondencia con PostgreSQL.
+- [x] Verificar estructura: `NULL`, cero, tres decimales, límite numérico, rechazo de negativos/`NaN`, mínimos independientes en dos bodegas y unicidad de material/bodega.
+- [x] Comparar datos previos y secuencias en las 17 tablas del dominio después de migrar.
 - [ ] Implementar edición, validación y consultas de alertas.
 - [ ] Incorporar el KPI y el detalle por bodega.
 - [ ] Verificar: sin mínimo, saldo cero, saldo igual al mínimo, fracciones, dos bodegas y un material contado una sola vez.
@@ -78,9 +87,13 @@ Ejemplo: Tubo 40×40 en metros, con saldo de 12 m y mínimo de 20 m en Producci�
 
 El ERP necesita identificar a la empresa que emite sus cotizaciones y documentos. Estos datos pertenecen a la configuración de la aplicación, no al catálogo de clientes o proveedores.
 
-**Recomendación:** agregar `CompanyProfile` con un único perfil en esta etapa. No introducir una arquitectura para varias empresas mientras no exista esa necesidad.
+**Decisión aplicada el 2026-10-06:** `CompanyProfile` admite como máximo un perfil de empresa. La migración `20261006154719_perfil_unico_empresa` está aplicada en PostgreSQL local y el cliente Prisma está regenerado. No se introduce una arquitectura para varias empresas.
 
-### Campos propuestos
+El identificador es `Int @id @default(1)`, sin autoincremento. La PK y el CHECK SQL `CompanyProfile_singleton_check` exigen `id = 1` e impiden un segundo perfil. La tabla comienza vacía; no se inventaron datos de empresa ni se modificó el seed.
+
+Los diez campos de datos son `String?`: permiten guardar un perfil incompleto. `createdAt` y `updatedAt` son obligatorios y siguen la convención del proyecto. La siguiente tabla indica los requisitos previstos para **emitir documentos**, que deberán validarse en el módulo futuro; no son restricciones `NOT NULL` actuales.
+
+### Campos incorporados y requisitos previstos
 
 | Campo | Uso | Condición inicial |
 | --- | --- | --- |
@@ -93,9 +106,9 @@ El ERP necesita identificar a la empresa que emite sus cotizaciones y documentos
 | `logoUrl` | Logo para pantalla y PDF | Opcional; almacenamiento por definir |
 | `createdAt`, `updatedAt` | Fechas de registro y modificación | Convención existente |
 
-- Guardar el RUT con una representación uniforme y validarlo; aplicar puntos y guion al mostrarlo.
+- Convención para el futuro módulo: guardar el RUT sin puntos, con guion y dígito verificador en mayúscula; validarlo y aplicar puntos al mostrarlo. La columna actual admite texto opcional; aún no se implementa validación de formato o dígito verificador.
 - Permitir iniciar el ERP con el perfil incompleto. Mostrar “Configurar empresa” y exigir los campos acordados antes de emitir un documento definitivo.
-- Para garantizar el perfil único, usar un identificador fijo y una restricción de base que solo admita ese identificador; la interfaz edita el registro existente, sin listado ni acción “Nueva empresa”. Un identificador fijo por sí solo no impide crear otros registros.
+- El perfil único ya está garantizado por PK y CHECK en PostgreSQL. La futura interfaz editará ese registro, sin listado ni acción “Nueva empresa”. Conservar el CHECK en el SQL de migraciones; no se representa como atributo del esquema Prisma.
 - No usar el perfil de empresa como sustituto de permisos. La edición debe quedar restringida cuando exista autenticación.
 - No guardar información bancaria en la primera versión salvo necesidad explícita. Se podrá agregar después para instrucciones de pago.
 
@@ -114,19 +127,25 @@ La generación de PDFs y la copia histórica pueden implementarse junto con Vent
 
 ### Checklist
 
-- [x] Confirmar que no existe un modelo de empresa.
+- [x] Revisar la ausencia inicial de un modelo de empresa.
 - [x] Proponer perfil único, campos y conservación de documentos históricos.
-- [ ] Confirmar que esta versión administrará una sola empresa.
-- [ ] Acordar campos requeridos y ubicación en el menú.
-- [ ] Crear el modelo, la restricción de perfil único y la migración.
+- [x] Adoptar un único perfil de empresa para esta versión.
+- [x] Definir campos opcionales en la base para permitir configuración gradual, con fechas de registro y modificación.
+- [ ] Acordar requisitos definitivos para emitir documentos y ubicación en el menú.
+- [x] Respaldar archivos afectados, migraciones anteriores, cliente generado y base PostgreSQL antes del cambio.
+- [x] Crear el modelo y la restricción de perfil único; validar la migración en una tabla temporal antes de aplicarla.
+- [x] Aplicar la migración y regenerar el cliente Prisma.
+- [x] Verificar perfil incompleto, persistencia de los campos, ID predeterminado, rechazo de segundos perfiles y de cambios a otro ID.
+- [x] Verificar la tabla real, la conservación del CHECK de stock mínimo y los datos/secuencias de las 17 tablas previas.
+- [x] Validar Prisma, estado y diferencias de migraciones, ESLint y build con comprobación de tipos.
 - [ ] Implementar formulario y validación compartida entre servidor e interfaz.
 - [ ] Definir almacenamiento del logo e implementar carga cuando corresponda.
 - [ ] Integrar perfil y copia histórica al emitir cotizaciones/PDFs.
-- [ ] Verificar: perfil incompleto, RUT inválido, segundo perfil rechazado y documentos antiguos tras editar la empresa.
+- [ ] Verificar en los módulos: validación de RUT, requisitos de emisión y conservación de documentos antiguos tras editar la empresa.
 
 ## 3. Cobranza
 
-### Problema del modelo actual
+### Problema del modelo anterior
 
 `DeliveryNote` tiene `paymentStatus`, `paymentPromiseDate` y `voucherUrl`, pero no guarda un importe ni varios pagos. Una orden de venta puede tener varias órdenes de trabajo y cada trabajo varias guías.
 
@@ -142,16 +161,22 @@ Ejemplo: una venta de $1.000.000, dos despachos y un abono de $300.000 debe most
 | Cuenta por cobrar en la orden de venta, con pagos | Si se cobra el trabajo vendido, aunque se entregue por partes | Hay que separar cobranza de despacho y definir cuándo nace la deuda |
 | Documento de cobro independiente con cuotas y asignación de pagos | Si se necesitan varios vencimientos, cobros agrupados o facturación más amplia | Mayor alcance para esta etapa |
 
-**Recomendación:** cuenta por cobrar vinculada a `SalesOrder`, con un historial de pagos. Empezar con una cuenta y un vencimiento por orden de venta; dejar cuotas y pagos que cubren varias ventas para una ampliación posterior.
+**Decisión aplicada el 2026-10-06:** cuenta por cobrar vinculada a `SalesOrder`, con historial de abonos. Se implementó una cuenta y un vencimiento por venta; cuotas y pagos que cubren varias ventas quedan para una ampliación posterior. La migración `20261006155755_cuentas_por_cobrar_y_abonos` está aplicada y el cliente Prisma está regenerado.
 
-### Modelos propuestos
+### Modelos incorporados
 
 | Modelo | Campos principales | Regla |
 | --- | --- | --- |
-| `AccountReceivable` | `salesOrderId` único, `amount`, `issuedAt`, `dueDate` opcional, `createdAt`, `updatedAt` | Importe acordado y conservado al confirmar la venta |
-| `Payment` | `accountReceivableId`, `amount`, `paidAt`, `method`, `reference`, `voucherUrl` opcional, fechas de registro | Cada abono se registra individualmente |
+| `AccountReceivable` | `salesOrderId` único, `amount`, `issuedAt`, `dueDate`, `paymentPromiseDate`, `voidedAt`, `voidReason`, fechas de registro | Importe acordado por venta; vencimiento y promesa opcionales e independientes |
+| `Payment` | `accountReceivableId`, `amount`, `paidAt`, `method`, `reference`, `voucherUrl`, `idempotencyKey`, `voidedAt`, `voidReason`, fechas de registro | Cada abono tiene una clave UUID de operación única y permite registrar su anulación |
 
-Importes en `Decimal(14,2)`; índices apropiados en las claves foráneas y en las consultas por vencimiento. Los nombres y campos son una propuesta, no un esquema definitivo.
+Importes en `Decimal(14,2)`. La cuenta admite importe cero; los abonos deben ser estrictamente positivos. Los CHECK de PostgreSQL rechazan negativos y `NaN`, exigen un medio de pago no vacío y requieren fecha y motivo no vacío juntos al anular. El medio de pago es texto obligatorio; el catálogo de medios se definirá con el módulo.
+
+`dueDate` y `paymentPromiseDate` usan `@db.Date`: representan días de calendario, no instantes. `reference` y `voucherUrl` son opcionales. `idempotencyKey` es UUID obligatorio y único, sin valor predeterminado; el futuro servicio deberá recibir o generar una clave estable por operación y reutilizarla en los reintentos.
+
+La unicidad de `salesOrderId` indexa la relación con Ventas. Se incorporaron índices en `dueDate` y en `[accountReceivableId, voidedAt, paidAt]`. Las FK tienen borrado restringido: no se puede eliminar una venta con cuenta ni una cuenta con abonos. La estructura permite guardar metadatos de anulación, pero no impide por sí sola borrar un abono, modificar un importe confirmado o exceder el saldo; esos controles, la autoría y los permisos corresponden al futuro módulo.
+
+Las tablas comienzan vacías. No se crean deudas o pagos a partir de cotizaciones o guías existentes. La aplicación deberá calcular saldo, estado y vencimiento; no se añadieron columnas con esos valores derivados ni automatismos para crear cuentas al confirmar ventas.
 
 ### Reglas de cálculo y registro
 
@@ -185,19 +210,25 @@ La definición de cuentas vigentes debe incluir el tratamiento de ventas anulada
 - Proponer **Cobranza** en Ventas, ruta `/ventas/cobranza`, porque se consulta por cliente y venta. No hace falta crear Finanzas para una sola pantalla.
 - Mostrar en el detalle de la venta el importe, abonos, saldo y vencimiento; permitir registrar abonos con fecha, medio y comprobante.
 - Dejar de usar el estado de pago en cada guía como fuente de verdad. Se puede mostrar allí un resumen de la cuenta asociada.
-- Antes de retirar `DeliveryNote.paymentStatus`, `paymentPromiseDate` y `voucherUrl`, revisar los datos existentes. Un estado PAGADO sin importe o fecha de pago no alcanza para reconstruir automáticamente un historial confiable. Preparar una conciliación y no inventar pagos para completar la migración.
+- Revisión del 2026-10-06: la base local tenía **0 guías de despacho**, por lo que no hubo pagos anteriores que conciliar. Se conservaron `DeliveryNote.paymentStatus`, `paymentPromiseDate` y `voucherUrl` como campos heredados para una transición compatible. Antes de retirarlos o migrar otras bases, repetir la revisión. Un estado PAGADO sin importe o fecha no permite reconstruir automáticamente un historial confiable.
 
 ### Checklist
 
 - [x] Analizar las relaciones entre cotizaciones, ventas, trabajos y guías.
 - [x] Identificar duplicación de deuda y falta de anticipos/abonos.
 - [x] Proponer cuenta por venta, pagos y estados calculados.
-- [ ] Confirmar si se cobra por venta completa o por despacho.
+- [x] Adoptar una cuenta por orden de venta, independiente de los despachos.
 - [ ] Confirmar el disparador de deuda, vencimientos y necesidad de anticipos o cuotas.
 - [ ] Definir composición del importe, anulaciones, correcciones y sobrepagos.
-- [ ] Revisar datos actuales y preparar conciliación de los campos en guías.
-- [ ] Crear modelos y migración compatible con la transición.
-- [ ] Implementar registro atómico de pagos, idempotencia y trazabilidad de anulaciones.
+- [x] Revisar datos actuales: 0 guías locales; sin pagos históricos que conciliar. Conservar campos heredados para la transición.
+- [x] Respaldar archivos, migraciones anteriores, cliente generado y base PostgreSQL antes del cambio.
+- [x] Crear modelos, índices, FK y restricciones de importes y metadatos de anulación.
+- [x] Preparar clave UUID única para operaciones y campos de anulación, sin automatizar la lógica de cobro.
+- [x] Validar la migración en tablas temporales antes de aplicarla; generar el cliente Prisma actualizado.
+- [x] Verificar estructura real y conservación de las 18 tablas anteriores, sus datos, secuencias y restricciones.
+- [x] Verificar cuenta única por venta, claves de operación duplicadas, importes, referencias inválidas, borrado restringido y metadatos de anulación.
+- [x] Validar Prisma, migraciones, ESLint y build con comprobación de tipos.
+- [ ] Implementar el servicio de registro atómico de pagos, reintentos idempotentes, control de sobrepagos y autorización/trazabilidad de anulaciones.
 - [ ] Implementar listado y detalle de cobranza en Ventas.
 - [ ] Incorporar indicadores reales de saldo y vencimiento al Dashboard.
 - [ ] Verificar: dos guías sin duplicar deuda, varios trabajos, anticipo, pago parcial, vencimiento hoy, sobrepago, reintento y pagos concurrentes.
@@ -214,20 +245,27 @@ La definición de cuentas vigentes debe incluir el tratamiento de ventas anulada
 
 - [x] Leer el modelo actual y la propuesta de interfaz.
 - [x] Registrar alternativas, recomendaciones y criterios de aceptación.
-- [ ] Registrar las decisiones del usuario con fecha.
-- [ ] Implementar cada cambio aprobado con su migración y documentación.
-- [ ] Ejecutar validación de Prisma, generar el cliente y revisar las migraciones en el entorno autorizado.
-- [ ] Ejecutar `pnpm lint` y `pnpm build` para los cambios de código.
+- [x] Registrar la decisión del usuario sobre la estructura de stock mínimo con fecha.
+- [x] Implementar el cambio aprobado de estructura de stock mínimo con su migración y documentación.
+- [x] Ejecutar validación de Prisma, generar el cliente y revisar la migración de stock mínimo en PostgreSQL local.
+- [x] Ejecutar `pnpm lint`, `pnpm exec tsc --noEmit` y `pnpm build` para el cambio de estructura de stock mínimo.
+- [x] Registrar la decisión e implementar la estructura de Empresa con respaldo, migración, cliente generado y documentación.
+- [x] Validar Empresa antes y después de aplicar la migración, y completar ESLint y build con comprobación de tipos.
+- [x] Registrar e implementar la estructura de Cobranza con respaldo, prueba previa, migración y cliente generado.
+- [x] Completar validación posterior de Cobranza en PostgreSQL, Prisma, ESLint y build con comprobación de tipos.
 - [ ] Marcar cada funcionalidad como completada solo después de verificar su comportamiento.
 
 ## 5. Registro de decisiones
 
 | Fecha | Tema | Decisión | Motivo / alcance |
 | --- | --- | --- | --- |
-| — | Stock mínimo | Pendiente | Propuesta: mínimo opcional por material y bodega |
-| — | Empresa | Pendiente | Propuesta: perfil único; ubicación en Configuración |
-| — | Cobranza | Pendiente | Propuesta: cuenta por orden de venta con abonos |
+| 2026-10-06 | Stock mínimo | Aprobada e implementada la estructura | `WarehouseStock.minStock` opcional, `Decimal(14,3)`, sin default y con CHECK; migración aplicada, respaldo y cliente generado. Módulos fuera del alcance de esta etapa |
+| 2026-10-06 | Empresa | Aprobada e implementada la estructura | `CompanyProfile` con PK y CHECK para `id = 1`, campos opcionales, tabla vacía, respaldo y cliente generado. Menú, formulario, validaciones de emisión y documentos históricos pendientes |
+| 2026-10-06 | Cobranza | Aprobada e implementada la estructura | Cuenta única por venta, abonos con UUID de operación, fechas y motivos de anulación; migración compatible y cliente generado. Servicios, reglas de operación y pantallas pendientes |
 
 ## 6. Trabajo realizado en este documento
 
 - **2026-10-06:** análisis del esquema y de la guía; alternativas y recomendaciones redactadas; checklists creadas. No se cambió el esquema, no se ejecutaron migraciones y no se modificó la guía de interfaz.
+- **2026-10-06 (implementación de estructura):** stock mínimo migrado en PostgreSQL local y cliente Prisma regenerado. Respaldos en `backups/20261006_120436_stock_minimo/` (locales, excluidos de git). Detalle y validaciones en [CAMBIOS.md](CAMBIOS.md). La guía de interfaz y los módulos permanecen sin cambios.
+- **2026-10-06 (estructura de Empresa):** `CompanyProfile` migrado y cliente regenerado, con prueba previa sobre tabla temporal y validación posterior. Respaldos en `backups/20261006_124537_empresa/` (locales, excluidos de git). Se conservaron Stock Mínimo, los datos existentes y la guía de interfaz; no se desarrollaron módulos.
+- **2026-10-06 (estructura de Cobranza):** `AccountReceivable` y `Payment` migrados tras una prueba en tablas temporales; cliente Prisma regenerado. Respaldos en `backups/20261006_125530_cobranza/`. Se conservaron las 18 tablas previas y los campos heredados de las guías. Los tres puntos quedan preparados a nivel de estructura; los módulos y la lógica de cobro siguen pendientes.

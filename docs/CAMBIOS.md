@@ -1,5 +1,139 @@
 # Registro de cambios
 
+## 2026-10-06: Cuentas por cobrar y abonos
+
+**Alcance:** estructura del punto 3 de Cobranza, migración PostgreSQL y cliente Prisma. Se conservaron los cambios anteriores de Stock Mínimo y Empresa. No se implementaron servicios, pantallas, generación automática de deuda ni operaciones de cobro.
+
+### Qué cambió y por qué
+
+- Se agregaron `AccountReceivable` y `Payment` en la sección 8 del esquema. `SalesOrder.accountReceivable` es una relación inversa opcional; `AccountReceivable.salesOrderId` es obligatorio y único, para evitar duplicar deuda por los despachos de una misma venta.
+- La cuenta conserva `amount` como `Decimal(14,2)`, `issuedAt`, un vencimiento opcional `dueDate` y una promesa opcional `paymentPromiseDate`. Las dos últimas son fechas de calendario (`@db.Date`), independientes entre sí.
+- El importe de la cuenta puede ser cero; los abonos deben ser positivos. Ambos rechazan `NaN` mediante CHECK SQL. No hay saldo ni estado de pago almacenados: se calcularán desde la cuenta y los abonos vigentes.
+- Cada abono registra fecha, medio de pago obligatorio y no vacío, referencia y comprobante opcionales, y `idempotencyKey` UUID obligatorio y único. No tiene default: la aplicación debe conservar la misma clave al reintentar una operación. El medio es texto, sin imponer un catálogo de opciones todavía.
+- Cuentas y abonos tienen `voidedAt` y `voidReason` opcionales, con CHECK que exige ambos juntos y un motivo no vacío. Permiten conservar el registro anulado y excluirlo de los cálculos futuros. Todos los modelos nuevos incluyen `createdAt` y `updatedAt`.
+- Se indexaron el vencimiento y la consulta de pagos por cuenta, anulación y fecha. La unicidad de `salesOrderId` cubre el índice de esa FK; ambas relaciones usan `onDelete: Restrict` para impedir borrar ventas con cuenta o cuentas con abonos.
+- Se creó y aplicó [20261006155755_cuentas_por_cobrar_y_abonos](../prisma/migrations/20261006155755_cuentas_por_cobrar_y_abonos/migration.sql). Usa una transacción explícita para crear ambas tablas, cinco CHECK, índices y relaciones de forma atómica. Conservar los CHECK en SQL: no se representan como atributos de Prisma.
+- Se regeneró el cliente Prisma 7.9.1, con modelos `AccountReceivable` y `Payment` y accesos `prisma.accountReceivable` / `prisma.payment`.
+
+### Transición y límites de esta etapa
+
+- La revisión previa encontró **0 guías de despacho** en la base local; no hubo pagos históricos que conciliar. No se dedujeron deudas desde cotizaciones ni se insertaron pagos ficticios. Las tablas nuevas quedan vacías.
+- Se conservan `DeliveryNote.paymentStatus`, `paymentPromiseDate` y `voucherUrl` como campos heredados; las nuevas operaciones se construirán sobre cuentas y abonos. Revisar de nuevo los datos antes de retirar esos campos o migrar otra base.
+- La clave única permite rechazar operaciones duplicadas, pero la respuesta idempotente al cliente debe implementarse en el servicio. La estructura no impide por sí sola sobrepagos, pagos a cuentas anuladas, edición/borrado de abonos o cambios de un importe confirmado.
+- Quedan pendientes la creación de la cuenta al confirmar una venta, la composición del importe, validaciones de entrada, registro de pagos con control de concurrencia, autorización y autoría de anulaciones, sobrepagos/devoluciones, cálculo de saldos/estados y KPIs. Cuotas y pagos repartidos entre ventas siguen fuera del alcance inicial.
+
+### Respaldos previos
+
+Carpeta local, excluida de git: `backups/20261006_125530_cobranza/`.
+
+- `files/`, `cliente-prisma-anterior.tar.gz`, estado de git y diff previo: originales de los archivos editados, configuración, las tres migraciones anteriores y cliente con Stock Mínimo/Empresa.
+- `database.dump`: respaldo completo de PostgreSQL anterior a Cobranza. Se verificó su catálogo con `pg_restore --list`, guardado en `database-catalog.txt`; no se realizó una restauración completa de ensayo.
+- `manifest.json` y `SHA256SUMS`: comprobación de integridad de los archivos.
+- `datos-antes.json` / `datos-despues.json`: conteos y huellas de las 18 tablas previas y sus secuencias, sin excluir columnas del dominio.
+- `revision-guias.json`: revisión agregada de guías previas. `README.md`: contenido y recuperación del respaldo en otra base.
+
+### Cómo se verificó
+
+- Antes de aplicar, se validó el esquema y se probó el SQL en tablas temporales de ventas, cuentas y pagos, con IDs explícitos y `ROLLBACK`, sin alterar datos ni secuencias reales.
+- Se verificaron cuenta única por venta, claves de operación duplicadas, importes decimales exactos, rechazo de importes negativos/`NaN`, abonos cero y medios vacíos, anulaciones incompletas, relaciones inválidas y borrado restringido.
+- Un ejemplo SQL verificó el saldo con varios abonos y la exclusión de un abono anulado, conservando el historial. Es una comprobación del modelo de datos; no implementa las consultas ni los servicios de la aplicación.
+- Después de migrar, se comprobaron directamente tipos, fechas, UUID sin default, cinco CHECK nuevos, dos FK, cuatro índices secundarios y conservación de los CHECK de Stock Mínimo y Empresa. Las tablas nuevas están vacías y los campos heredados siguen presentes.
+- Las huellas y secuencias de las 18 tablas previas coinciden antes/después. Las dos nuevas secuencias pertenecen a las tablas de Cobranza; el historial de migraciones cambia como corresponde.
+- `pnpm prisma generate`, `pnpm prisma validate`, `pnpm prisma migrate status` (cuatro migraciones aplicadas) y `pnpm prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code`: correctos. El diff compara los elementos representados por Prisma; los CHECK se revisaron directamente.
+- `pnpm lint` y `pnpm build`, incluida la comprobación TypeScript: correctos. El build tuvo acceso autorizado a Google Fonts.
+
+Las pruebas se conservan en el respaldo como `verificacion-migracion-cobranza.sql` y `verificacion-estructura.sql`. Se actualizaron `AGENTS.md`, `CLAUDE.md` y la checklist de [PROPUESTAS-DOMINIO.md](PROPUESTAS-DOMINIO.md). La guía de interfaz permanece intacta; no se ejecutó seed ni se reinició la base.
+
+---
+
+## 2026-10-06: Perfil único de empresa
+
+**Alcance:** estructura de datos del punto 2, migración PostgreSQL y regeneración del cliente Prisma. Se validó la migración antes de aplicarla y se respaldó el estado posterior a Stock Mínimo. No se desarrollaron módulos, pantallas ni generación de documentos.
+
+### Qué cambió y para qué sirve
+
+- Se agregó `CompanyProfile` en la sección 7 de `prisma/schema.prisma`, para los datos de la empresa que usa el ERP.
+- Incluye `legalName`, `tradeName`, `rut`, `businessActivity`, `address`, `commune`, `city`, `email`, `phone` y `logoUrl`, todos `String?`. Permite completar el perfil gradualmente; los requisitos para emitir documentos se implementarán en la aplicación.
+- Incluye `createdAt @default(now())` y `updatedAt @updatedAt`, siguiendo la convención existente.
+- `id` es `Int @id @default(1)`, sin autoincremento. La PK y el CHECK SQL `CompanyProfile_singleton_check` permiten como máximo una fila, cuyo identificador debe ser `1`. No se agrega una secuencia ni índices redundantes.
+- Se creó y aplicó [20261006154719_perfil_unico_empresa](../prisma/migrations/20261006154719_perfil_unico_empresa/migration.sql) en PostgreSQL local. La migración solo crea la tabla y sus restricciones; no inserta datos ficticios ni modifica tablas anteriores.
+- Se regeneró el cliente Prisma 7.9.1, que expone el modelo `CompanyProfile` y el acceso `prisma.companyProfile`.
+- Se actualizaron las reglas de `AGENTS.md` y `CLAUDE.md`, y los avances en [PROPUESTAS-DOMINIO.md](PROPUESTAS-DOMINIO.md).
+
+**Reglas para el desarrollo posterior:** la tabla puede estar vacía o contener un perfil incompleto. El futuro módulo deberá normalizar/validar el RUT, definir campos requeridos antes de emitir documentos y conservar los datos de los documentos históricos. No se añadieron validadores de RUT, relaciones con documentos, almacenamiento de logos ni permisos en esta etapa. El CHECK de perfil único se mantiene en SQL, pues no se representa como atributo en Prisma.
+
+### Respaldos previos
+
+Carpeta local, excluida de git: `backups/20261006_124537_empresa/`.
+
+- `files/`: originales de los archivos modificados, configuración Prisma y las dos migraciones anteriores, incluida Stock Mínimo.
+- `cliente-prisma-anterior.tar.gz`: cliente generado anterior.
+- `database.dump`: respaldo completo de `mtx_metal_erp` en formato custom de PostgreSQL. Su catálogo se verificó con `pg_restore --list` y quedó en `database-catalog.txt`; no se ensayó una restauración completa.
+- `manifest.json`, `SHA256SUMS`, estado de git y diff previo: permiten comprobar los originales y distinguir el trabajo anterior de este cambio.
+- `datos-antes.json` / `datos-despues.json`: conteos y huellas de las 17 tablas anteriores, incluido `minStock`, y sus secuencias.
+- `README.md`: contenido del respaldo y referencia para recuperar una copia en otra base.
+
+### Cómo se verificó
+
+- Antes de aplicar: `pnpm prisma validate`, revisión del SQL generado y prueba de la migración en una tabla temporal, dentro de una transacción con `ROLLBACK`.
+- La prueba verificó perfil incompleto, ID predeterminado `1`, campos y fechas, actualización de los datos, eliminación del logo mediante `NULL`, rechazo de un segundo perfil, rechazo de IDs `-1`, `0` y `2`, y rechazo de cambiar el ID a `2`.
+- Después de aplicar: comprobación directa de las 13 columnas, nulabilidad de los diez campos de datos, tipo/default del ID, PK, CHECK validado y tabla vacía. También se comprobó que siguiera validado el CHECK de Stock Mínimo.
+- Comparación de las 17 tablas anteriores y sus secuencias: datos idénticos. El registro de migraciones cambia como corresponde y la tabla nueva queda vacía.
+- `pnpm prisma generate` y `pnpm prisma validate`: correctos; modelo y acceso generados disponibles.
+- `pnpm prisma migrate status`: tres migraciones aplicadas. `pnpm prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code`: sin diferencias en los elementos representados por Prisma. Los CHECK se verificaron directamente en PostgreSQL.
+- `pnpm lint` y `pnpm build`, incluida la comprobación TypeScript del build: correctos. La compilación se ejecutó con acceso autorizado a las fuentes de Google usadas por la plantilla.
+
+Las pruebas SQL están en el respaldo: `verificacion-migracion-empresa.sql` y `verificacion-estructura.sql`. No se ejecutó seed ni se reinició la base. La guía de interfaz conserva su contenido anterior.
+
+---
+
+## 2026-10-06: Stock mínimo por material y bodega
+
+**Alcance:** estructura de datos, migración PostgreSQL y regeneración del cliente Prisma. El usuario autorizó avanzar con Stock Mínimo y pidió respaldos previos. Las pantallas, formularios, alertas y KPIs se implementarán en una etapa posterior.
+
+### Qué cambió y por qué
+
+- Se agregó `WarehouseStock.minStock` como `Decimal? @db.Decimal(14, 3)`, en la unidad del material. Se configura por combinación de material y bodega porque cada bodega puede necesitar un umbral diferente.
+- No tiene valor predeterminado: `NULL` representa **sin configurar**, y cero es un mínimo válido. Las filas existentes quedan en `NULL`.
+- Se creó y aplicó la migración [20261006150652_stock_minimo_por_bodega](../prisma/migrations/20261006150652_stock_minimo_por_bodega/migration.sql) en la base local `mtx_metal_erp` de PostgreSQL 15.
+- La migración agrega el campo y el CHECK `WarehouseStock_minStock_nonnegative_check` en una sola sentencia `ALTER TABLE`. Rechaza mínimos negativos y `NaN`; PostgreSQL admite este último en columnas `numeric`, pero no tiene sentido como umbral.
+- El CHECK se mantiene en el SQL de la migración, porque no se representa como atributo en el esquema Prisma. Conservarlo en migraciones futuras; la comparación de esquemas de Prisma por sí sola no valida esta restricción.
+- Se regeneró `src/generated/prisma/` con Prisma 7.9.1. El modelo generado expone `minStock` como `Decimal | null`.
+- Se conservaron la unicidad de bodega/material, los índices, las cantidades, el kardex y las fechas anteriores. Configurar un mínimo no es un movimiento de existencias.
+- Se actualizaron `AGENTS.md`, `CLAUDE.md` y la checklist de [PROPUESTAS-DOMINIO.md](PROPUESTAS-DOMINIO.md). La ubicación en `WarehouseStock` reemplaza la propuesta inicial de `RawMaterial.minStock` de la guía, que permanece sin editar.
+
+### Respaldos previos
+
+Carpeta local, excluida de git: `backups/20261006_120436_stock_minimo/`.
+
+- `files/`: copia previa de `prisma/schema.prisma`, `prisma.config.ts`, las migraciones existentes, `AGENTS.md`, `CLAUDE.md`, `docs/CAMBIOS.md` y `docs/PROPUESTAS-DOMINIO.md`.
+- `cliente-prisma-anterior.tar.gz`: cliente generado anterior.
+- `database.dump`: respaldo completo de la base en formato custom de `pg_dump`. Se verificó la lectura de su catálogo con `pg_restore --list`; no se realizó una restauración completa de ensayo.
+- `manifest.json` y `SHA256SUMS`: huellas para verificar las copias y los archivos del respaldo.
+- `datos-antes.json` / `datos-despues.json`: conteos y huellas de los datos originales y valores de las secuencias.
+- `README.md`: alcance del respaldo, comandos para revisar/restaurar en otra base y resultados de validación.
+
+### Cómo se verificó
+
+- `pnpm prisma validate`: esquema válido.
+- `pnpm prisma generate`: cliente regenerado correctamente.
+- `pnpm prisma migrate status`: las dos migraciones están aplicadas.
+- `pnpm prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code`: sin diferencias en los elementos representados por Prisma.
+- Comprobación directa en PostgreSQL de `numeric(14,3)`, nulabilidad, ausencia de default y CHECK validado en la tabla real.
+- Prueba de la migración sobre una tabla temporal con datos previos: mínimos inicialmente nulos, cero, fracciones de tres decimales, valor máximo, rechazo de negativos, `NaN` y exceso de precisión, mínimos independientes en dos bodegas y conservación de la unicidad. También se verificó volver a `NULL` y conservar saldos y fechas. La prueba usa IDs explícitos y termina con `ROLLBACK`.
+- Comparación de las 17 tablas del dominio y sus secuencias antes/después: datos anteriores idénticos. Se excluyó únicamente el campo nuevo de las huellas y el registro de migraciones, que cambia al aplicar la migración.
+- `pnpm lint`, `pnpm exec tsc --noEmit` y `pnpm build`: correctos. El primer build dentro del sandbox falló al descargar Geist desde Google Fonts; el segundo, con acceso de red autorizado, terminó correctamente.
+
+Las pruebas SQL reproducibles quedan en la carpeta de respaldo como `verificacion-stock-minimo.sql` y `verificacion-estructura.sql`. No se cargó seed ni se reinició la base.
+
+### Pendientes para los módulos
+
+- Formularios y validación de entrada, consultas de stock bajo, indicadores y pruebas de sus reglas de negocio.
+- Política de saldos negativos y selección de combinaciones a monitorear. Este cambio restringe el **mínimo**, no el saldo disponible.
+- Empresa y Cobranza mantienen el estado de propuesta.
+
+---
+
 ## 2026-10-05 (segunda parte): Fechas de registro y migración inicial
 
 Completa los dos puntos que habían quedado pendientes en la revisión anterior (ver más abajo). Con esto, la base de datos local queda al día con el esquema.
