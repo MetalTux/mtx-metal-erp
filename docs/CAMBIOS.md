@@ -1,5 +1,125 @@
 # Registro de cambios
 
+## 2026-10-06: Planificación del siguiente hito — Empresa
+
+Tras la confirmación funcional del usuario de los cinco mantenedores, se propone Configuración de Empresa como siguiente entrega. [HITO-EMPRESA.md](HITO-EMPRESA.md) registra revisión inicial completada y etapas pendientes de reglas/preparación, consulta, formulario, persistencia, validación y cierre. Incluye criterios por etapa y secuencia posterior propuesta de procesos.
+
+Se conserva el perfil único y los campos opcionales existentes. El RUT se validará cuando tenga contenido; se contemplan conflictos de edición/primera creación. La opción de logo está pendiente de acuerdo y la emisión/PDFs se resolverá con Ventas. No se desarrolló el módulo ni se marcaron sus funciones como completadas.
+
+Se actualizaron enlaces de seguimiento en AGENTS, MANTENEDORES-DATOS y AVANCES-INTERFAZ. Originales con SHA-256 en `backups/20261006_184716_plan_empresa`. Validación documental de enlaces, contenido y diff; sin ejecutar servicios, build, migraciones ni escrituras en PostgreSQL.
+
+## 2026-10-06: CRUD de Materias primas y selector buscable
+
+Quinto mantenedor completo en `/mantenedores/materiales`. Listado real con filtro por código/nombre/unidad, orden y paginación; formularios modales Crear, Ver y Editar, y eliminación con confirmación. Ver es de solo lectura y no guarda al presionar Enter.
+
+- Código único, nombre, descripción opcional y Unidad obligatoria validada en cliente/servidor. Límites: 50/150/2000 caracteres. Código mantiene la unicidad exacta del esquema; descripción vacía como `null`. Sin unidades se muestra aviso y se impide guardar.
+- Nuevo `SelectorBuscable` reutilizable sobre Popover/Command: filtro interno por etiqueta/abreviatura, normalización de acentos, teclado y estados vacíos. Primer uso en Unidad de medida, sin dependencias nuevas.
+- El usuario confirmó que la Unidad cambia sólo sin stock, movimientos ni referencias en compras, trabajos o cotizaciones; stock cero también bloquea. En uso, el formulario conserva Unidad en consulta y permite editar los demás datos.
+- `src/lib/servicios/materiales.ts` reutiliza Prisma, serializa fechas y obtiene cinco conteos. Editar/Eliminar verifican versión y bloquean el material antes de revisar referencias y escribir en una transacción. SQL parametrizado `FOR UPDATE` coordina la fila con las referencias FK. El servidor rechaza un cambio de unidad si aparecen referencias después de abrir Editar.
+- La eliminación comprueba explícitamente también cotizaciones: su FK opcional permite desvincular el material, y el servicio evita perder ese vínculo histórico. Se mantienen las FK existentes sin cambios de esquema.
+
+### Hitos y validación
+
+- [x] Respaldar los seis originales afectados y PostgreSQL; SHA-256 y dump restaurado en copia temporal.
+- [x] Confirmar y registrar la regla de cambio de Unidad.
+- [x] Implementar listado, Crear, Ver, Editar, Eliminar y selector con filtro interno.
+- [x] Pasar `pnpm lint` y `pnpm build`.
+- [x] Pasar `tests/materiales.integration.ts` en copia temporal: cinco relaciones probadas individualmente, stock cero, cotizaciones sin desvincular, código único, unidad inexistente, descripción opcional/límites y versiones obsoletas.
+- [x] Chromium: CRUD, selector con 207 opciones/búsqueda/teclado, vacío, unidad bloqueada por referencia posterior, otros campos editables, cancelación, orden/paginación, cursor, móvil y ausencia de unidades. Sin diálogos nativos ni errores JavaScript/consola.
+- [x] Comparar huellas/conteos de materiales, unidades y cinco tablas relacionadas originales: idénticos.
+- [x] Cerrar servidor temporal 3031 y retirar la copia; se comprobó con `ss` que 3031 queda libre y se preservó el servidor previo del usuario en 3030 (PID 87043).
+- [x] Marcar los cinco mantenedores de la primera serie completos en MANTENEDORES-DATOS y actualizar AVANCES-INTERFAZ.
+
+Respaldos y evidencias en `backups/20261006_183628_crud_materiales`, excluido de git. Sin cambios en esquema, migraciones, seed, dependencias ni la guía visual. Los futuros procesos deben coordinar las lecturas de unidad/cantidades con sus escrituras transaccionales.
+
+
+## 2026-10-06: CRUD de Clientes
+
+Cuarto mantenedor implementado en `/mantenedores/clientes`. Se reemplaza la página provisional por listado real y CRUD, reutilizando tabla, confirmación, avisos y notificaciones. El filtro incluye nombre, RUT y datos de contacto. Los formularios se muestran sobre el listado y Ver es de solo lectura, incluso al presionar Enter.
+
+- `clienteSchema` reutiliza la validación compartida del dígito verificador del RUT en formulario/servidor. Nombre y RUT obligatorios; persona de contacto, correo y teléfono opcionales. Límites de nombre/contacto 150, correo 254 y teléfono 40; espacios exteriores eliminados y opcionales vacíos como `null`.
+- `src/lib/servicios/clientes.ts` reutiliza Prisma, serializa fechas y obtiene conteos de cotizaciones. Guarda RUT canónico y detecta duplicados equivalentes heredados sin migrar registros automáticamente. La unicidad de PostgreSQL protege las creaciones concurrentes canónicas.
+- Editar/Eliminar comparan `updatedAt`; la FK protege clientes con cotizaciones, también ante asociaciones posteriores a la apertura de la confirmación. No se borran documentos en cascada.
+- Clientes no tiene selectores dependientes; Persona de contacto es texto. El requisito de búsqueda interna se aplicará al selector de Unidad de Materias primas.
+
+### Hitos y validación
+
+- [x] Respaldar los seis archivos existentes a modificar y la base local; originales con SHA-256 y dump en `backups/20261006_183227_crud_clientes`.
+- [x] Implementar listado y filtro, Crear, Ver, Editar, Eliminar y confirmación.
+- [x] Pasar `pnpm lint` y `pnpm build`.
+- [x] Pasar `tests/clientes.integration.ts` contra copia temporal: RUT K/0, DV inválido, correo, límites/contacto, opcionales, duplicados equivalentes/heredados/concurrentes, conflictos de versión y protección por cotización.
+- [x] Validar en Chromium: ciclo CRUD, modos/títulos, consulta sin escrituras, filtros de RUT/contactos sin acentos, errores/cancelación, foco, orden, paginación, cursor y móvil; sin diálogos nativos ni errores JavaScript/consola.
+- [x] Comparar conteos y huellas originales de Clientes, Cotizaciones, sus detalles y Órdenes de venta: idénticos.
+- [x] Detener el servidor temporal y comprobar con `ss` que 3031 queda libre; retirar la base temporal y conservar el servidor previo del usuario en 3030 (PID 87043).
+- [x] Marcar los avances en MANTENEDORES-DATOS y AVANCES-INTERFAZ. Próximo módulo: Materias primas.
+
+No se modificaron esquema, migraciones, seed, dependencias ni la guía visual. La comprobación de equivalencias de RUT consulta id/RUT del catálogo actual, como Proveedores; revisar su escala junto con la paginación en servidor cuando crezca.
+
+
+## 2026-10-06: CRUD de Proveedores
+
+Tercer mantenedor implementado en `/mantenedores/proveedores`, con la tabla y formularios modales del sistema. Se listan los datos reales y se filtran nombre, RUT y contactos, con orden y paginación. Los formularios conservan el listado y Ver es de solo lectura, incluido Enter.
+
+- RUT obligatorio y validado; normalización al guardar y formato chileno al mostrar mediante utilidades reutilizables en `src/lib/validaciones/rut.ts`. Nombre obligatorio, correo/teléfono opcionales y errores por campo compartidos entre formulario y servidor. Límites de interfaz: 150/254/40 caracteres respectivamente; los opcionales vacíos se guardan como `null`.
+- Las Server Actions delegan en `src/lib/servicios/proveedores.ts`, que reutiliza Prisma, serializa fechas y obtiene conteos de compras. La unicidad detecta RUT equivalentes heredados sin migrar los datos automáticamente; nuevas escrituras usan la clave canónica y el índice único de PostgreSQL. La comprobación de equivalencia consulta sólo id/RUT del catálogo actual; revisar su escala junto con la paginación en servidor futura.
+- Editar/Eliminar requieren la versión `updatedAt`. La FK conserva los proveedores con compras, incluso si la compra se asocia después de abrir la confirmación. Avisos, notificaciones y confirmación son componentes existentes; no se usan diálogos nativos.
+- Proveedores no tiene campos de selección relacionados. Se mantiene el requisito de filtro interno para los futuros selectores dependientes.
+
+### Hitos y comprobaciones
+
+- [x] Respaldar los seis archivos existentes a modificar y PostgreSQL antes de editar; manifiesto SHA-256 y dump en `backups/20261006_182209_crud_proveedores`.
+- [x] Implementar listado, Crear, Ver, Editar y Eliminar con confirmación.
+- [x] Validar con `pnpm lint` y `pnpm build`.
+- [x] Ejecutar `tests/proveedores.integration.ts` en copia temporal: RUT con DV K/0, correo, límites, opcionales, duplicados heredados/equivalentes/concurrentes, conflictos de versión y FK de compras.
+- [x] Validar en Chromium: CRUD, errores y cancelación, Enter en consulta, foco accesible, filtro en tres formatos de RUT y sin acentos, contactos, orden, paginación, cursor pointer, escritorio y móvil. Sin errores de JavaScript/consola ni diálogos nativos.
+- [x] Comparar conteos y huellas de `Supplier`, `Purchase` y `PurchaseDetail` originales: idénticos antes/después.
+- [x] Cerrar el servidor temporal de 3031 y retirar la base temporal; conservar el servidor previo del usuario en 3030 (PID 87043). Se verificó con `ss` que 3031 quedó libre.
+- [x] Marcar avances en MANTENEDORES-DATOS y AVANCES-INTERFAZ; próximo mantenedor: Clientes.
+
+Sin cambios en Prisma, migraciones, seed, dependencias ni la guía visual. Fuente de la regla de dígito verificador: [documentación técnica del SII](https://www.sii.cl/ccp/formato_envio_cp_electronico_052022.pdf), módulo 11 y K mayúscula. La validación local no comprueba la existencia tributaria.
+
+
+## 2026-10-06: Server Actions a través de devtunnels
+
+**Causa:** las solicitudes del túnel llegaban con `x-forwarded-host: b1315pk2-3030.brs.devtunnels.ms` y `Origin: http://localhost:3030`. Next.js rechazaba las acciones por la diferencia de origen antes de consultar PostgreSQL.
+
+**Cambio:** `next.config.ts` configura, únicamente cuando `NODE_ENV` es `development`, `allowedDevOrigins` para el dominio exacto del túnel y `experimental.serverActions.allowedOrigins` para ese dominio y `localhost:3030`. Esta última excepción permite el origen reescrito por el túnel. No se agregan comodines ni excepciones en producción. Si cambia la URL del túnel, actualizar `dominioTunel` y reiniciar `pnpm dev`. La conexión de PostgreSQL permanece local.
+
+### Hitos y validación
+
+- [x] Respaldar `next.config.ts` y este documento antes de editar, con huellas SHA-256 en `backups/20261006_180948_devtunnels` (excluido de git).
+- [x] Detener el servidor anterior del proyecto, autorizado por el usuario, y comprobar que 3030 quedó libre antes del reinicio.
+- [x] Aplicar la configuración y reiniciar mediante `pnpm dev` en 3030.
+- [x] Ejecutar `pnpm lint` y `pnpm build`: ambas comprobaciones pasaron.
+- [x] Verificar que la configuración de producción no incorpora excepciones; los hosts exactos de desarrollo están permitidos y otros dominios/puertos son rechazados.
+- [x] Chromium: consulta real con las cabeceras observadas en el túnel, respuesta HTTP 200 y formulario de solo lectura. Una solicitud con `Origin: https://externo.example` fue rechazada (HTTP 500 esperado por Next.js).
+- [x] Validar desde la URL pública real: listado de Unidades, consultas Ver y Editar con HTTP 200, formulario Crear y confirmación Eliminar abiertos y cancelados; sin errores de JavaScript. Se aceptó el aviso inicial de Microsoft para acceder al túnel.
+- [x] Conservar los datos existentes: no se guardaron ni eliminaron registros. No se repitieron escrituras del CRUD para esta corrección de transporte.
+- [x] Detener el servidor de validación y comprobar con `ss` que 3030 queda libre.
+
+Resultados y capturas en el respaldo. Para volver a usar la aplicación por el túnel, ejecutar `pnpm dev` y mantener el reenvío de 3030 activo. Referencias: [Server Actions](https://nextjs.org/docs/app/api-reference/config/next-config-js/serverActions) y [allowedDevOrigins](https://nextjs.org/docs/app/api-reference/config/next-config-js/allowedDevOrigins).
+
+## 2026-10-06: CRUD de Bodegas
+
+**Alcance:** segundo mantenedor completo en `/mantenedores/bodegas`. Se mantiene el diseño y los componentes compartidos existentes. No se modifica Prisma, las migraciones, el seed ni las dependencias.
+
+### Comportamiento y estructura
+
+- Se reemplazó la página provisional por el listado real con filtro de nombre/ubicación, orden, paginación y acciones Crear, Ver, Editar y Eliminar. Los formularios modales conservan la ruta, el filtro y la página; Ver usa controles de solo lectura.
+- `src/lib/validaciones/bodega.ts` comparte las reglas Zod entre formulario y servidor: nombre obligatorio de hasta 100 caracteres, ubicación opcional de hasta 200, espacios exteriores eliminados y ubicación vacía guardada como `null`. Se conserva que `Warehouse.name` no es único.
+- `src/lib/servicios/bodegas.ts` reutiliza el cliente Prisma y selecciona datos y conteos de las cuatro relaciones, serializando fechas ISO. Las Server Actions validan y revalidan la ruta después de guardar/eliminar.
+- Editar/Eliminar comparan `updatedAt` para evitar escrituras sobre un registro que cambió. Las FK de `WarehouseStock`, `StockMovement`, `PurchaseDetail` y `WorkOrderDetail` impiden borrar una bodega referenciada, incluso con saldo cero o asociaciones posteriores a abrir la confirmación. No hay borrado en cascada.
+- Se reutilizan tabla, avisos y confirmación de eliminación. Se añadieron carga, vacío y error con reintento para la ruta. Se conserva el cursor pointer de botones y la navegación por teclado.
+- Bodegas no tiene selector dependiente. Se registró en `AGENTS.md` y el checklist que todo selector dependiente futuro debe tener búsqueda interna; su implementación se valida al desarrollar el módulo que lo necesite.
+
+### Respaldo y validación
+
+- Originales y dump local en `backups/20261006_173602_crud_bodegas`, excluido de git. Se validó el catálogo del dump y se restauró en una base temporal para ensayar las operaciones.
+- Pasaron `pnpm lint`, `pnpm build` y las pruebas versionadas de `tests/bodegas.integration.ts`. Se comprobaron creación, consulta, edición, eliminación, ubicación opcional, límites, referencias inválidas, nombres repetidos permitidos y conflictos concurrentes. Cada una de las cuatro FK se probó de forma independiente, incluido stock cero.
+- Chromium verificó ciclo CRUD, formularios de solo lectura, cancelación, filtro por nombre/ubicación, búsqueda sin acentos, orden, paginación, eliminación de la última fila de una página, confirmación, cursor y móvil. No hubo diálogos nativos ni errores de JavaScript/hidratación/consola. Capturas y resultados están en el respaldo.
+- Se compararon conteos y huellas de Bodegas y sus cuatro tablas relacionadas en la base original: no cambiaron. La copia temporal se retiró y el servidor de pruebas liberó 3031. El servidor previo del usuario en 3030 se preservó.
+- Hitos marcados en [MANTENEDORES-DATOS.md](MANTENEDORES-DATOS.md) y [AVANCES-INTERFAZ.md](AVANCES-INTERFAZ.md). Próximo mantenedor: Proveedores.
+
 ## 2026-10-06: Cursor de los botones habilitados
 
 - Se agregó una regla global en `src/app/globals.css` para mostrar `cursor: pointer` en botones habilitados y controles con `role="button"`. Se aplica al CRUD, orden/paginación, formularios, confirmaciones y barra superior.

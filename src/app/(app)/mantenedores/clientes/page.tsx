@@ -1,5 +1,6 @@
-import { ModulePlaceholder } from "@/components/layout/module-placeholder";
+import { listarClientes } from "@/lib/servicios/clientes";
+import { Clientes } from "@/components/mantenedores/clientes";
 
-export default function Page() {
-  return <ModulePlaceholder ruta="/mantenedores/clientes" />;
+export default async function Page() {
+  return <Clientes clientes={await listarClientes()} />;
 }

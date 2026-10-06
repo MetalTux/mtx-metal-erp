@@ -1,5 +1,6 @@
-import { ModulePlaceholder } from "@/components/layout/module-placeholder";
+import { listarBodegas } from "@/lib/servicios/bodegas";
+import { Bodegas } from "@/components/mantenedores/bodegas";
 
-export default function Page() {
-  return <ModulePlaceholder ruta="/mantenedores/bodegas" />;
+export default async function Page() {
+  return <Bodegas bodegas={await listarBodegas()} />;
 }

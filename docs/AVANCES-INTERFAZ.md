@@ -41,13 +41,17 @@ Las comprobaciones de navegador se realizaron con un script temporal de Playwrig
 - [ ] Utilidades de formato chileno y contratos de serialización para los módulos.
 - [ ] Consultas e indicadores reales del Dashboard, gráfico y estados de carga/error.
 - [x] CRUD completo de Unidades de medida, validado contra una copia temporal de PostgreSQL.
-- [ ] Bodegas → Proveedores → Clientes → Materias primas; seguimiento en [MANTENEDORES-DATOS.md](MANTENEDORES-DATOS.md).
+- [x] CRUD completo de Bodegas, validado con las cuatro relaciones que impiden su borrado.
+- [x] CRUD completo de Proveedores, con validación de RUT/correo y eliminación protegida por compras.
+- [x] CRUD completo de Clientes, con RUT validado, persona de contacto y eliminación protegida por cotizaciones.
+- [x] CRUD completo de Materias primas, selector de Unidad con filtro interno y bloqueo de cambio de unidad/eliminación por referencias; seguimiento en [MANTENEDORES-DATOS.md](MANTENEDORES-DATOS.md).
 - [ ] Configuración de los datos propios de Empresa.
+- [x] Planificar el siguiente hito de Empresa por etapas; [plan y checklist](HITO-EMPRESA.md). Desarrollo pendiente.
 - [ ] Procesos de compras, inventario, ventas, trabajos, despachos y cobranza.
 - [ ] Alertas de stock mínimo y vencimientos.
 - [ ] Inicio de sesión, protección de rutas, roles y Administración.
 
-Los indicadores muestran «—» y los paneles explican su contenido futuro. El buscador abre secciones; todavía no busca registros. Notificaciones y usuario indican que las alertas y el inicio de sesión están pendientes. Unidades de medida ya consulta y modifica la base de datos; las demás rutas de mantenedores continúan como páginas provisionales.
+Los indicadores muestran «—» y los paneles explican su contenido futuro. El buscador abre secciones; todavía no busca registros. Notificaciones y usuario indican que las alertas y el inicio de sesión están pendientes. Los cinco mantenedores básicos ya consultan y modifican la base de datos; los procesos y Empresa continúan pendientes.
 
 ## Referencias de implementación
 

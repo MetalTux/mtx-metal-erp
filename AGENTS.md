@@ -7,7 +7,7 @@ Instrucciones para Codex y otros agentes que trabajen en este repositorio. Aplic
 - **Proyecto:** MTX Metal ERP, para fabricación de estructuras metálicas por encargo o para obra propia. Organiza bodegas, materia prima, compras, cotizaciones, producción y entregas.
 - **Idioma:** responde en español. Escribe comentarios, textos visibles y datos de ejemplo en español; conserva los nombres existentes de modelos, campos y APIs. Los valores de los enums del dominio están en español.
 - **Stack:** Next.js 16 con App Router, React 19 con React Compiler, TypeScript estricto, Tailwind CSS v4 y Prisma 7 sobre PostgreSQL 15.
-- **Estado actual:** el tema oscuro y el layout del ERP ya están implementados con shadcn/ui: sidebar responsive, barra superior, buscador de secciones y rutas provisionales. El Dashboard tiene estructura visual sin consultas. Unidades de medida ya tiene CRUD completo con Server Actions y Prisma; los demás módulos, la autenticación y las métricas reales siguen pendientes.
+- **Estado actual:** el tema oscuro y el layout del ERP ya están implementados con shadcn/ui: sidebar responsive, barra superior, buscador de secciones y rutas provisionales. El Dashboard tiene estructura visual sin consultas. Unidades de medida, Bodegas, Proveedores, Clientes y Materias primas ya tienen CRUD completo con Server Actions y Prisma; los demás módulos, la autenticación y las métricas reales siguen pendientes.
 - Antes de editar, revisa `git status --short` y los archivos afectados. Conserva los cambios previos del usuario y limita la edición al alcance solicitado.
 - Usa **pnpm** y conserva `pnpm-lock.yaml`. Consulta `package.json` para verificar scripts y dependencias disponibles.
 
@@ -21,6 +21,7 @@ Instrucciones para Codex y otros agentes que trabajen en este repositorio. Aplic
 | `docs/GUIA-INTERFAZ.md` | Diseño visual, navegación, Dashboard y fases propuestas; leer antes de trabajar en la interfaz |
 | `docs/AVANCES-INTERFAZ.md` | Checklist del tema, layout, verificaciones y trabajo pendiente de la interfaz |
 | `docs/MANTENEDORES-DATOS.md` | Orden y checklist de los CRUD básicos; requisitos de tablas, formularios y confirmaciones |
+| `docs/HITO-EMPRESA.md` | Próximo hito propuesto: etapas de Configuración de Empresa, reglas por definir y criterios de cierre; desarrollo pendiente |
 | `docs/PROPUESTAS-DOMINIO.md` | Alternativas, decisiones y checklists de stock mínimo, empresa y cobranza; consultar antes de implementar esos temas |
 | `diseno-01.jpeg`, `diseno-02.jpeg` | Referencias visuales de la guía |
 | `docs/CAMBIOS.md` | Decisiones y registro de cambios de esquema o arquitectura |
@@ -86,6 +87,7 @@ Flujo principal: **Cotización → Orden de venta → Orden de trabajo → Guía
 | Empresa | `CompanyProfile`: perfil único de la empresa que usa el ERP |
 | Cobranza | `SalesOrder` → `AccountReceivable` (máximo una) → `Payment` (abonos) |
 
+- **Cambio de unidad:** en Materias primas sólo se permite si no hay registros de stock (incluso cero), movimientos, compras, trabajos ni cotizaciones. Otros campos siguen editables. La comprobación se realiza en el servidor dentro de una transacción que bloquea la fila antes de revisar referencias.
 - **Unidad única:** todas las cantidades de un material usan su `unitMeasure`; no hay conversiones entre unidades. `UnitMeasure.name` es único.
 - **Precisión:** dinero en `Decimal(14,2)` y cantidades en `Decimal(14,3)`. Calcula con `Prisma.Decimal` y métodos como `.plus()` y `.times()`; no uses `+`, `*` ni conversiones a `number` para cálculos del dominio.
 - **Stock y kardex:** cada cambio en `WarehouseStock.quantity` debe crear su `StockMovement` en la misma `prisma.$transaction`, usando el cliente de esa transacción para ambas operaciones. El saldo debe coincidir con la suma de movimientos para la misma bodega y material.
@@ -121,6 +123,7 @@ La fuente detallada es `docs/GUIA-INTERFAZ.md`, cuyas fases de tema y layout ya 
 
 - Sigue `docs/MANTENEDORES-DATOS.md`: Unidades de medida → Bodegas → Proveedores → Clientes → Materias primas, un módulo a la vez, comenzando por sus datos existentes.
 - Cada CRUD usa tabla con filtro superior y acciones Crear, Ver, Editar y Eliminar. Los formularios se muestran sobre el listado, sin navegar fuera de él, con título acorde y modo de consulta de solo lectura.
+- Todo selector de datos que dependa de otro mantenedor debe incluir búsqueda interna para filtrar sus opciones rápidamente, con manejo de teclado y estados sin coincidencias.
 - Usa componentes reutilizables para confirmación de eliminación y alertas del sistema. Nunca uses los diálogos nativos de JavaScript (`alert`, `confirm`, `prompt`).
 - Antes de continuar con una decisión que requiera aclaración del usuario, pregunta y espera su respuesta. Actualiza los checks únicamente para funciones implementadas y validadas.
 

@@ -1,5 +1,6 @@
-import { ModulePlaceholder } from "@/components/layout/module-placeholder";
+import { listarProveedores } from "@/lib/servicios/proveedores";
+import { Proveedores } from "@/components/mantenedores/proveedores";
 
-export default function Page() {
-  return <ModulePlaceholder ruta="/mantenedores/proveedores" />;
+export default async function Page() {
+  return <Proveedores proveedores={await listarProveedores()} />;
 }
