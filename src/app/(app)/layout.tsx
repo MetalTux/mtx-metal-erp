@@ -3,6 +3,7 @@ import { AppSidebar } from "@/components/layout/app-sidebar";
 import { AppTopbar } from "@/components/layout/app-topbar";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { Notificaciones } from "@/components/alertas/notificaciones";
 
 export default async function ApplicationLayout({ children }: { children: React.ReactNode }) {
   const defaultOpen = (await cookies()).get("sidebar_state")?.value !== "false";
@@ -11,6 +12,7 @@ export default async function ApplicationLayout({ children }: { children: React.
       <SidebarProvider defaultOpen={defaultOpen}>
         <a href="#contenido-principal" className="sr-only fixed top-2 left-2 z-50 rounded-md bg-primary px-4 py-2 text-primary-foreground focus:not-sr-only">Saltar al contenido</a>
         <AppSidebar />
+        <Notificaciones />
         <SidebarInset className="min-w-0 bg-background">
           <AppTopbar />
           <div id="contenido-principal" tabIndex={-1} className="flex-1 p-4 outline-none md:p-6">{children}</div>

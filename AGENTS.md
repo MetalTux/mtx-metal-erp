@@ -7,7 +7,7 @@ Instrucciones para Codex y otros agentes que trabajen en este repositorio. Aplic
 - **Proyecto:** MTX Metal ERP, para fabricación de estructuras metálicas por encargo o para obra propia. Organiza bodegas, materia prima, compras, cotizaciones, producción y entregas.
 - **Idioma:** responde en español. Escribe comentarios, textos visibles y datos de ejemplo en español; conserva los nombres existentes de modelos, campos y APIs. Los valores de los enums del dominio están en español.
 - **Stack:** Next.js 16 con App Router, React 19 con React Compiler, TypeScript estricto, Tailwind CSS v4 y Prisma 7 sobre PostgreSQL 15.
-- **Estado actual:** el tema oscuro y el layout del ERP ya están implementados con shadcn/ui: sidebar responsive, barra superior, buscador de secciones y rutas provisionales. El Dashboard tiene estructura visual sin consultas. El dominio está en Prisma; los módulos, la autenticación y las métricas reales siguen pendientes.
+- **Estado actual:** el tema oscuro y el layout del ERP ya están implementados con shadcn/ui: sidebar responsive, barra superior, buscador de secciones y rutas provisionales. El Dashboard tiene estructura visual sin consultas. Unidades de medida ya tiene CRUD completo con Server Actions y Prisma; los demás módulos, la autenticación y las métricas reales siguen pendientes.
 - Antes de editar, revisa `git status --short` y los archivos afectados. Conserva los cambios previos del usuario y limita la edición al alcance solicitado.
 - Usa **pnpm** y conserva `pnpm-lock.yaml`. Consulta `package.json` para verificar scripts y dependencias disponibles.
 
@@ -20,6 +20,7 @@ Instrucciones para Codex y otros agentes que trabajen en este repositorio. Aplic
 | `src/lib/prisma.ts` | Instancia compartida del cliente de base de datos |
 | `docs/GUIA-INTERFAZ.md` | Diseño visual, navegación, Dashboard y fases propuestas; leer antes de trabajar en la interfaz |
 | `docs/AVANCES-INTERFAZ.md` | Checklist del tema, layout, verificaciones y trabajo pendiente de la interfaz |
+| `docs/MANTENEDORES-DATOS.md` | Orden y checklist de los CRUD básicos; requisitos de tablas, formularios y confirmaciones |
 | `docs/PROPUESTAS-DOMINIO.md` | Alternativas, decisiones y checklists de stock mínimo, empresa y cobranza; consultar antes de implementar esos temas |
 | `diseno-01.jpeg`, `diseno-02.jpeg` | Referencias visuales de la guía |
 | `docs/CAMBIOS.md` | Decisiones y registro de cambios de esquema o arquitectura |
@@ -115,6 +116,13 @@ La fuente detallada es `docs/GUIA-INTERFAZ.md`, cuyas fases de tema y layout ya 
 - **Formato chileno:** `es-CL`, moneda CLP, cantidades con hasta tres decimales y unidad, fechas `dd-MM-yyyy`, horas `HH:mm` y RUT con puntos y guion.
 - **Estado de las propuestas:** están implementadas y migradas las estructuras de Stock Mínimo (`WarehouseStock.minStock`), Empresa (`CompanyProfile`) y Cobranza (`AccountReceivable` y `Payment`); consulta `docs/PROPUESTAS-DOMINIO.md`. La paleta, los grupos del menú y las rutas provisionales ya están implementados, incluyendo Cobranza y Configuración → Empresa. Siguen pendientes los módulos, su lógica y los indicadores con datos reales. La guía mantiene su propuesta original; para estas estructuras usa el esquema actual y las decisiones registradas.
 - **Secuencia propuesta:** tema → layout y navegación → componentes compartidos → Dashboard → mantenedores → procesos → autenticación y roles. Instala dependencias al abordar la fase correspondiente y verifica la documentación oficial vigente de shadcn/ui antes de usar su CLI o elegir componentes.
+
+## Mantenedores de datos
+
+- Sigue `docs/MANTENEDORES-DATOS.md`: Unidades de medida → Bodegas → Proveedores → Clientes → Materias primas, un módulo a la vez, comenzando por sus datos existentes.
+- Cada CRUD usa tabla con filtro superior y acciones Crear, Ver, Editar y Eliminar. Los formularios se muestran sobre el listado, sin navegar fuera de él, con título acorde y modo de consulta de solo lectura.
+- Usa componentes reutilizables para confirmación de eliminación y alertas del sistema. Nunca uses los diálogos nativos de JavaScript (`alert`, `confirm`, `prompt`).
+- Antes de continuar con una decisión que requiera aclaración del usuario, pregunta y espera su respuesta. Actualiza los checks únicamente para funciones implementadas y validadas.
 
 ## Validación y cierre
 

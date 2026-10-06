@@ -36,16 +36,18 @@ Las comprobaciones de navegador se realizaron con un script temporal de Playwrig
 
 ## Pendientes
 
-- [ ] Componentes de datos: tablas con filtros/paginación, badges de estado y barras de stock.
+- [x] Tabla reutilizable con filtro, orden y paginación; confirmaciones y avisos reutilizables.
+- [ ] Badges de estado y barras de stock.
 - [ ] Utilidades de formato chileno y contratos de serialización para los módulos.
 - [ ] Consultas e indicadores reales del Dashboard, gráfico y estados de carga/error.
-- [ ] Mantenedores: Unidades de medida y Bodegas; después Materias primas, Proveedores y Clientes.
+- [x] CRUD completo de Unidades de medida, validado contra una copia temporal de PostgreSQL.
+- [ ] Bodegas → Proveedores → Clientes → Materias primas; seguimiento en [MANTENEDORES-DATOS.md](MANTENEDORES-DATOS.md).
 - [ ] Configuración de los datos propios de Empresa.
 - [ ] Procesos de compras, inventario, ventas, trabajos, despachos y cobranza.
 - [ ] Alertas de stock mínimo y vencimientos.
 - [ ] Inicio de sesión, protección de rutas, roles y Administración.
 
-Los indicadores muestran «—» y los paneles explican su contenido futuro. El buscador abre secciones; todavía no busca registros. Notificaciones y usuario indican que las alertas y el inicio de sesión están pendientes. Las rutas provisionales no leen ni escriben la base de datos.
+Los indicadores muestran «—» y los paneles explican su contenido futuro. El buscador abre secciones; todavía no busca registros. Notificaciones y usuario indican que las alertas y el inicio de sesión están pendientes. Unidades de medida ya consulta y modifica la base de datos; las demás rutas de mantenedores continúan como páginas provisionales.
 
 ## Referencias de implementación
 

@@ -1,5 +1,44 @@
 # Registro de cambios
 
+## 2026-10-06: Cursor de los botones habilitados
+
+- Se agregó una regla global en `src/app/globals.css` para mostrar `cursor: pointer` en botones habilitados y controles con `role="button"`. Se aplica al CRUD, orden/paginación, formularios, confirmaciones y barra superior.
+- Se excluyen controles con `disabled` o `aria-disabled="true"`, conservando sus estados de inactividad y las utilidades específicas de cursor de otros controles.
+- Pasaron `pnpm lint` y `pnpm build`. En Chromium se verificó el cursor calculado de los botones del listado, barra superior, formulario y confirmación, incluidos los botones deshabilitados. No se guardaron ni eliminaron datos ni se inició un servidor adicional.
+- Los originales se respaldaron en `backups/20261006_162338_cursor_botones`, excluido de git.
+
+## 2026-10-06: CRUD de Unidades de medida
+
+**Alcance:** primer mantenedor completo, autorizado por el usuario. Se conserva la guía visual y no se modifica Prisma, las migraciones ni el seed. Checklist en [MANTENEDORES-DATOS.md](MANTENEDORES-DATOS.md).
+
+### Comportamiento y estructura
+
+- `/mantenedores/unidades` consulta el catálogo real y sus conteos de materiales. La tabla tiene filtro superior por nombre/abreviatura, orden, paginación y acciones Crear, Ver, Editar y Eliminar. Los formularios modales conservan ruta, filtro y página del listado.
+- Ver y Editar recuperan el registro actualizado. El modo Ver usa controles de solo lectura. Crear/Editar aplican el mismo esquema Zod en cliente y servidor, con React Hook Form, errores por campo y límites de 100/20 caracteres. Los nombres conservan la unicidad exacta del esquema existente.
+- Las Server Actions delegan en `src/lib/servicios/unidades-medida.ts` y reutilizan `@/lib/prisma`. Tras guardar/eliminar se revalida la ruta. Los datos enviados al cliente contienen fechas ISO y conteos, sin objetos Prisma.
+- Editar y Eliminar comparan `updatedAt` en la escritura para detectar cambios concurrentes. La FK protege los materiales asociados al borrar. Los errores de unicidad, dependencia y registro obsoleto se presentan con mensajes comprensibles; las operaciones fallidas conservan el formulario/confirmación.
+- Se agregaron `DataTable` (TanStack Table 9), `ConfirmarEliminacion` (Radix AlertDialog), `Aviso` y `Notificaciones` (Sonner), reutilizables. No hay `alert`, `confirm` ni `prompt` nativos. Se controlan operaciones pendientes, Escape, retorno del foco y traducciones accesibles de avisos.
+- Se incorporaron estados de carga, catálogo vacío, filtro sin coincidencias y error de consulta con reintento. La tabla se desplaza horizontalmente dentro de su panel en móvil.
+- ESLint excluye `backups/**` para no analizar las copias locales y scripts históricos como código de la aplicación. Se actualizaron dependencias y lockfile; no se instalaron dependencias del resto de módulos.
+
+### Respaldo y validación
+
+- Originales y dump PostgreSQL previo en `backups/20261006_155645_crud_unidades`, excluido de git. El catálogo del dump se verificó con `pg_restore --list`; el respaldo se restauró en `mtx_validacion_unidades_20261006` para ensayar las operaciones sin modificar la base habitual.
+- Pasaron ESLint y compilación de producción, incluida la comprobación de tipos. `tests/unidades-medida.integration.ts` verificó validación, consulta, creación, edición, duplicados concurrentes, versiones obsoletas y borrado restringido. La prueba exige una base `mtx_validacion_*`.
+- Chromium verificó el ciclo CRUD, formularios de solo lectura, cancelación, confirmación, errores de duplicado/concurrencia/FK, filtro, orden, paginación, catálogo vacío y vista móvil. No hubo diálogos nativos ni errores de JavaScript/hidratación/consola. Capturas y resultados se conservan en el respaldo local.
+- El servidor de producción temporal en 3031 se cierra al finalizar; se conserva el servidor del usuario en 3030. La base temporal se retira después de las pruebas. Los catálogos originales conservan seis unidades y cero materiales.
+
+### Continuación
+
+Bodegas será el siguiente mantenedor. Empresa, procesos, Dashboard con datos y autenticación/autorización permanecen pendientes. El catálogo de unidades usa filtro/paginación local; los catálogos grandes requerirán consultas paginadas en servidor.
+
+## 2026-10-06: Plan de mantenedores de datos
+
+- Se creó [MANTENEDORES-DATOS.md](MANTENEDORES-DATOS.md) con el orden de los cinco catálogos básicos y checks por listado, consulta, creación, edición, eliminación y validación.
+- Se registró el patrón solicitado: tabla con filtro, formularios sobre el listado y componentes reutilizables de confirmación/alertas, sin diálogos nativos de JavaScript.
+- Empresa se documenta como perfil único; Roles y Usuarios quedan para autenticación. No se confunden los catálogos básicos con los procesos de inventario, venta o cobranza.
+- Se actualizaron las instrucciones de agentes y el seguimiento de interfaz. Esta planificación todavía no implementa funciones CRUD.
+
 ## 2026-10-06: Puerto de desarrollo 3030
 
 - Se cambió el script `dev` en `package.json` de `next dev -p 1657` a `next dev -p 3030`, a petición del usuario.

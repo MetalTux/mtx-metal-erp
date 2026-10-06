@@ -1,5 +1,6 @@
-import { ModulePlaceholder } from "@/components/layout/module-placeholder";
+import { listarUnidades } from "@/lib/servicios/unidades-medida";
+import { UnidadesMedida } from "@/components/mantenedores/unidades-medida";
 
-export default function Page() {
-  return <ModulePlaceholder ruta="/mantenedores/unidades" />;
+export default async function Page() {
+  return <UnidadesMedida unidades={await listarUnidades()} />;
 }

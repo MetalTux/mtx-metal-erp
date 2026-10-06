@@ -86,6 +86,8 @@
   * { @apply border-border outline-ring/50; }
   body { @apply bg-background font-sans text-sm text-foreground; }
   button:not(:disabled), a { -webkit-tap-highlight-color: transparent; }
+  button:not(:disabled):not([aria-disabled="true"]),
+  [role="button"]:not(:disabled):not([aria-disabled="true"]) { cursor: pointer; }
   input::placeholder, textarea::placeholder { color: var(--muted-foreground); }
   ::selection { background: var(--primary); color: var(--primary-foreground); }
 }
