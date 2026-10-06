@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -p 1657",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"
@@ -23,6 +23,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "babel-plugin-react-compiler": "1.0.0",
+    "dotenv": "^18.0.5",
     "eslint": "^9",
     "eslint-config-next": "16.2.12",
     "prisma": "^7.9.1",

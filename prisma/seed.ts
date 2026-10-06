@@ -1,5 +1,8 @@
 // prisma/seed.ts
 
+// Carga .env para que el seed también funcione al ejecutarlo directo con tsx
+// (debe ir antes de importar el cliente, que lee DATABASE_URL al crearse)
+import 'dotenv/config';
 import { prisma } from '../src/lib/prisma';
 
 async function main() {
@@ -27,16 +30,11 @@ async function main() {
   ];
 
   for (const unit of units) {
-    // Usamos el nombre como identificador temporal para evitar duplicados en el seed
-    const existingUnit = await prisma.unitMeasure.findFirst({
-      where: { name: unit.name }
+    await prisma.unitMeasure.upsert({
+      where: { name: unit.name },
+      update: {}, // Si ya existe, no hace nada
+      create: unit, // Si no existe, la crea
     });
-
-    if (!existingUnit) {
-      await prisma.unitMeasure.create({
-        data: unit
-      });
-    }
   }
   console.log('✅ Unidades de Medida creadas');
 

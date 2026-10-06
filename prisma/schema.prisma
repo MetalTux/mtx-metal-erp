@@ -1,12 +1,19 @@
 // /prisma/schema.prisma
 
+// Generador de Prisma 7: el cliente se genera como código TypeScript dentro de
+// src/generated/prisma (ignorado por git) y se importa desde ahí.
 generator client {
-  provider = "prisma-client-js"
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
 }
+
+// Convención de tipos numéricos:
+// - Montos de dinero: Decimal(14, 2)  -> hasta 999.999.999.999,99 sin errores de redondeo
+// - Cantidades:       Decimal(14, 3)  -> admite fracciones como 2,5 m o 0,125 kg
 
 // ==========================================
 // 1. AUTENTICACIÓN Y ROLES
@@ -15,6 +22,9 @@ model Role {
   id    Int    @id @default(autoincrement())
   name  String @unique // Ej: "Administrador", "Bodeguero", "Ventas"
   users User[]
+
+  createdAt DateTime @default(now()) // Fecha de registro (no se modifica)
+  updatedAt DateTime @updatedAt // Última modificación (automática)
 }
 
 model User {
@@ -24,52 +34,116 @@ model User {
   password String // Aquí guardaremos la contraseña encriptada (hash)
   roleId   Int
   role     Role   @relation(fields: [roleId], references: [id])
+
+  createdAt DateTime @default(now()) // Fecha de registro (no se modifica)
+  updatedAt DateTime @updatedAt // Última modificación (automática)
+
+  @@index([roleId])
 }
 
 // ==========================================
 // 2. CONFIGURACIÓN DE MATERIALES
 // ==========================================
 model UnitMeasure {
-  id           Int            @id @default(autoincrement())
-  name         String         // Ej: "Gramos", "Unidades", "Mililitros"
-  abbreviation String         // Ej: "gr", "un", "ml"
+  id           Int           @id @default(autoincrement())
+  name         String        @unique // Ej: "Kilos", "Unidades", "Metros"
+  abbreviation String // Ej: "kg", "un", "m"
   materials    RawMaterial[]
+
+  createdAt DateTime @default(now()) // Fecha de registro (no se modifica)
+  updatedAt DateTime @updatedAt // Última modificación (automática)
 }
 
+// Cada material se maneja siempre en UNA sola unidad (la de unitMeasure).
+// Todas sus cantidades (stock, compras, consumos, cotizaciones) se expresan en esa unidad.
 model RawMaterial {
-  id            Int             @id @default(autoincrement())
-  code          String          @unique
+  id            Int         @id @default(autoincrement())
+  code          String      @unique
   name          String
   description   String?
   unitMeasureId Int
-  unitMeasure   UnitMeasure     @relation(fields: [unitMeasureId], references: [id])
-  
-  stocks        WarehouseStock[]
-  purchases     PurchaseDetail[]
-  workOrders    WorkOrderDetail[]
+  unitMeasure   UnitMeasure @relation(fields: [unitMeasureId], references: [id])
+
+  stocks         WarehouseStock[]
+  stockMovements StockMovement[]
+  purchases      PurchaseDetail[]
+  workOrders     WorkOrderDetail[]
+  quoteDetails   QuoteDetail[]
+
+  createdAt DateTime @default(now()) // Fecha de registro (no se modifica)
+  updatedAt DateTime @updatedAt // Última modificación (automática)
+
+  @@index([unitMeasureId])
 }
 
 // ==========================================
 // 3. BODEGA Y STOCK
 // ==========================================
 model Warehouse {
-  id       Int              @id @default(autoincrement())
-  name     String
-  location String?
-  stocks   WarehouseStock[]
+  id               Int               @id @default(autoincrement())
+  name             String
+  location         String?
+  stocks           WarehouseStock[]
+  stockMovements   StockMovement[]
+  purchaseDetails  PurchaseDetail[]
+  workOrderDetails WorkOrderDetail[]
+
+  createdAt DateTime @default(now()) // Fecha de registro (no se modifica)
+  updatedAt DateTime @updatedAt // Última modificación (automática)
 }
 
+// Saldo actual de un material en una bodega (en la unidad del material).
+// Debe coincidir siempre con la suma de sus StockMovement.
 model WarehouseStock {
-  id            Int         @id @default(autoincrement())
-  quantity      Float       // Cantidad en la unidad mínima (ej. gramos)
+  id            Int     @id @default(autoincrement())
+  quantity      Decimal @default(0) @db.Decimal(14, 3)
   warehouseId   Int
   rawMaterialId Int
-  
-  warehouse     Warehouse   @relation(fields: [warehouseId], references: [id])
-  rawMaterial   RawMaterial @relation(fields: [rawMaterialId], references: [id])
 
-  // Evita que un mismo material esté duplicado en la misma bodega
-  @@unique([warehouseId, rawMaterialId]) 
+  warehouse   Warehouse   @relation(fields: [warehouseId], references: [id])
+  rawMaterial RawMaterial @relation(fields: [rawMaterialId], references: [id])
+
+  // Evita que un mismo material esté duplicado en la misma bodega.
+  // También sirve como índice para buscar por bodega.
+
+  createdAt DateTime @default(now()) // Fecha de registro (no se modifica)
+  updatedAt DateTime @updatedAt // Última modificación (automática)
+
+  @@unique([warehouseId, rawMaterialId])
+  @@index([rawMaterialId])
+}
+
+// Historial (kardex) de cada entrada, salida o ajuste de stock.
+// quantity lleva signo: positivo suma al stock, negativo descuenta.
+model StockMovement {
+  id                Int               @id @default(autoincrement())
+  date              DateTime          @default(now())
+  type              StockMovementType
+  quantity          Decimal           @db.Decimal(14, 3)
+  note              String? // Motivo, sobre todo en los ajustes
+  warehouseId       Int
+  rawMaterialId     Int
+  // Origen del movimiento (opcional: un ajuste manual no tiene origen)
+  purchaseDetailId  Int?
+  workOrderDetailId Int?
+
+  warehouse       Warehouse        @relation(fields: [warehouseId], references: [id])
+  rawMaterial     RawMaterial      @relation(fields: [rawMaterialId], references: [id])
+  purchaseDetail  PurchaseDetail?  @relation(fields: [purchaseDetailId], references: [id])
+  workOrderDetail WorkOrderDetail? @relation(fields: [workOrderDetailId], references: [id])
+
+  createdAt DateTime @default(now()) // Fecha de registro (no se modifica)
+
+  @@index([warehouseId, rawMaterialId, date])
+  @@index([rawMaterialId])
+  @@index([purchaseDetailId])
+  @@index([workOrderDetailId])
+}
+
+enum StockMovementType {
+  ENTRADA // Compra recibida
+  SALIDA // Consumo de una orden de trabajo
+  AJUSTE // Corrección manual (inventario, merma, pérdida)
 }
 
 // ==========================================
@@ -82,48 +156,95 @@ model Supplier {
   email     String?
   phone     String?
   purchases Purchase[]
+
+  createdAt DateTime @default(now()) // Fecha de registro (no se modifica)
+  updatedAt DateTime @updatedAt // Última modificación (automática)
 }
 
 model Purchase {
   id          Int              @id @default(autoincrement())
   date        DateTime         @default(now())
-  totalAmount Float
+  totalAmount Decimal          @db.Decimal(14, 2)
   supplierId  Int
   supplier    Supplier         @relation(fields: [supplierId], references: [id])
   details     PurchaseDetail[]
+
+  createdAt DateTime @default(now()) // Fecha de registro (no se modifica)
+  updatedAt DateTime @updatedAt // Última modificación (automática)
+
+  @@index([supplierId])
 }
 
 model PurchaseDetail {
-  id            Int         @id @default(autoincrement())
-  quantity      Float
-  unitPrice     Float
-  purchaseId    Int
-  rawMaterialId Int
-  purchase      Purchase    @relation(fields: [purchaseId], references: [id])
-  rawMaterial   RawMaterial @relation(fields: [rawMaterialId], references: [id])
+  id             Int             @id @default(autoincrement())
+  quantity       Decimal         @db.Decimal(14, 3)
+  unitPrice      Decimal         @db.Decimal(14, 2)
+  purchaseId     Int
+  rawMaterialId  Int
+  warehouseId    Int // Bodega donde se recibe el material
+  purchase       Purchase        @relation(fields: [purchaseId], references: [id])
+  rawMaterial    RawMaterial     @relation(fields: [rawMaterialId], references: [id])
+  warehouse      Warehouse       @relation(fields: [warehouseId], references: [id])
+  stockMovements StockMovement[]
+
+  createdAt DateTime @default(now()) // Fecha de registro (no se modifica)
+  updatedAt DateTime @updatedAt // Última modificación (automática)
+
+  @@index([purchaseId])
+  @@index([rawMaterialId])
+  @@index([warehouseId])
 }
 
 // ==========================================
 // 5. CLIENTES Y VENTAS
 // ==========================================
 model Client {
-  id      Int      @id @default(autoincrement())
-  rut     String   @unique
+  id      Int     @id @default(autoincrement())
+  rut     String  @unique
   name    String
   contact String?
   email   String?
   phone   String?
   quotes  Quote[]
+
+  createdAt DateTime @default(now()) // Fecha de registro (no se modifica)
+  updatedAt DateTime @updatedAt // Última modificación (automática)
 }
 
 model Quote {
-  id          Int          @id @default(autoincrement())
-  date        DateTime     @default(now())
-  status      QuoteStatus  @default(PENDIENTE)
-  totalAmount Float
+  id          Int           @id @default(autoincrement())
+  date        DateTime      @default(now())
+  validUntil  DateTime? // Fecha hasta la que se mantiene la oferta
+  status      QuoteStatus   @default(PENDIENTE)
+  totalAmount Decimal       @db.Decimal(14, 2)
   clientId    Int
-  client      Client       @relation(fields: [clientId], references: [id])
+  client      Client        @relation(fields: [clientId], references: [id])
+  details     QuoteDetail[]
   salesOrders SalesOrder[]
+
+  createdAt DateTime @default(now()) // Fecha de registro (no se modifica)
+  updatedAt DateTime @updatedAt // Última modificación (automática)
+
+  @@index([clientId])
+}
+
+// Línea de una cotización. Puede ser un material del catálogo (rawMaterialId)
+// o un ítem libre como mano de obra, flete o instalación (rawMaterialId nulo).
+model QuoteDetail {
+  id            Int          @id @default(autoincrement())
+  description   String
+  quantity      Decimal      @db.Decimal(14, 3)
+  unitPrice     Decimal      @db.Decimal(14, 2)
+  quoteId       Int
+  rawMaterialId Int?
+  quote         Quote        @relation(fields: [quoteId], references: [id])
+  rawMaterial   RawMaterial? @relation(fields: [rawMaterialId], references: [id])
+
+  createdAt DateTime @default(now()) // Fecha de registro (no se modifica)
+  updatedAt DateTime @updatedAt // Última modificación (automática)
+
+  @@index([quoteId])
+  @@index([rawMaterialId])
 }
 
 enum QuoteStatus {
@@ -133,40 +254,64 @@ enum QuoteStatus {
 }
 
 model SalesOrder {
-  id          Int          @id @default(autoincrement())
-  date        DateTime     @default(now())
-  quoteId     Int
-  pdfUrl      String?      // URL del archivo almacenado (para cuando usemos AWS S3)
-  quote       Quote        @relation(fields: [quoteId], references: [id])
-  workOrders  WorkOrder[]
+  id         Int         @id @default(autoincrement())
+  date       DateTime    @default(now())
+  quoteId    Int
+  pdfUrl     String? // URL del archivo almacenado (para cuando usemos AWS S3)
+  quote      Quote       @relation(fields: [quoteId], references: [id])
+  workOrders WorkOrder[]
+
+  createdAt DateTime @default(now()) // Fecha de registro (no se modifica)
+  updatedAt DateTime @updatedAt // Última modificación (automática)
+
+  @@index([quoteId])
 }
 
 // ==========================================
 // 6. PRODUCCIÓN Y ENTREGAS
 // ==========================================
+
+// Orden de trabajo. Si salesOrderId es nulo, es una OBRA PROPIA
+// (fabricación sin cliente: stock propio, uso interno, proyecto personal).
 model WorkOrder {
   id            Int               @id @default(autoincrement())
   productName   String
+  description   String?
   status        WorkOrderStatus   @default(PENDIENTE)
-  salesOrderId  Int
-  salesOrder    SalesOrder        @relation(fields: [salesOrderId], references: [id])
+  salesOrderId  Int?
+  salesOrder    SalesOrder?       @relation(fields: [salesOrderId], references: [id])
   materialsUsed WorkOrderDetail[]
   deliveryNotes DeliveryNote[]
+
+  createdAt DateTime @default(now()) // Fecha de registro (no se modifica)
+  updatedAt DateTime @updatedAt // Última modificación (automática)
+
+  @@index([salesOrderId])
 }
 
 enum WorkOrderStatus {
   PENDIENTE
-  EN_PROCESO 
+  EN_PROCESO
   FINALIZADO
 }
 
 model WorkOrderDetail {
-  id             Int         @id @default(autoincrement())
-  quantityNeeded Float       // Cuánto descontar de bodega
+  id             Int             @id @default(autoincrement())
+  quantityNeeded Decimal         @db.Decimal(14, 3) // Cuánto descontar de bodega
   workOrderId    Int
   rawMaterialId  Int
-  workOrder      WorkOrder   @relation(fields: [workOrderId], references: [id])
-  rawMaterial    RawMaterial @relation(fields: [rawMaterialId], references: [id])
+  warehouseId    Int // Bodega de la que se descuenta el material
+  workOrder      WorkOrder       @relation(fields: [workOrderId], references: [id])
+  rawMaterial    RawMaterial     @relation(fields: [rawMaterialId], references: [id])
+  warehouse      Warehouse       @relation(fields: [warehouseId], references: [id])
+  stockMovements StockMovement[]
+
+  createdAt DateTime @default(now()) // Fecha de registro (no se modifica)
+  updatedAt DateTime @updatedAt // Última modificación (automática)
+
+  @@index([workOrderId])
+  @@index([rawMaterialId])
+  @@index([warehouseId])
 }
 
 model DeliveryNote {
@@ -174,9 +319,14 @@ model DeliveryNote {
   date               DateTime      @default(now())
   paymentStatus      PaymentStatus @default(PENDIENTE)
   paymentPromiseDate DateTime?
-  voucherUrl         String?       // URL del comprobante de pago
+  voucherUrl         String? // URL del comprobante de pago
   workOrderId        Int
   workOrder          WorkOrder     @relation(fields: [workOrderId], references: [id])
+
+  createdAt DateTime @default(now()) // Fecha de registro (no se modifica)
+  updatedAt DateTime @updatedAt // Última modificación (automática)
+
+  @@index([workOrderId])
 }
 
 enum PaymentStatus {

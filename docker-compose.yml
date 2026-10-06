@@ -1,7 +1,5 @@
 # /docker-compose.yml
 
-version: '3.8'
-
 services:
   # Definimos nuestro servicio de base de datos
   db-postgres:

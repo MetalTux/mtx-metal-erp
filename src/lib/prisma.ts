@@ -1,22 +1,29 @@
 // /src/lib/prisma.ts
 
-import { Pool } from 'pg';
 import { PrismaPg } from '@prisma/adapter-pg';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '../generated/prisma/client';
 
-const connectionString = process.env.DATABASE_URL;
+const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
-const globalForPrisma = global as unknown as { prisma: PrismaClient };
+function createPrismaClient() {
+  const connectionString = process.env.DATABASE_URL;
+  if (!connectionString) {
+    throw new Error(
+      'Falta la variable de entorno DATABASE_URL. Revisa el archivo .env.',
+    );
+  }
 
-// Creamos un Pool de conexiones y lo envolvemos en el adaptador
-const pool = new Pool({ connectionString });
-const adapter = new PrismaPg(pool);
+  // El adaptador crea y administra su propio Pool de conexiones de pg
+  const adapter = new PrismaPg({ connectionString });
 
-export const prisma =
-  globalForPrisma.prisma ||
-  new PrismaClient({ 
+  return new PrismaClient({
     adapter,
-    log: ['query'], // Ideal para ver las consultas SQL en consola durante desarrollo
+    // Mostrar las consultas SQL solo en desarrollo; en producción, solo errores
+    log: process.env.NODE_ENV === 'production' ? ['error'] : ['query', 'warn', 'error'],
   });
+}
+
+// Se reutiliza el cliente guardado para no abrir conexiones nuevas en cada recarga en caliente
+export const prisma = globalForPrisma.prisma ?? createPrismaClient();
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
