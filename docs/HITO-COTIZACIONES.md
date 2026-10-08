@@ -1,6 +1,6 @@
 # Hito: Cotizaciones
 
-Fecha: 07-10-2026. **Estado: inicio autorizado; esquema y checkpoints revisados; cálculo del PDF, descuento global y estados aprobados; alcance comercial ampliado a materia prima, catálogo de productos terminados y trabajos a medida; flujo de Orden de Compra Cliente, producción y vencimiento definido; quedan precisiones de implementación/configuración. No hay módulo implementado.**
+Fecha: 07-10-2026. **Estado: inicio autorizado; esquema y checkpoints revisados; cálculo del PDF, descuento global y estados aprobados; alcance comercial ampliado a materia prima, catálogo de productos terminados y trabajos a medida; flujo de Orden de Compra Cliente, producción y vencimiento definido; quedan precisiones de implementación/configuración. Dependencias implementadas: CRUD de Condiciones de Pago y Clientes con sucursales; Cotizaciones, catálogo de productos, numeración y procesos comerciales siguen pendientes.**
 
 Referencias: `AGENTS.md`, [guía de interfaz](GUIA-INTERFAZ.md), [Inventario](HITO-INVENTARIO.md), [Compras](HITO-COMPRAS.md), [propuestas de dominio](PROPUESTAS-DOMINIO.md) y `prisma/schema.prisma`.
 
@@ -150,7 +150,9 @@ El usuario confirma cálculo como el PDF y descuento global. Amplía el alcance:
 - [x] Registrar que proyecto/orden del cliente usa una sola cotización y los pagos se asignan a su orden; el usuario no solicita agrupación de varias cotizaciones.
 - [x] Orden de venta pasa a llamarse Orden de Compra Cliente; una genera una sola Orden de Trabajo. Conservar `SalesOrder` como nombre técnico y la cuenta/abonos vinculados a esa orden, visibles también desde el trabajo.
 - [x] Condiciones de Pago extensibles: base Al día, 30 días, 60 días y 90 días. Abonos independientes y graduales dentro del plazo final.
-- [ ] Implementar catálogo y copia histórica de condición/plazo por documento.
+- [x] Implementar catálogo de Condiciones de Pago.
+- [x] Preparar en Quote la referencia opcional y copia histórica de nombre/plazo, sin rellenar cotizaciones existentes.
+- [ ] Integrar la copia de condición al futuro formulario de Cotizaciones y a la Orden de Compra Cliente.
 - [ ] Confirmar estados derivados Sin abonos/Parcial/Pagado y vencimiento independiente; no crear un mantenedor editable que permita declarar Pagado sin abonos.
 - [x] Registrar plazo final de pago y abonos graduales independientes; no se solicitan cuotas obligatorias por condición.
 - [x] El plazo empieza con el trabajo finalizado y el registro de folio/fecha de factura. La fecha de factura es la base del cálculo de fecha tope según condición; abonos no alteran plazo.
@@ -238,7 +240,7 @@ Ejemplo: factura fechada 10-10-2026 con condición 30 días → fecha tope 09-11
 Los pagos pertenecen a la Orden de Compra Cliente y se consultan también desde el trabajo. Panel solicitado: total acordado, abonos vigentes con fecha, fecha tope y saldo; estado de pago y vencimiento son dimensiones distintas. La factura es una referencia al documento emitido fuera del ERP en esta fase, no emisión electrónica.
 
 - [x] Registrar fecha base y condición de finalización/factura aprobadas.
-- [ ] Implementar Condiciones de Pago con nombre/plazo y bases aprobadas, sin cuotas vinculadas a cada abono.
+- [x] Condiciones de Pago implementadas con nombre/plazo y bases aprobadas, sin cuotas vinculadas a cada abono; integración comercial posterior pendiente.
 - [ ] Guardar condición/plazo histórico en Orden de Compra Cliente y folio/fecha de factura vinculados al trabajo.
 - [ ] Guardar finalización, factura y vencimiento de forma coherente; validar condiciones de registro y definir corrección de una factura ya registrada al abordar el módulo.
 - [ ] Calcular fecha tope desde fecha de factura; mantener vencimiento nulo hasta cumplir el evento aprobado.
@@ -250,3 +252,84 @@ Los pagos pertenecen a la Orden de Compra Cliente y se consultan también desde 
 **Condiciones de Pago** es el mantenedor más sencillo y la primera dependencia comercial a desarrollar: estructura/migración, catálogo base, listado, Crear/Ver/Editar/Eliminar, validación de nombre/plazo, referencias protegidas y copia histórica del plazo al usarlo. Después: configuración de numeración/datos bancarios → catálogo de productos y recetas → Cotizaciones → Orden de Compra Cliente/Trabajo → Producción/Cobranza. El inventario de producto terminado se documentará y validará en su propio hito antes de habilitar escrituras.
 
 La numeración inicial de Cotizaciones permanece sin definir. La configuración puede prepararse sin un valor automático; no se emitirán números hasta que el usuario configure el inicio.
+
+
+## Entrega del 08-10-2026 — primera dependencia: Condiciones de Pago
+
+**Ruta:** `/mantenedores/condiciones-pago`. **Estado:** implementado y validado técnicamente; revisión funcional del usuario pendiente. Hito de Cotizaciones en curso, no cerrado.
+
+- [x] Estado Git limpio tras push; respaldar archivos existentes antes de editar.
+- [x] Respaldar PostgreSQL local y restaurar copia aislada para migración/pruebas.
+- [x] Crear PaymentCondition con nombre, días no negativos y versión entera para edición/eliminación concurrente.
+- [x] Migración `20261008032000_condiciones_pago` revisada, probada en copia y aplicada localmente; validate/format/generate y migrate status correctos.
+- [x] Cargar exclusivamente las bases aprobadas: Al día (0), 30 días (30), 60 días (60) y 90 días (90). Sin seed general ni ofertas ficticias.
+- [x] Unicidad de nombre sin distinguir mayúsculas/espacios exteriores, CHECK de nombre/plazo/versión y FK Restrict para documentos referenciados.
+- [x] Preparar Quote.paymentConditionId, paymentConditionName y paymentTermDays opcionales; CHECK de copia completa. Cotizaciones anteriores quedan nulas sin deducir acuerdos históricos.
+- [x] CRUD completo con tabla/filtro/orden/paginación, formularios sobre listado, consulta readonly y errores/carga. Catálogo pequeño consultado completo, como los mantenedores existentes.
+- [x] Confirmación de eliminación y descarte reutilizables, ayudas, tooltip de acciones, cursor y retorno de foco; ningún diálogo nativo.
+- [x] Prueba `tests/condiciones-pago.integration.ts`: cero/plazos inválidos, duplicados, edición concurrente, versión vencida, protección de referencias y conservación de copia histórica al editar catálogo. Errores SQL inducidos esperados.
+- [x] Chromium escritorio/móvil: crear/ver/editar/eliminar, cancelar eliminación, búsqueda sin coincidencias, ayuda, descarte/foco y cursor.
+- [x] Lint, TypeScript y build correctos. La ruta fuerza render dinámico para no consultar la tabla nueva al compilar. La primera compilación previa a migrar mostró tabla inexistente; se corrigió el prerender y se recompiló sin ese error.
+- [x] Comparar 28 tablas anteriores: conteos/huellas sin cambios, excluyendo sólo las tres columnas nuevas nulas de Quote.
+- [x] Servidor propio 3031 detenido; copia retirada. Se conserva servidor previo del usuario 3030/PID 61346.
+- [x] Consulta readonly al servidor existente en 3030: HTTP 200 y cuatro condiciones base presentes, sin reiniciarlo.
+- [ ] Revisión funcional del usuario en Condiciones de Pago.
+- [x] Registrar respuestas posteriores: unidades del mantenedor (Unidades por defecto), fecha sin futuro y dirección/contacto basados en sucursal de Clientes. Implementación del catálogo/formulario pendiente.
+- [ ] Continuar configuración documental/bancaria y catálogo, luego Cotizaciones con sus reglas aprobadas.
+
+Respaldo/evidencias: `backups/20261008_000000_condiciones_pago`, con archivos originales, dump, huellas antes/después, logs, prueba de navegador, captura móvil y SHA256SUMS. Las pruebas escribieron sólo en la copia retirada. No se crearon cotizaciones/pagos/productos de ejemplo en PostgreSQL real.
+
+La estructura no calcula aún vencimientos ni crea cuentas/abonos: se implementarán tras finalizar trabajo y registrar factura conforme al flujo aprobado. Las condiciones ya acordadas no se actualizan al modificar el catálogo; sus snapshots se integrarán al guardar Cotizaciones.
+
+
+## 08-10-2026 — Clientes y sucursales: decisiones aprobadas
+
+- [x] Productos terminados pueden usar cualquier unidad del mantenedor; seleccionar Unidades por defecto. No asumir cantidades enteras para todas las unidades.
+- [x] Fecha de cotización actual/pasada, sin futuro, aprobada.
+- [x] Datos comerciales de base en Clientes; cada cliente tendrá al menos una sucursal Casa Central.
+- [x] Contacto general del cliente y contacto por sucursal; nombre y teléfono obligatorios, correo opcional.
+- [x] Gestión de sucursales sin salir de Clientes, desde Crear, Editar y acción del listado.
+- [x] Cotización selecciona sucursal y conserva copia histórica de dirección/contacto; cambios del mantenedor no reescriben documentos.
+- [x] Para clientes existentes crear Casa Central copiando contacto actual, con dirección pendiente; sin datos ficticios.
+- [x] Consulta readonly previa: PostgreSQL local tiene cero clientes; no hay contactos heredados incompletos que impidan la transición actual.
+- [x] Respaldar archivos de código y PostgreSQL antes de implementar.
+- [x] Dirección y Ciudad obligatorias, sin Comuna, aprobadas por el usuario.
+- [x] Agregar ClientBranch con FK al cliente, identificación de Casa Central y restricciones de pertenencia/unicidad.
+- [x] Garantizar al menos una sucursal y una Casa Central, con controles de concurrencia y protección de referencias.
+- [x] Adaptar creación/edición de Clientes y gestión desde listado, con sucursales en formulario y cambios atómicos.
+- [x] Preparar relación de Quote a sucursal del mismo cliente y copia histórica. No inventar sucursal en cotizaciones antiguas.
+- [x] Validar CRUD, contactos obligatorios, pertenencia, conservación histórica, concurrencia y navegación/foco escritorio/móvil en copia aislada.
+- [x] Actualizar checkpoints tras implementación real; esta definición no completa el CRUD de sucursales.
+
+La dirección pendiente se conserva sólo para Casa Central heredada. Nuevas sucursales y guardados mediante el CRUD requieren Dirección y Ciudad; no se incorpora Comuna.
+
+
+## Entrega del 08-10-2026 — Clientes con sucursales
+
+**Estado:** implementado y validado técnicamente en `/mantenedores/clientes`; revisión funcional del usuario pendiente. Segunda dependencia del hito, sin dar por implementado el módulo de Cotizaciones.
+
+- [x] Respaldar archivos afectados, PostgreSQL y huellas originales, conservando cambios previos de Condiciones de Pago.
+- [x] Agregar ClientBranch: nombre, Casa Central, Dirección, Ciudad, contacto/teléfono y correo opcional; sin Comuna.
+- [x] Nombres únicos por cliente sin distinguir mayúsculas/espacios exteriores; índice de Casa Central única y FK/índices de pertenencia.
+- [x] Migración `20261008065000_sucursales_clientes` probada en copia y aplicada a PostgreSQL local; Prisma format/validate/generate y migrate status correctos.
+- [x] Migración conservadora: Casa Central por cliente existente copiando contacto/teléfono/correo y marcando dirección/ciudad pendientes, sin inventarlas ni modificar el cliente original. PostgreSQL real tenía cero clientes.
+- [x] Probar transición heredada en segunda copia con cliente de prueba: datos originales intactos, contactos copiados, dirección/ciudad nulas y marca legacyIncomplete. Copia retirada después.
+- [x] Contacto general y de sucursal con nombre/teléfono obligatorios; correo opcional validado. Dirección y Ciudad obligatorias al guardar.
+- [x] Gestión desde Crear, Editar y acción Sucursales del listado; formularios permanecen dentro del módulo. Borrador único: cancelar no guarda sucursales por separado.
+- [x] Casa Central no se elimina/reemplaza mediante CRUD. Trigger diferido al modificar sucursales protege que su cliente existente conserve una Casa Central al confirmar.
+- [x] Bloquear cliente antes de editar; guardar datos/sucursales atómicamente con timestamp monotónico y consultas secuenciales en la transacción. Rechazar IDs ajenos/repetidos y cambios desde formulario desactualizado.
+- [x] Proteger sucursales referenciadas por cotización y revertir todo el guardado si la eliminación está bloqueada. Eliminar un cliente libre elimina sus sucursales mediante Cascade; referencias comerciales impiden borrarlo.
+- [x] Preparar Quote.clientBranchId y copia de nombre/dirección/ciudad/contacto/teléfono/correo. FK compuesta exige sucursal del mismo cliente; CHECK exige copia completa cuando hay sucursal. Las cotizaciones previas quedan sin sucursal inferida.
+- [ ] Integrar selección buscable y creación del snapshot en el futuro formulario de Cotizaciones. No existe todavía emisión de PDF.
+- [x] Confirmación para quitar sucursal del borrador y para eliminar cliente; descarte/ayudas/foco reutilizables, consulta readonly y Escape controlado.
+- [x] `tests/sucursales-clientes.integration.ts`: obligatorios, Casa Central, pertenencia, FK/snapshot, concurrencia, rollback, historial y borrado.
+- [x] Regresión `tests/clientes.integration.ts` adaptada a contactos y Casa Central obligatorios: RUT, duplicados, correo opcional, límites, concurrencia y referencias comerciales. SQL rechazado es resultado esperado de esos casos.
+- [x] Chromium escritorio/móvil: creación con dos sucursales, gestión desde listado, edición/eliminación confirmada, consulta sin escritura, filtro, ayuda, validación obligatoria, descarte, Escape y foco.
+- [x] Lint, TypeScript, build y diff correctos; no dependencias nuevas ni cambios de guía visual.
+- [x] Huellas/conteos de 29 tablas anteriores idénticos; al comparar Quote se excluyen únicamente las siete columnas nuevas nulas.
+- [x] Servidor propio 3031 detenido y copia retirada; conservar servidor previo 3030/PID 61346.
+- [ ] Aprobación funcional del usuario de Clientes/Sucursales.
+
+Respaldo/evidencias: `backups/20261008_005221_sucursales_clientes`, con originales, dump, huellas, logs, scripts, captura móvil y SHA256SUMS. Ningún cliente/cotización ficticio se guardó en PostgreSQL real.
+
+**Continuación:** configuración de numeración/datos bancarios y catálogo de productos/recetas, conforme al orden acordado. Las unidades del catálogo se tomarán del mantenedor con Unidades por defecto; no forzar todo el producto terminado a cantidades enteras.

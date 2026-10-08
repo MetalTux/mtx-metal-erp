@@ -1,10 +1,16 @@
 // DATABASE_URL debe apuntar a una copia temporal mtx_validacion_*; no carga .env.
 import assert from "node:assert/strict";
 import { prisma } from "../src/lib/prisma";
-import { consultarCliente, eliminarCliente, guardarCliente, listarClientes } from "../src/lib/servicios/clientes";
+import { consultarCliente, eliminarCliente, guardarCliente as guardarClienteServicio, listarClientes } from "../src/lib/servicios/clientes";
 import { formatearRut, normalizarRut, rutValido } from "../src/lib/validaciones/rut";
 import type { Cliente, ResultadoCliente } from "../src/lib/tipos/cliente";
 
+// Los fixtures del CRUD original ahora incluyen los contactos y Casa Central exigidos.
+async function guardarCliente(datos: Record<string, unknown>, referencia?: unknown) {
+  const anterior = referencia as Cliente | undefined;
+  const branches = anterior?.branches?.map(b => ({ ...b, address: b.address ?? "Calle de prueba 1", city: b.city ?? "Curicó", contact: b.contact ?? "Contacto sucursal", phone: b.phone ?? "+56 9 1234 5678", email: b.email ?? "" })) ?? [{ name: "Casa Central", isHeadOffice: true, address: "Calle de prueba 1", city: "Curicó", contact: "Contacto sucursal", phone: "+56 9 1234 5678", email: "" }];
+  return guardarClienteServicio({ contact: "Contacto general", phone: "+56 9 1234 5678", branches, ...datos }, referencia);
+}
 function registro(resultado: ResultadoCliente): Cliente {
   assert(resultado.ok && resultado.cliente);
   return resultado.cliente;
@@ -34,7 +40,7 @@ async function main() {
     assert.equal((await eliminarCliente({ id: -1, updatedAt: "ayer" })).ok, false);
     const cliente = await crear("12.345.678-5");
     assert.equal(cliente.rut, "12345678-5");assert.equal(cliente.name, nombre);
-    assert.equal(cliente.contact, null);assert.equal(cliente.email, null);assert.equal(cliente.phone, null);
+    assert.equal(cliente.contact, "Contacto general");assert.equal(cliente.email, null);assert.equal(cliente.phone, "+56 9 1234 5678");
     assert((await listarClientes()).some(p => p.id === cliente.id && p.cotizaciones === 0 && typeof p.updatedAt === "string"));
     assert.equal(registro(await consultarCliente(cliente.id)).rut, cliente.rut);
     for (const rut of ["123456785", "12.345.678-5"]) {
@@ -44,8 +50,9 @@ async function main() {
     assert.equal(editado.contact, "María Pérez");assert.equal(editado.email, "ventas@example.cl");assert.equal(editado.phone, "+56 9 1234 5678");
     assert.equal((await guardarCliente({ rut: "12345678-5", name: "No sobrescribir" }, cliente)).ok, false);
     assert.equal((await eliminarCliente(cliente)).ok, false);
-    const vacios = registro(await guardarCliente({ rut: "12345678-5", name: editado.name, contact: " ", email: " ", phone: " " }, editado));
-    assert.equal(vacios.contact, null);assert.equal(vacios.email, null);assert.equal(vacios.phone, null);
+    assert.equal((await guardarCliente({ rut: "12345678-5", name: editado.name, contact: " ", phone: " " }, editado)).ok, false);
+    const vacios = registro(await guardarCliente({ rut: "12345678-5", name: editado.name, email: " " }, editado));
+    assert.equal(vacios.email, null);
     const segundo = await crear("6.000.000-k");
     assert.equal(segundo.rut, "6000000-K");
     assert.equal((await guardarCliente({ rut: "12345678-5", name: nombre }, segundo)).ok, false);

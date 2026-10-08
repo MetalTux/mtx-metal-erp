@@ -7,7 +7,7 @@ Instrucciones para Codex y otros agentes que trabajen en este repositorio. Aplic
 - **Proyecto:** MTX Metal ERP, para fabricación de estructuras metálicas por encargo o para obra propia. Organiza bodegas, materia prima, compras, cotizaciones, producción y entregas.
 - **Idioma:** responde en español. Escribe comentarios, textos visibles y datos de ejemplo en español; conserva los nombres existentes de modelos, campos y APIs. Los valores de los enums del dominio están en español.
 - **Stack:** Next.js 16 con App Router, React 19 con React Compiler, TypeScript estricto, Tailwind CSS v4 y Prisma 7 sobre PostgreSQL 15.
-- **Estado actual:** el tema oscuro y el layout del ERP ya están implementados con shadcn/ui: sidebar responsive, barra superior, buscador de secciones y rutas provisionales. El Dashboard tiene estructura visual sin consultas. Unidades de medida, Bodegas, Proveedores, Clientes y Materias primas ya tienen CRUD completo con Server Actions y Prisma; Empresa también tiene consulta/configuración y carga local de logo; Stock por bodega y Movimientos tienen consultas de sólo lectura con paginación/orden en PostgreSQL; Stock también permite configurar mínimos y filtrar reposición sin alterar existencias. Compras tiene listado, registro de documentos y recepciones parciales que generan entradas de stock/Kardex; cierre/anulación de compras también están implementados. Inventario incorpora ajustes, carga inicial y traslados inmediatos con correcciones vinculadas; traslados espera revisión funcional. Consumos de producción, autenticación y métricas reales siguen pendientes.
+- **Estado actual:** el tema oscuro y el layout del ERP ya están implementados con shadcn/ui: sidebar responsive, barra superior, buscador de secciones y rutas provisionales. El Dashboard tiene estructura visual sin consultas. Unidades de medida, Bodegas, Proveedores, Clientes y Materias primas ya tienen CRUD completo con Server Actions y Prisma; Empresa también tiene consulta/configuración y carga local de logo; Stock por bodega y Movimientos tienen consultas de sólo lectura con paginación/orden en PostgreSQL; Stock también permite configurar mínimos y filtrar reposición sin alterar existencias. Compras tiene listado, registro de documentos y recepciones parciales que generan entradas de stock/Kardex; cierre/anulación de compras también están implementados. Inventario incorpora ajustes, carga inicial y traslados inmediatos con correcciones vinculadas; traslados espera revisión funcional. Clientes admite contacto general y sucursales con Dirección/Ciudad y contacto propios, incluida Casa Central; Condiciones de Pago también tiene CRUD con bases Al día/30/60/90 días; Cotizaciones, catálogo de productos, consumos de producción, autenticación y métricas reales siguen pendientes.
 - Antes de editar, revisa `git status --short` y los archivos afectados. Conserva los cambios previos del usuario y limita la edición al alcance solicitado.
 - Usa **pnpm** y conserva `pnpm-lock.yaml`. Consulta `package.json` para verificar scripts y dependencias disponibles.
 
@@ -23,6 +23,7 @@ Instrucciones para Codex y otros agentes que trabajen en este repositorio. Aplic
 | `docs/MANTENEDORES-DATOS.md` | Orden y checklist de los CRUD básicos; requisitos de tablas, formularios y confirmaciones |
 | `docs/HITO-EMPRESA.md` | Etapas de Configuración de Empresa implementada, almacenamiento local de logo/futuro S3 y validaciones; revisión funcional pendiente |
 | `docs/HITO-INVENTARIO.md` | Mínimos y ajustes/carga inicial aprobados; traslados implementados, validaciones/checks y revisión funcional pendiente |
+| `docs/HITO-COTIZACIONES.md` | Reglas comerciales aprobadas, Orden de Compra Cliente, catálogo/stock terminado, anticipos y vencimiento por factura; Condiciones de Pago implementadas, demás dependencias pendientes |
 | `docs/HITO-COMPRAS.md` | Consultas de Stock/Kardex implementadas y etapas de Compras; reglas pendientes de respuestas explícitas |
 | `docs/PROPUESTAS-DOMINIO.md` | Alternativas, decisiones y checklists de stock mínimo, empresa y cobranza; consultar antes de implementar esos temas |
 | `diseno-01.jpeg`, `diseno-02.jpeg` | Referencias visuales de la guía |
@@ -200,3 +201,18 @@ La fuente detallada es `docs/GUIA-INTERFAZ.md`, cuyas fases de tema y layout ya 
 - No editar ni borrar la migración de Ajustes anterior: la migración de Traslados amplía `InventoryOperation`. Ver `docs/HITO-INVENTARIO.md`; aprobación funcional del módulo aún pendiente.
 
 - Las pruebas que escriben en una misma copia PostgreSQL deben ejecutarse secuencialmente: algunas regresiones comparan conteos globales. Para paralelizar, usar copias distintas.
+
+
+## Continuación comercial
+
+- PaymentCondition tiene CRUD en `/mantenedores/condiciones-pago`, nombre único normalizado y días enteros no negativos. Editar/eliminar verifica versión entera; FK Restrict protege cotizaciones. Quote prepara referencia y copia de nombre/plazo opcionales; no inferir acuerdos para registros existentes ni reescribir snapshots al editar catálogo. Integración con registro de Cotizaciones pendiente.
+- El nombre visible futuro de SalesOrder es **Orden de Compra Cliente** y generará una sola Orden de Trabajo. Unicidad de trabajo, catálogo/producción/stock terminado y cálculos de Cotizaciones todavía no se implementaron: seguir checkpoints de HITO-COTIZACIONES.
+- Plazo de pago desde fecha de factura registrada al finalizar trabajo; anticipos vinculados a la orden, sin vencimiento ficticio previo. Estado/saldo derivados de abonos.
+
+
+## Clientes y sucursales
+
+- ClientBranch pertenece a Client. El CRUD guarda cliente/sucursales en una sola transacción con bloqueo y timestamp monotónico; requiere Casa Central y contactos generales/de sucursal con nombre/teléfono, Dirección/Ciudad sin Comuna, correo opcional.
+- LegacyIncomplete conserva sólo datos incompletos migrados sin inventarlos; completar campos al guardar y retirar marca. No copiar otra vez el contacto general sobre contactos de sucursales existentes.
+- Nombres únicos normalizados por cliente, Casa Central única y trigger diferido al modificar sucursales. El servicio garantiza creación con sucursales; no insertar clientes mediante herramientas externas sin completar su Casa Central.
+- Quote prepara FK compuesta (clientBranchId, clientId) y snapshots; integración de selector y creación del documento pendiente. No reescribir snapshots al editar Cliente/sucursal. Restrict protege sucursales referenciadas; Cascade elimina sucursales sólo al eliminar un cliente sin documentos.

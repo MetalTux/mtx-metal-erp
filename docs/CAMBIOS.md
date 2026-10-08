@@ -720,3 +720,28 @@ Se documentan cotizaciones mixtas, existencias/bodega de producto terminado, mat
 ## 07-10-2026 — Flujo aprobado de orden cliente, producción y vencimiento
 
 Se registra en HITO-COTIZACIONES el nombre visible Orden de Compra Cliente (SalesOrder técnico conservado), una sola Orden de Trabajo por orden, consumo de materias primas al fabricar y salida de terminado al vender sin doble consumo. Vencimiento desde fecha de factura registrada con folio al finalizar el trabajo, según días de condición; anticipos vinculados a la orden sin crear deuda duplicada ni vencimiento ficticio. Se actualizan checks de decisiones, conservando pendientes de implementación. Próxima dependencia: mantenedor de Condiciones de Pago. Respaldo previo: `backups/20261007_235529_flujo_comercial_aprobado`. Sólo revisión documental y diff; no cambios de Prisma, datos o servidores.
+
+
+## 08-10-2026 — Condiciones de Pago, primera dependencia de Cotizaciones
+
+Se incorpora PaymentCondition (nombre único normalizado, días enteros no negativos y versión), migración `20261008032000_condiciones_pago`, bases aprobadas y CRUD en `/mantenedores/condiciones-pago`. Quote recibe referencia opcional Restrict y copia opcional de nombre/plazo con CHECK; documentos existentes permanecen sin condición inferida. Modificar el catálogo no modifica acuerdos históricos. La integración al registro de Cotizaciones y vencimiento por factura sigue pendiente.
+
+Interfaz con filtro, orden/paginación, Crear/Ver/Editar/Eliminar, ayudas, confirmación/descarte, foco y errores reutilizables. Pruebas de dominio en copia (duplicados, concurrencia, referencias, snapshots), Chromium escritorio/móvil, lint/TypeScript/build y diff correctos. La ruta dinámica evita acceder al catálogo durante prerender; la compilación inicial previa a migrar mostró tabla inexistente y se repitió tras corregirlo sin errores. Migración probada en copia y aplicada localmente, cliente generado y migrate status actualizado.
+
+Respaldo: `backups/20261008_000000_condiciones_pago`. Las 28 tablas previas conservan huellas/conteos; sólo se añaden cuatro bases de condición. No seed general ni escrituras ficticias en base real. Servidor de prueba 3031 detenido y copia retirada; servidor previo 3030/PID 61346 conservado. El hito permanece en curso: se esperan respuestas sobre unidades de producto y fechas/campos de Cotizaciones.
+
+Comprobación final: envío en modo Ver protegido también frente a Enter/submit programático; lint, TypeScript y build repetidos tras esa protección. GET de la ruta en servidor previo 3030 devuelve 200 y las cuatro bases; puerto de pruebas 3031 sigue libre.
+
+
+## 08-10-2026 — Definición de sucursales de Clientes
+
+Se registran contactos generales y por sucursal con nombre/teléfono obligatorios, Casa Central por cliente, gestión integrada y snapshot de dirección/contacto en Cotizaciones. Productos admiten unidades del mantenedor, Unidades por defecto. Consulta readonly en PostgreSQL local confirmó cero clientes actuales; sin escrituras. Respaldo documental: `backups/20261008_004000_definicion_sucursales`. La dirección de nuevas sucursales queda pendiente de precisar antes de modificar esquema/formulario.
+
+
+## 08-10-2026 — Clientes y sucursales integradas
+
+Se incorpora ClientBranch y la migración `20261008065000_sucursales_clientes`. Contactos generales y de sucursal exigen nombre/teléfono; Dirección/Ciudad obligatorias, correo opcional, sin Comuna. Casa Central única por cliente, nombres normalizados únicos y validación diferida al modificar sucursales. La migración copia contactos antiguos a Casa Central con dirección/ciudad pendientes (legacyIncomplete); el CRUD exige completarlas y retira esa excepción al guardar. Los clientes originales no se reescriben.
+
+Cliente/sucursales se crean/editan juntos en transacción bajo bloqueo de cliente y timestamp monotónico. Formularios permiten agregar/editar/quitar sucursales desde Crear/Editar/listado sin navegar, con confirmación/descarte y modo readonly. IDs ajenos o repetidos se rechazan; sucursal con cotizaciones no se elimina y el guardado completo revierte. Quote recibe referencia compuesta al mismo cliente y snapshots opcionales para futuros documentos; no se infieren sucursales históricas.
+
+Prisma validado/generado; migración probada en copia y aplicada localmente. Pruebas específicas de sucursales y regresión de Clientes, caso de migración heredada en segunda copia, Chromium escritorio/móvil y lint/TypeScript/build correctos. Huellas/conteos de 29 tablas previas intactos. Respaldo: `backups/20261008_005221_sucursales_clientes`. Copias retiradas y servidor propio 3031 detenido; 3030/PID 61346 del usuario conservado. Revisión funcional y conexión de sucursal al formulario de Cotizaciones pendientes.

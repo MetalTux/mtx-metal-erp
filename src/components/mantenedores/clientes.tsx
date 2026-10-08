@@ -2,9 +2,9 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Eye, LoaderCircle, Pencil, Plus, RefreshCw, Users, Trash2 } from "lucide-react";
+import { Eye, LoaderCircle, Pencil, Plus, RefreshCw, Users, Trash2, Building2 } from "lucide-react";
 import { guardarDatosCliente, eliminarDatosCliente, obtenerCliente } from "@/app/(app)/mantenedores/clientes/actions";
 import { formatearRut, normalizarRut } from "@/lib/validaciones/rut";
 import type { ResultadoCliente, Cliente } from "@/lib/tipos/cliente";
@@ -16,44 +16,84 @@ import { notificar } from "@/components/alertas/notificaciones";
 import { PageHeader } from "@/components/page-header";
 import { SectionCard } from "@/components/section-card";
 import { EmptyState } from "@/components/empty-state";
+import { ConfirmarDescarte } from "@/components/alertas/confirmar-descarte";
+import { BotonConAyuda } from "@/components/formularios/boton-con-ayuda";
+import { AyudaCampo } from "@/components/formularios/ayuda-campo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
-type Editor = { modo: "crear" | "ver" | "editar"; cliente?: Cliente };
+type Editor = { modo: "crear" | "ver" | "editar" | "sucursales"; cliente?: Cliente };
 const buscarCliente = (cliente: Cliente) => `${cliente.name} ${cliente.rut} ${normalizarRut(cliente.rut).replace("-", "")} ${formatearRut(cliente.rut)} ${cliente.contact ?? ""} ${cliente.email ?? ""} ${cliente.phone ?? ""}`;
 const fecha = (valor: string) => new Intl.DateTimeFormat("es-CL", { dateStyle: "short", timeStyle: "short", timeZone: "America/Santiago" }).format(new Date(valor));
 
+const sucursalNueva = (central = false) => ({ name: central ? "Casa Central" : "", isHeadOffice: central, address: "", city: "", contact: "", phone: "", email: "" });
+
+/** Cliente y sucursales son un único borrador: cancelar no escribe cambios parciales. */
 function FormularioCliente({ editor, pendiente, onCerrar, onGuardar }: { editor: Editor; pendiente: boolean; onCerrar: () => void; onGuardar: (datos: DatosCliente) => Promise<ResultadoCliente> }) {
   const consulta = editor.modo === "ver";
   const [error, setError] = useState<string>();
-  const { register, handleSubmit, setError: setErrorCampo, formState: { errors } } = useForm<DatosCliente>({
-    resolver: zodResolver(clienteSchema), defaultValues: { rut: editor.cliente ? formatearRut(editor.cliente.rut) : "", name: editor.cliente?.name ?? "", contact: editor.cliente?.contact ?? "", email: editor.cliente?.email ?? "", phone: editor.cliente?.phone ?? "" },
+  const [descarte, setDescarte] = useState(false);
+  const [eliminarSucursal, setEliminarSucursal] = useState<number>();
+  const { register, handleSubmit, control, formState: { errors, isDirty } } = useForm<DatosCliente>({
+    resolver: zodResolver(clienteSchema),
+    defaultValues: {
+      rut: editor.cliente ? formatearRut(editor.cliente.rut) : "", name: editor.cliente?.name ?? "",
+      contact: editor.cliente?.contact ?? "", email: editor.cliente?.email ?? "", phone: editor.cliente?.phone ?? "",
+      branches: editor.cliente?.branches.length ? editor.cliente.branches.map(b => ({ id: b.id, name: b.name, isHeadOffice: b.isHeadOffice, address: b.address ?? "", city: b.city ?? "", contact: b.contact ?? "", phone: b.phone ?? "", email: b.email ?? "" })) : [sucursalNueva(true)],
+    },
   });
-  const submit = handleSubmit(async (datos) => {
+  const { fields, append, remove } = useFieldArray({ control, name: "branches", keyName: "claveFormulario" });
+  const cerrar = () => { if (pendiente) return; if (!consulta && isDirty) setDescarte(true); else onCerrar(); };
+  const submit = handleSubmit(async datos => {
+    if (consulta || pendiente) return;
     setError(undefined);
-    const resultado = await onGuardar(datos);
-    if (!resultado.ok) {
-      setError(resultado.mensaje);
-      for (const campo of ["rut", "name", "contact", "email", "phone"] as const) {
-        if (resultado.campos?.[campo]?.[0]) setErrorCampo(campo, { message: resultado.campos[campo][0] }, { shouldFocus: true });
-      }
-    }
+    const r = await onGuardar(datos);
+    if (!r.ok) setError(r.mensaje);
   });
-  return <form onSubmit={consulta ? (event) => event.preventDefault() : submit} noValidate aria-busy={pendiente} className="space-y-4">
-    {error && <Aviso titulo={error} />}
-    <div className="space-y-2"><Label htmlFor="cliente-rut">RUT{!consulta && " *"}</Label><Input id="cliente-rut" type="text" {...register("rut")} readOnly={consulta} disabled={pendiente} maxLength={20} autoComplete="off" placeholder="Ej.: 12.345.678-5" aria-invalid={Boolean(errors.rut)} aria-describedby={errors.rut ? "cliente-rut-error" : "cliente-rut-ayuda"} className="h-9" /><p id="cliente-rut-ayuda" className="text-xs text-muted-foreground">Puedes ingresarlo con o sin puntos y guion.</p>{errors.rut && <p id="cliente-rut-error" className="text-sm text-foreground" role="alert">{errors.rut.message}</p>}</div>
-    <div className="space-y-2"><Label htmlFor="cliente-name">Nombre{!consulta && " *"}</Label><Input id="cliente-name" type="text" {...register("name")} readOnly={consulta} disabled={pendiente} maxLength={150} autoComplete="organization" placeholder="Ej.: Constructora del Sur" aria-invalid={Boolean(errors.name)} aria-describedby={errors.name ? "cliente-name-error" : undefined} className="h-9" />{errors.name && <p id="cliente-name-error" className="text-sm text-foreground" role="alert">{errors.name.message}</p>}</div>
-    <div className="space-y-2"><Label htmlFor="cliente-contact">Persona de contacto (opcional)</Label><Input id="cliente-contact" {...register("contact")} readOnly={consulta} disabled={pendiente} maxLength={150} autoComplete="name" placeholder="Ej.: María Pérez" aria-invalid={Boolean(errors.contact)} aria-describedby={errors.contact ? "cliente-contact-error" : undefined} className="h-9" />{errors.contact && <p id="cliente-contact-error" className="text-sm text-foreground" role="alert">{errors.contact.message}</p>}</div>
-    <div className="space-y-2"><Label htmlFor="cliente-email">Correo (opcional)</Label><Input id="cliente-email" type="email" {...register("email")} readOnly={consulta} disabled={pendiente} maxLength={254} autoComplete="email" placeholder="Ej.: ventas@cliente.cl" aria-invalid={Boolean(errors.email)} aria-describedby={errors.email ? "cliente-email-error" : undefined} className="h-9" />{errors.email && <p id="cliente-email-error" className="text-sm text-foreground" role="alert">{errors.email.message}</p>}</div>
-    <div className="space-y-2"><Label htmlFor="cliente-phone">Teléfono (opcional)</Label><Input id="cliente-phone" type="tel" {...register("phone")} readOnly={consulta} disabled={pendiente} maxLength={40} autoComplete="tel" placeholder="Ej.: +56 9 1234 5678" aria-invalid={Boolean(errors.phone)} aria-describedby={errors.phone ? "cliente-phone-error" : undefined} className="h-9" />{errors.phone && <p id="cliente-phone-error" className="text-sm text-foreground" role="alert">{errors.phone.message}</p>}</div>
-    {editor.cliente && <div className="space-y-2 rounded-md border border-border bg-muted/40 p-3 text-xs text-muted-foreground">
-      <p className="font-medium text-foreground">Cotizaciones asociadas: <span className="tabular-nums">{editor.cliente.cotizaciones}</span></p>
-      <p>Registro: {fecha(editor.cliente.createdAt)}</p><p>Última actualización: {fecha(editor.cliente.updatedAt)}</p>
-    </div>}
-    <DialogFooter><Button type="button" variant="outline" disabled={pendiente} onClick={onCerrar}>{consulta ? "Cerrar" : "Cancelar"}</Button>{!consulta && <Button type="submit" disabled={pendiente}>{pendiente && <LoaderCircle className="animate-spin" aria-hidden="true" />}{pendiente ? "Guardando…" : editor.modo === "crear" ? "Crear cliente" : "Guardar cambios"}</Button>}</DialogFooter>
-  </form>;
+  const generales = [
+    ["rut", "RUT", "text", 20], ["name", "Nombre del cliente", "text", 150],
+    ["contact", "Contacto general", "text", 150], ["phone", "Teléfono general", "tel", 40], ["email", "Correo general (opcional)", "email", 254],
+  ] as const;
+  return <>
+    <form onSubmit={consulta ? e => e.preventDefault() : submit} noValidate aria-busy={pendiente} className="space-y-5">
+      {error && <Aviso titulo={error} />}
+      <div className="grid gap-3 sm:grid-cols-2">
+        {generales.map(([campo, titulo, tipo, limite]) => <div key={campo} className="space-y-1">
+          <Label htmlFor={`cliente-${campo}`}>{titulo}{!consulta && campo !== "email" && " *"}</Label>
+          <Input id={`cliente-${campo}`} type={tipo} {...register(campo)} readOnly={consulta} disabled={pendiente} maxLength={limite} aria-invalid={Boolean(errors[campo])} aria-describedby={errors[campo] ? `cliente-${campo}-error` : undefined} />
+          {errors[campo] && <p id={`cliente-${campo}-error`} role="alert" className="text-sm text-destructive">{errors[campo]?.message}</p>}
+        </div>)}
+      </div>
+      <section className="space-y-3" aria-labelledby="sucursales-titulo">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 id="sucursales-titulo" className="font-medium">Sucursales</h3>
+          <AyudaCampo nombre="Sucursales del cliente" texto="Casa Central es obligatoria. Cada sucursal tiene dirección, ciudad y contacto propios. Los cambios se guardan junto con el cliente; las cotizaciones conservarán la copia de los datos acordados." />
+          {!consulta && <Button id="cliente-agregar-sucursal" type="button" variant="outline" disabled={pendiente || fields.length >= 100} onClick={() => append(sucursalNueva())}><Plus />Agregar sucursal</Button>}
+        </div>
+        {editor.cliente?.branches.some(b => b.legacyIncomplete) && <Aviso tipo="informacion" titulo="Completa los datos de Casa Central">Se conservaron los contactos existentes. Completa dirección, ciudad y contactos pendientes antes de guardar.</Aviso>}
+        {errors.branches?.message && <p role="alert" className="text-sm text-destructive">{errors.branches.message}</p>}
+        {fields.map((b, i) => <div key={b.claveFormulario} className="space-y-3 rounded-lg border border-border p-3">
+          <div className="flex items-center justify-between gap-2"><p className="font-medium">{b.isHeadOffice ? "Casa Central" : `Sucursal ${i + 1}`}</p>
+            {!consulta && !b.isHeadOffice && <BotonConAyuda ayuda="Quita la sucursal al guardar el cliente. Si tiene cotizaciones, se rechazará la eliminación." type="button" variant="ghost" disabled={pendiente} aria-label={`Eliminar sucursal ${i + 1}`} onClick={() => setEliminarSucursal(i)}><Trash2 />Eliminar</BotonConAyuda>}
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">{([
+            ["name", "Nombre de sucursal", "text", 150], ["address", "Dirección", "text", 250], ["city", "Ciudad", "text", 100],
+            ["contact", "Nombre de contacto", "text", 150], ["phone", "Teléfono de contacto", "tel", 40], ["email", "Correo de contacto (opcional)", "email", 254],
+          ] as const).map(([campo, titulo, tipo, limite]) => <div key={campo} className="space-y-1">
+            <Label htmlFor={`sucursal-${i}-${campo}`}>{titulo}{!consulta && campo !== "email" && " *"}</Label>
+            <Input id={`sucursal-${i}-${campo}`} type={tipo} {...register(`branches.${i}.${campo}`)} readOnly={consulta || (campo === "name" && b.isHeadOffice)} disabled={pendiente} maxLength={limite} aria-invalid={Boolean(errors.branches?.[i]?.[campo])} aria-describedby={errors.branches?.[i]?.[campo] ? `sucursal-${i}-${campo}-error` : undefined} />
+            {errors.branches?.[i]?.[campo] && <p id={`sucursal-${i}-${campo}-error`} role="alert" className="text-sm text-destructive">{errors.branches[i]?.[campo]?.message}</p>}
+          </div>)}</div>
+        </div>)}
+      </section>
+      {editor.cliente && <p className="text-xs text-muted-foreground">Cotizaciones: {editor.cliente.cotizaciones} · Última actualización: {fecha(editor.cliente.updatedAt)}</p>}
+      <DialogFooter><Button type="button" variant="outline" disabled={pendiente} id="cliente-cancelar" onClick={cerrar}>{consulta ? "Cerrar" : "Cancelar"}</Button>{!consulta && <Button type="submit" disabled={pendiente}>{pendiente ? "Guardando…" : editor.modo === "crear" ? "Crear cliente" : "Guardar cambios"}</Button>}</DialogFooter>
+    </form>
+    <ConfirmarDescarte abierto={descarte} onAbiertoChange={setDescarte} onConfirmar={onCerrar} onDevolverFoco={() => document.getElementById("cliente-rut")?.focus()} />
+    <ConfirmarEliminacion abierto={eliminarSucursal !== undefined} onAbiertoChange={v => { if (!v) setEliminarSucursal(undefined); }} nombre={eliminarSucursal === undefined ? "" : fields[eliminarSucursal]?.name || `Sucursal ${eliminarSucursal + 1}`} pendiente={pendiente} onConfirmar={() => { if (eliminarSucursal !== undefined) remove(eliminarSucursal); setEliminarSucursal(undefined); }} onRestaurarFoco={() => document.getElementById("cliente-agregar-sucursal")?.focus()} />
+  </>;
 }
 
 export function Clientes({ clientes }: { clientes: Cliente[] }) {
@@ -67,7 +107,7 @@ export function Clientes({ clientes }: { clientes: Cliente[] }) {
   function recordarFoco() { retornoFoco.current = document.activeElement as HTMLElement; }
   function restaurarFoco() { (retornoFoco.current?.isConnected ? retornoFoco.current : crearBoton.current)?.focus(); }
 
-  async function abrir(modo: "ver" | "editar", id: number) {
+  async function abrir(modo: "ver" | "editar" | "sucursales", id: number) {
     recordarFoco(); setPendiente(true);
     try {
       const resultado = await obtenerCliente(id);
@@ -80,7 +120,7 @@ export function Clientes({ clientes }: { clientes: Cliente[] }) {
   async function guardar(datos: DatosCliente): Promise<ResultadoCliente> {
     setPendiente(true);
     try {
-      const resultado = await guardarDatosCliente(datos, editor?.modo === "editar" && editor.cliente ? { id: editor.cliente.id, updatedAt: editor.cliente.updatedAt } : undefined);
+      const resultado = await guardarDatosCliente(datos, editor?.modo !== "crear" && editor?.cliente ? { id: editor.cliente.id, updatedAt: editor.cliente.updatedAt } : undefined);
       if (resultado.ok) { setEditor(undefined); notificar.exito(resultado.mensaje); router.refresh(); }
       return resultado;
     } catch { return { ok: false, mensaje: "No se pudo guardar el cliente. Revisa la conexión e inténtalo nuevamente." }; }
@@ -105,9 +145,11 @@ export function Clientes({ clientes }: { clientes: Cliente[] }) {
     { accessorKey: "email", header: "Correo", cell: ({ row }) => row.original.email ? <span className="block max-w-56 truncate" title={row.original.email}>{row.original.email}</span> : <span className="text-muted-foreground">Sin correo</span> },
     { accessorKey: "phone", header: "Teléfono", cell: ({ row }) => row.original.phone ?? <span className="text-muted-foreground">Sin teléfono</span> },
     { accessorKey: "cotizaciones", header: "Cotizaciones", cell: ({ row }) => <span className="tabular-nums">{row.original.cotizaciones}</span> },
+    { id: "sucursales", header: "Sucursales", cell: ({ row }) => row.original.branches.length },
     { id: "acciones", header: "Acciones", enableSorting: false, cell: ({ row }) => <div className="flex items-center gap-1">
       <Button variant="ghost" size="sm" disabled={pendiente} aria-label={`Ver ${row.original.name}`} onClick={() => abrir("ver", row.original.id)}><Eye aria-hidden="true" />Ver</Button>
       <Button variant="ghost" size="sm" disabled={pendiente} aria-label={`Editar ${row.original.name}`} onClick={() => abrir("editar", row.original.id)}><Pencil aria-hidden="true" />Editar</Button>
+      <BotonConAyuda ayuda="Administra las sucursales y sus contactos sin salir de Clientes." variant="ghost" size="sm" disabled={pendiente} aria-label={`Sucursales de ${row.original.name}`} onClick={() => abrir("sucursales", row.original.id)}><Building2 />Sucursales</BotonConAyuda>
       <Button variant="ghost" size="sm" disabled={pendiente} className="hover:bg-destructive/15" aria-label={`Eliminar ${row.original.name}`} onClick={() => { recordarFoco(); setErrorEliminar(undefined); setAEliminar(row.original); }}><Trash2 className="text-destructive" aria-hidden="true" />Eliminar</Button>
     </div> },
   ];
@@ -118,8 +160,8 @@ export function Clientes({ clientes }: { clientes: Cliente[] }) {
     </SectionCard>
     {pendiente && !editor && !aEliminar && <p role="status" className="flex items-center gap-2 text-sm text-muted-foreground"><LoaderCircle className="size-4 animate-spin" aria-hidden="true" />Consultando cliente…</p>}
     <Dialog open={Boolean(editor)} onOpenChange={(abierto) => { if (!abierto && !pendiente) setEditor(undefined); }}>
-      <DialogContent showCloseButton={!pendiente} className="max-h-[90dvh] overflow-y-auto rounded-lg sm:max-w-lg" onCloseAutoFocus={(event) => { event.preventDefault(); restaurarFoco(); }} onEscapeKeyDown={(event) => { if (pendiente) event.preventDefault(); }} onInteractOutside={(event) => event.preventDefault()}>
-        <DialogHeader><DialogTitle>{editor?.modo === "crear" ? "Crear cliente" : editor?.modo === "editar" ? "Editar cliente" : "Ver cliente"}</DialogTitle><DialogDescription>{editor?.modo === "ver" ? "Consulta los datos de contacto y las cotizaciones asociadas a este cliente." : "Completa el RUT y el nombre. Los datos de contacto son opcionales."}</DialogDescription></DialogHeader>
+      <DialogContent showCloseButton={false} className="max-h-[90dvh] overflow-y-auto rounded-lg sm:max-w-3xl" onCloseAutoFocus={(event) => { event.preventDefault(); restaurarFoco(); }} onEscapeKeyDown={(event) => { event.preventDefault(); if (!pendiente) document.getElementById("cliente-cancelar")?.click(); }} onInteractOutside={(event) => event.preventDefault()}>
+        <DialogHeader><DialogTitle>{editor?.modo === "crear" ? "Crear cliente" : editor?.modo === "sucursales" ? "Sucursales del cliente" : editor?.modo === "editar" ? "Editar cliente" : "Ver cliente"}</DialogTitle><DialogDescription>{editor?.modo === "ver" ? "Consulta los datos de contacto y las cotizaciones asociadas a este cliente." : "Completa datos generales y sucursales. Nombre y teléfono de contacto, dirección y ciudad son obligatorios; correo opcional."}</DialogDescription></DialogHeader>
         {editor && <FormularioCliente key={`${editor.modo}-${editor.cliente?.updatedAt ?? "nueva"}`} editor={editor} pendiente={pendiente} onCerrar={() => setEditor(undefined)} onGuardar={guardar} />}
       </DialogContent>
     </Dialog>

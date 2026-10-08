@@ -427,33 +427,80 @@ model PurchaseOperation {
 // 5. CLIENTES Y VENTAS
 // ==========================================
 model Client {
-  id      Int     @id @default(autoincrement())
-  rut     String  @unique
-  name    String
-  contact String?
-  email   String?
-  phone   String?
-  quotes  Quote[]
+  id       Int            @id @default(autoincrement())
+  rut      String         @unique
+  name     String
+  contact  String?
+  email    String?
+  phone    String?
+  quotes   Quote[]
+  branches ClientBranch[]
 
   createdAt DateTime @default(now()) // Fecha de registro (no se modifica)
   updatedAt DateTime @updatedAt // Última modificación (automática)
 }
 
+// Sucursal comercial del cliente. Sólo la migración conserva datos heredados incompletos.
+model ClientBranch {
+  id               Int      @id @default(autoincrement())
+  clientId         Int
+  client           Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  name             String
+  isHeadOffice     Boolean  @default(false)
+  legacyIncomplete Boolean  @default(false)
+  address          String?
+  city             String?
+  contact          String?
+  phone            String?
+  email            String?
+  quotes           Quote[]
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@unique([id, clientId])
+  @@index([clientId])
+}
+
+// Catálogo comercial: el plazo se copia al documento al seleccionar la condición.
+model PaymentCondition {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  days      Int
+  version   Int      @default(1)
+  quotes    Quote[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 model Quote {
-  id          Int           @id @default(autoincrement())
-  date        DateTime      @default(now())
-  validUntil  DateTime? // Fecha hasta la que se mantiene la oferta
-  status      QuoteStatus   @default(PENDIENTE)
-  totalAmount Decimal       @db.Decimal(14, 2)
-  clientId    Int
-  client      Client        @relation(fields: [clientId], references: [id])
-  details     QuoteDetail[]
-  salesOrders SalesOrder[]
+  id                   Int               @id @default(autoincrement())
+  date                 DateTime          @default(now())
+  validUntil           DateTime? // Fecha hasta la que se mantiene la oferta
+  status               QuoteStatus       @default(PENDIENTE)
+  totalAmount          Decimal           @db.Decimal(14, 2)
+  clientId             Int
+  client               Client            @relation(fields: [clientId], references: [id])
+  details              QuoteDetail[]
+  salesOrders          SalesOrder[]
+  paymentConditionId   Int?
+  paymentCondition     PaymentCondition? @relation(fields: [paymentConditionId], references: [id], onDelete: Restrict)
+  paymentConditionName String? // Copia histórica; no se recalcula al editar el catálogo
+  paymentTermDays      Int? // Plazo acordado, no vencimiento ni cuotas
+  clientBranchId       Int?
+  clientBranch         ClientBranch?     @relation(fields: [clientBranchId, clientId], references: [id, clientId], onDelete: Restrict)
+  branchName           String?
+  branchAddress        String?
+  branchCity           String?
+  branchContact        String?
+  branchPhone          String?
+  branchEmail          String?
 
   createdAt DateTime @default(now()) // Fecha de registro (no se modifica)
   updatedAt DateTime @updatedAt // Última modificación (automática)
 
   @@index([clientId])
+  @@index([paymentConditionId])
+  @@index([clientBranchId, clientId])
 }
 
 // Línea de una cotización. Puede ser un material del catálogo (rawMaterialId)

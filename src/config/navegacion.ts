@@ -23,6 +23,7 @@ export const navegacion: GrupoNavegacion[] = [
     { titulo: "Unidades de medida", ruta: "/mantenedores/unidades", icono: Ruler, descripcion: "Define las unidades utilizadas para medir tus materiales." },
     { titulo: "Bodegas", ruta: "/mantenedores/bodegas", icono: Warehouse, descripcion: "Organiza las bodegas donde almacenas tus materiales." },
     { titulo: "Proveedores", ruta: "/mantenedores/proveedores", icono: Truck, descripcion: "Mantén los datos de contacto de tus proveedores." },
+    { titulo: "Condiciones de Pago", ruta: "/mantenedores/condiciones-pago", icono: Banknote, descripcion: "Define los plazos de pago para cotizaciones y órdenes de clientes." },
     { titulo: "Clientes", ruta: "/mantenedores/clientes", icono: Users, descripcion: "Mantén los datos de tus clientes para cotizar y gestionar ventas." },
   ] },
   { titulo: "Inventario", elementos: [

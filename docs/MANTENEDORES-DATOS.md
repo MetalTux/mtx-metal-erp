@@ -212,3 +212,28 @@ Respaldar archivos existentes antes de modificarlos. Registrar las entregas en [
 - [ ] Revisión funcional del usuario de las consultas.
 
 Estas pantallas consultan operaciones/existencias y no son CRUD de catálogos. No se ofrecen Crear/Editar/Eliminar movimientos históricos.
+
+
+## 08-10-2026 — dependencia comercial: Condiciones de Pago
+
+- [x] Estructura PaymentCondition, migración, cliente generado y bases Al día/30/60/90 días.
+- [x] CRUD completo en `/mantenedores/condiciones-pago`, tabla con búsqueda, orden/paginación y formularios sobre listado.
+- [x] Confirmación/descarte/ayudas reutilizables, control de versión y referencias protegidas.
+- [x] Validación en copia, lint/TypeScript/build y navegador escritorio/móvil.
+- [ ] Aprobación funcional del usuario.
+- [ ] Integrar condición y plazo histórico en Cotizaciones/Orden de Compra Cliente; calcular vencimiento al finalizar trabajo con factura.
+
+No hay relación obligatoria entre condición y abonos. Ver [Hito de Cotizaciones](HITO-COTIZACIONES.md) para dependencias, reglas y evidencias.
+
+
+## 08-10-2026 — ampliación de Clientes: Sucursales
+
+- [x] ClientBranch y migración conservadora de Casa Central; datos/contactos históricos copiados sin inventar direcciones.
+- [x] Casa Central obligatoria y otras sucursales dentro de Crear/Editar y acción del listado.
+- [x] Dirección y Ciudad obligatorias, sin Comuna; nombre/teléfono de contacto general y de sucursal obligatorios, correo opcional.
+- [x] Guardado atómico, pertenencia, versión, eliminación protegida por cotizaciones y confirmaciones/descarte reutilizables.
+- [x] Validación de migración normal/heredada en copias, pruebas de dominio/regresión, navegador escritorio/móvil y lint/TypeScript/build.
+- [ ] Revisión funcional del usuario.
+- [ ] Seleccionar sucursal con búsqueda y guardar copia histórica al implementar Cotizaciones.
+
+Detalles y evidencia en [Hito de Cotizaciones](HITO-COTIZACIONES.md). No se emitieron PDFs ni se implementaron procesos comerciales futuros.
