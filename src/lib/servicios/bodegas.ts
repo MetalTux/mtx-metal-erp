@@ -5,14 +5,14 @@ import type { Bodega, ResultadoBodega } from "@/lib/tipos/bodega";
 
 const seleccion = {
   id: true, name: true, location: true, createdAt: true, updatedAt: true,
-  _count: { select: { stocks: true, stockMovements: true, purchaseDetails: true, workOrderDetails: true } },
+  _count: { select: { stocks: true, stockMovements: true, purchases: true, workOrderDetails: true } },
 } satisfies Prisma.WarehouseSelect;
 
 function serializar(bodega: Prisma.WarehouseGetPayload<{ select: typeof seleccion }>): Bodega {
   const { _count, createdAt, updatedAt, ...datos } = bodega;
   return {
     ...datos, createdAt: createdAt.toISOString(), updatedAt: updatedAt.toISOString(),
-    referencias: { stocks: _count.stocks, movimientos: _count.stockMovements, compras: _count.purchaseDetails, trabajos: _count.workOrderDetails },
+    referencias: { stocks: _count.stocks, movimientos: _count.stockMovements, compras: _count.purchases, trabajos: _count.workOrderDetails },
   };
 }
 
@@ -55,7 +55,7 @@ export async function eliminarBodega(referencia: unknown): Promise<ResultadoBode
   const validacion = referenciaBodegaSchema.safeParse(referencia);
   if (!validacion.success) return { ok: false, mensaje: "La referencia del registro no es válida. Actualiza el listado." };
   try {
-    // Las cuatro FK protegen el borrado, incluso con saldo cero o nuevas asociaciones concurrentes.
+    // Las FK protegen incluso saldo cero y compras sin detalles; se cuenta la cabecera una sola vez.
     await prisma.warehouse.delete({ where: { id: validacion.data.id, updatedAt: new Date(validacion.data.updatedAt) } });
     return { ok: true, mensaje: "Bodega eliminada." };
   } catch (error) { return errorOperacion(error); }

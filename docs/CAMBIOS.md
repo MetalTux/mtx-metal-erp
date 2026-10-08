@@ -563,3 +563,160 @@ Además, pasaron sin errores `prisma validate`, `tsc --noEmit`, `pnpm lint` y `p
 
 - **Puntos 9 y 10:** completados en la segunda parte (ver arriba).
 - **Seguridad, inicio de sesión y roles:** quedan para una etapa posterior.
+
+## 2026-10-06 — Módulo Configuración de Empresa
+
+Se sustituyó la página provisional por consulta y configuración del único `CompanyProfile`, con datos parciales, validación compartida de RUT/correo/límites, formulario modal, confirmación reutilizable al descartar y avisos de carga/error. La creación es explícita; PK/CHECK y control de `updatedAt` evitan sobrescribir una primera creación o edición concurrente.
+
+Por decisión del usuario se incluyó **carga local del logo**, con adaptador `AlmacenLogo` preparado para futura sustitución por S3. Sharp 0.34.5 se agregó como dependencia directa (misma versión ya usada por Next.js): decodifica PNG/JPEG/WebP de hasta 2 MB y 16 megapíxeles, genera PNG hasta 512 × 512 y elimina metadatos. La URL lógica del ERP permanece independiente del directorio; su endpoint valida nombres UUID. Next.js admite cuerpos de Server Actions hasta 3 MB, conservando las excepciones del túnel únicamente en desarrollo.
+
+Reemplazar/quitar conserva versiones previas; un fallo de BD retira el archivo nuevo sin asociar. El almacenamiento predeterminado `var/empresa/logos/` está excluido de git y se configura con `EMPRESA_LOGO_DIR`. Respaldarlo junto con PostgreSQL. S3 requerirá un adaptador y traslado de los archivos conservando sus claves; no está implementado todavía.
+
+Respaldos en `backups/20261006_191941_modulo_empresa/`, con originales y SHA-256, dump, integración, capturas y comparación de datos. ESLint, TypeScript, build, integración sobre copia temporal y Chromium local pasaron. Datos originales comparados: sin cambios. Copia de prueba retirada y 3031 libre; servidor previo en 3030 preservado. Prisma, migraciones, seed y guía visual permanecen intactos.
+
+El túnel queda pendiente de autorización específica solicitada después de un rechazo de revisión automática por posible exposición de datos privados. La revisión funcional del usuario también queda pendiente. Checklist y reglas en [HITO-EMPRESA.md](HITO-EMPRESA.md).
+
+## 2026-10-06 — Consultas de Stock/Kardex y preparación de Compras
+
+Se reemplazaron las páginas provisionales de Stock y Movimientos por consultas de sólo lectura con filtros buscables de material/bodega, búsqueda textual, tipo/fechas en Kardex y detalles sobre el listado. Stock distingue mínimos nulos/cero y enlaza a los movimientos de su combinación. La unidad acompaña cada cantidad; los orígenes conservan las referencias a líneas de compra/trabajo.
+
+La tabla reutilizable de consulta pagina y ordena en PostgreSQL, sin limitar la búsqueda a la página visible: tamaños 10/20/50, orden secundario estable, mínimos nulos al final y ajuste de página. Las consultas usan `RepeatableRead` para conservar la coherencia entre total y filas. Decimal se serializa como texto y se formatea sin conversión a `number`; las fechas se muestran en Santiago y los filtros incluyen días completos, incluso en cambios de hora. Filtros rechazados conservan sus controles; Reintentar vuelve a solicitar datos al servidor.
+
+Se creó [HITO-COMPRAS.md](HITO-COMPRAS.md) con etapas y checks. Recepción inmediata/parcial, importes/impuestos/descuentos, documento del proveedor y correcciones fueron consultados al usuario; su persistencia y cambios de esquema esperan respuestas explícitas. No se definieron alternativas por defecto.
+
+Respaldos en `backups/20261006_213943_consulta_inventario/`: originales/SHA-256, PostgreSQL y logos existentes, integración, capturas/scripts y comparación de las 20 tablas originales. ESLint, build/tipos, integración y Chromium pasaron, incluyendo un servidor temporal de fallo de conexión y reintento. Se observó un aviso de deprecación de `pg` en el servidor, sin fallo de las verificaciones de datos. La copia temporal fue retirada y 3031 quedó libre; 3030 conserva el servidor previo del usuario.
+
+No se cambiaron Prisma, migraciones, seed, dependencias ni GUIA-INTERFAZ en esta entrega, y se conservaron los cambios previos de Empresa. Configuración de mínimos, ajustes, alertas, saldo acumulado por movimiento y escrituras de Compras siguen pendientes.
+
+## 2026-10-06 — Corrección de deprecación pg en Stock y Movimientos
+
+La carga de relaciones hermanas dentro de `findMany` originaba consultas internas simultáneas sobre la conexión única de la transacción Prisma. Se reemplazó por consultas escalares y lotes secuenciales de referencias para la página, manteniendo `RepeatableRead`, paginación, orden y resultados. No se suprimen advertencias ni se cambian dependencias.
+
+Se agregó una regresión concurrente en `tests/inventario.integration.ts`, validada con `NODE_OPTIONS=--throw-deprecation`. ESLint y build/tipos pasaron; Chromium comprobó escritorio/móvil contra Next.js en desarrollo, sin errores ni deprecaciones. `tsconfig.json` excluye ahora los originales de `backups` de la compilación. AGENTS registra la regla para evitar reintroducir el problema.
+
+Respaldos y evidencias en `backups/20261006_220615_aviso_pg_inventario/`. Las 20 tablas originales conservaron conteos/huellas; base temporal retirada y 3031 libre. Se preservó el servidor del usuario en 3030. Detalles y checks en [HITO-COMPRAS.md](HITO-COMPRAS.md). Sin cambios de esquema, migraciones o guía visual.
+
+## 2026-10-06 — Plan detallado de Compras aprobado
+
+Se documentaron las reglas acordadas de recepción parcial, bodega única por compra, presentación y factor histórico, identificación del documento, bloqueo tras consumo, redondeo de importes por línea y cierre de pendientes con motivo. [HITO-COMPRAS.md](HITO-COMPRAS.md) desglosa diseño/migración, Tipos de documentos, Compras, recepciones, cierres/anulación y validaciones con checks independientes. Distingue decisiones aprobadas, precisiones pendientes y tareas aún no implementadas.
+
+Se actualizó el seguimiento de mantenedores y AGENTS para reflejar el plan. Originales respaldados en `backups/20261006_231005_plan_compras/`, con SHA-256. Sólo documentación: esquema, migraciones, código y base de datos permanecen sin cambios en esta entrega; revisión de contenido y diff, sin levantar servidores.
+
+## 2026-10-07 — Inicio de preparación técnica de Compras
+
+Se revisaron checkpoints y estructura vigente y se documentó el diseño de idempotencia/control de versión en [HITO-COMPRAS.md](HITO-COMPRAS.md). Se enviaron precisiones pendientes; redondeo en empates, fracciones, precio/correcciones y normalización documental esperan respuestas explícitas. Se preservan los cambios previos.
+
+Respaldo documental con hashes en `backups/20261007_124650_preparacion_compras/`. Revisión de contenido y diff; sin modificaciones de Prisma, migraciones, cliente generado ni BD y sin servidores nuevos.
+
+## 2026-10-07 — Estructura de Compras y recepción parcial
+
+Se incorporaron tipos documentales, bodega única de compra, identidad documental con RUT/código histórico y número textual normalizado, presentación/factor/precio/importe por detalle, recepción parcial, cierre de pendientes y operación idempotente. Compra admite versión, anulación con motivo y eliminación lógica sin liberar su identidad. Se conservaron referencias existentes y se agregaron relaciones de entrada/reversión de recepción.
+
+Migración `20261007160000_compras_recepciones_parciales`: FK compuestas, unicidad, CHECK numéricos/documentales/de anulación y trigger de precio inmutable desde guardar. Fue probada sobre copia y aplicada al PostgreSQL local; no hay diferencias Prisma ni migraciones pendientes. La base tenía cero compras/detalles/movimientos; una guardia transaccional rechaza otros destinos con compras históricas sin inventar datos ni modificar su contenido.
+
+Bodegas cuenta/protege compras desde cabecera incluso sin líneas. Fixtures de cuatro pruebas se adaptaron al nuevo contrato; se agregó validación SQL con rollback. Pasaron restricciones, Inventario sin deprecaciones, Bodegas/Materiales/Proveedores, lint, tipos y build final. Los errores esperados en pruebas negativas de FK/versión/unicidad no son fallos de validación.
+
+Respaldos en `/home/metaltux/Proyectos/mtx-metal-erp/backups/20261007_125837_estructura_compras/`: originales/hashes, migraciones, cliente generado anterior, dump y evidencias. Las 20 tablas originales conservaron conteos y huellas; cinco tablas nuevas vacías. Copias retiradas y puertos 3030/3031 libres. No hubo seed, reset, cambios de dependencias ni guía visual. No se implementaron módulos nuevos: siguiente etapa es CRUD de Tipos de documentos. Las reglas de concurrencia/sobre-recepción/anulación y confirmaciones siguen pendientes del servicio, como detalla [HITO-COMPRAS.md](HITO-COMPRAS.md).
+
+## 2026-10-07 — Tipos documentales fijos de Compras
+
+Por decisión del usuario se reemplazó el CRUD planificado por Factura de Compra, Boleta de Compra y Guía de Compra. Catálogo centralizado y carga transaccional/idempotente integrada al seed, con opción `--documentos` que evita ejecutar sus otras cargas. Se cargaron sólo estos tres tipos en PostgreSQL local después de comprobar dos ejecuciones en copia y conservación de otras 24 tablas. Sin cambios de esquema ni migraciones.
+
+Originales y PostgreSQL respaldados en `/home/metaltux/Proyectos/mtx-metal-erp/backups/20261007_131724_tipos_fijos/`. ESLint/build aprobados; copia retirada y puertos libres. Checkpoints actualizados; siguiente etapa: listado/formulario de Compras, sin mantenedor documental ni funciones contables.
+
+## 2026-10-07 — Listado y registro de Compras
+
+Se reemplazó la página provisional por listado paginado/ordenado en PostgreSQL con filtro por proveedor/RUT/número y formularios Crear/Ver/Editar sobre el listado. Selectores buscables usan los catálogos existentes y los tres tipos fijos. La confirmación compartida advierte precios inmutables; Decimal recalcula equivalencias/importes/total en servidor. Guardar compra no altera stock/Kardex.
+
+Servicios comentados protegen precio, identidad/estructura tras recepción, duplicados, reintentos de creación/eliminación y versión de edición. Eliminación lógica sólo tras anular conserva documentos, recepciones y movimientos. El detalle muestra cantidades, historial/motivos y enlace contextual al Kardex. Registrar recepciones/cierres y anular siguen pendientes de sus etapas.
+
+Respaldos en `/home/metaltux/Proyectos/mtx-metal-erp/backups/20261007_143849_modulo_compras/`. Pasaron integración en copia, lint/build/tipos y Chromium en producción/desarrollo; fixtures de historial/anulación se escribieron sólo en copia. Las 25 tablas reales conservaron huellas/conteos. Copia/servidores retirados y puertos libres. Sin cambios de esquema, migraciones, guía visual o dependencias del proyecto. Checks en [HITO-COMPRAS.md](HITO-COMPRAS.md); siguiente etapa tras revisión funcional: recepciones parciales.
+
+
+## 07-10-2026 — Recepciones parciales de Compras
+
+Se implementa `recibirCompra` y su formulario sobre el listado, con revisión de equivalencias en servidor y confirmación reutilizable. Stock, recepción, detalle, movimiento de entrada y UUID/huella se persisten juntos bajo bloqueos ordenados y control de versión. Se conserva mínimo, precio, factor y unidad; pendientes derivados sin estados duplicados. La invalidación actualiza Compras, Stock/Kardex y referencias de mantenedores. Sin nueva migración. Validaciones: Decimal/precisión, concurrencia/idempotencia, rollback SQL inducido, regresiones Compras/Inventario, lint/tipos/build y Chromium desktop/móvil con Node `--throw-deprecation`. Respaldo PostgreSQL y archivos previo; datos reales conservados, copia/servidores retirados, 3030/3031 libres. Cierre/anulación operativos pendientes. Ver [checklist](HITO-COMPRAS.md).
+
+
+## 07-10-2026 — Compras: cierre de pendientes y anulación
+
+Cierre por línea con motivo calculado en servidor, sin alterar lo comprado ni inventario. La decisión explícita del usuario bloquea estructura desde el primer cierre, conservando fecha editable. Anulación completa bajo bloqueos y versión: comprobar entradas exactas, secuencia de registro de salidas/ajustes negativos, saldo suficiente y concordancia con Kardex; generar ajustes compensatorios por recibido junto con stock y operación UUID/huella. Reintentos, rollback y eliminación lógica preservan historia y unicidad documental. Sin cambios de esquema. Lint/tipos/build, suites de integración Compras/recepción/cierre/SQL/Inventario y Chromium desktop/móvil correctos. Respaldo previo y datos reales intactos; copia/servidor retirados, 3030/3031 libres. Desarrollo del hito completo, aprobación funcional pendiente. Ver [checklist](HITO-COMPRAS.md).
+
+
+## 07-10-2026 — Ayudas y autocompletado en Compras
+
+Clarificación del registro de Compras: etiquetas, ayuda “i” reutilizable en cabecera/detalle y autocompletado editable de presentaciones históricas agrupadas por PostgreSQL. Sólo sugiere el nombre, conservando contenido/precio explícitos. Equivalencia orientativa con Decimal en servidor, debounce y protección de respuestas antiguas; guardar mantiene validación completa. Sin cambios de esquema/dependencias. Lint/tipos/build, regresión Compras, sugerencias/precisión y Chromium desktop/táctil correctos. Archivos/BD respaldados; datos reales intactos; 3031 libre y servidor previo del usuario en 3030 preservado. Ver [checklist](HITO-COMPRAS.md).
+
+
+## 07-10-2026 — Configuración de mínimos y reposición
+
+Configuración de mínimos por material/bodega en Stock usando el campo existente, sin migración. Servicio transaccional con bloqueos de material/stock, token ID/updatedAt/mínimo anterior, validación de unidad y reintentos no-op. Conserva cantidades/Kardex; combinaciones nuevas con saldo cero sólo al guardar un mínimo y sin borrado automático al quitar. Catálogo incorpora unitMeasureId. Estados derivados y filtro de reposición comparando columnas en PostgreSQL, paginación/total correctos. Formularios sobre listado con búsqueda, ayudas, confirmación de retiro y descarte. Lint/tipos/build, integración de mínimos, regresiones Inventario/Compras y Chromium desktop/móvil aprobados. Base real intacta, respaldo previo; clon/servidor retirados, 3031 libre, servidor previo 3030 preservado. Ver [HITO-INVENTARIO.md](HITO-INVENTARIO.md).
+
+
+## 07-10-2026 — ajustes e inventario inicial
+
+Se incorporan `InventoryAdjustment` (evidencia del conteo), `InventoryOperation` (UUID/huella/resultado atómicos) y los enums de motivos/operaciones. `StockMovement.inventoryAdjustmentId` es opcional y único: los movimientos existentes conservan origen e historia; una FK compuesta exige mismo material/bodega que el ajuste. Índices cubren fechas, referencias y correcciones. La migración `20261008003000_ajustes_inventario` agrega CHECK de cantidades/diferencia/motivos/vínculo de corrección, valida diferencia del movimiento mediante trigger y bloquea edición/borrado de documentos y claves idempotentes.
+
+El servicio verifica saldo/Kardex, unidad, referencias y versión (ID de stock, timestamp, saldo y último movimiento), bloquea material → stock y registra documento/saldo/AJUSTE/UUID en una transacción. Reintentos se reconocen antes de validar versión; misma clave con otro contenido se rechaza. Mínimos se preservan. Fecha del conteo es calendario (`Date`); fecha del Kardex corresponde al inicio real del día de Santiago. Fecha futura rechazada en servidor.
+
+Las correcciones usan conteo actual vinculado, no reversión histórica. Carga inicial sólo sin movimientos y saldo cero; conteo sin diferencia no escribe. No se introduce proveedor/compra ficticio ni se cambia la interpretación de Compras. Listado paginado/ordenado/filtrado en PostgreSQL y formularios superpuestos con ayudas, búsqueda y confirmación reutilizable; Kardex muestra el origen persistido de ajuste, carga inicial o corrección.
+
+Ver `docs/HITO-INVENTARIO.md` para respaldo, verificaciones, estado de migración y revisión funcional. Traslados y autenticación siguen pendientes.
+
+
+## 07-10-2026 — traslados entre bodegas
+
+Se incorpora `InventoryTransfer` para traslado inmediato de un material entre dos bodegas distintas. Conserva cantidad, fecha calendario, observación, saldos previos/finales y vínculo único de corrección inversa. El motivo visible es fijo, sin mantenedor nuevo. Las FK usan Restrict e índices; los snapshots son evidencia histórica, no nuevos saldos vigentes.
+
+La migración `20261008010000_traslados_inventario` amplía `InventoryOperation` con `transferId` opcional y operaciones TRASLADAR/REVERTIR_TRASLADO; `adjustmentId` pasa a opcional y un CHECK exige exactamente un origen coherente con el tipo. No modifica documentos de Ajustes anteriores. `StockMovement` agrega vínculos únicos de salida/entrada y FK compuestas que impiden material/bodega incorrectos. CHECK de cantidades, bodegas distintas, observación y origen; triggers verifican cantidades/signo, corrección inversa completa e inmutabilidad. Un trigger diferido exige ambas filas de movimiento y operación al confirmar el documento.
+
+Servicio: bloqueo UUID → material → stock por ID ascendente, lectura secuencial, validación de versiones y saldo/Kardex de ambas bodegas, disponibilidad y límite de destino. Documento, ambos saldos, SALIDA negativa, ENTRADA positiva y UUID/huella se escriben en una sola transacción. Los mínimos se conservan; destino nuevo se crea sólo al guardar. Reintentos iguales retornan el resultado previo; otro contenido con la misma clave se rechaza. Ante resultado incierto, la interfaz conserva clave y datos para reintentar.
+
+Corrección con otro traslado inverso completo vinculado, una corrección directa por documento; si se corrige el inverso se conserva la cadena. No borra historial ni desbloquea anulación de Compras. Incidencias negativas/descuadre se bloquean para revisión previa, sin inventar movimientos que cuadren saldos.
+
+Ruta `/inventario/traslados` en navegación: filtros/paginación/orden SQL, consulta, formulario superpuesto, búsqueda en selectores, ayudas, confirmación y descarte. Kardex muestra origen persistido de traslado. Confirmaciones reutilizables aceptan callback opcional de retorno de foco, utilizado por Traslados sin alterar el comportamiento de consumidores existentes.
+
+Ver `docs/HITO-INVENTARIO.md` para comprobaciones, respaldo, estado de migración y revisión funcional pendiente. No se agregan tránsito, recepciones en destino ni múltiples materiales por documento.
+
+
+## 07-10-2026 — invalidar cliente Prisma anterior durante HMR
+
+Al entrar a Traslados, `tx.inventoryTransfer` era undefined porque `globalThis.prisma` conservaba una instancia anterior a la generación del modelo. `src/lib/prisma.ts` reutiliza ahora la instancia sólo si coincide el constructor del cliente generado, conservado junto con ella. Si cambia el constructor o hay una caché heredada sin esa referencia, crea el cliente actual y desconecta el pool sustituido. La instancia sigue siendo compartida y sólo este archivo crea PrismaClient; no se cambian esquema, adaptador ni datos.
+
+`tests/prisma-cache.integration.ts` comprueba sustitución de una instancia heredada, invalidación de constructor anterior y reutilización del constructor vigente; no consulta PostgreSQL. La petición de sólo lectura a `/inventario/traslados` en el servidor del usuario devolvió HTTP 200 y listado sin error de modelo ni mensaje de fallo de consulta. Se conserva el proceso del usuario en 3030; no se inició otro servidor para esta validación.
+
+Respaldo previo: `backups/20261007_220650_cliente_prisma_hmr`. Ver checklist de comprobaciones en HITO-INVENTARIO.
+
+
+## 07-10-2026 — Ayudas del listado de Compras y cierre de pendientes
+
+Se agrega `BotonConAyuda`, reutilizando los tooltips existentes, para describir las acciones del listado, filtros, orden y paginación. Los controles deshabilitados conservan ayuda mediante un contenedor accesible por teclado. `TablaConsulta` permite habilitar las ayudas opcionalmente; se activan para Compras.
+
+El formulario de cierre incluye un `Aviso` informativo que explica cuándo cerrar, qué cantidad afecta, un ejemplo y las consecuencias: conserva el historial, no modifica stock, impide recibir lo cerrado y bloquea la estructura desde el primer cierre. Se registra la aprobación del usuario del resto de funcionalidades en `docs/HITO-COMPRAS.md`; la revisión visual de estas ayudas queda pendiente. Respaldo previo: `backups/20261007_222449_tooltips_compras`. No se modifica el esquema ni la base de datos.
+
+Validación: `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm build` y revisión del diff correctos. La primera compilación quedó sin progreso en el sandbox y se interrumpió; la repetición fuera de éste finalizó correctamente. Chromium verificó tooltip con ratón y teclado sobre el servidor existente, sin guardar registros; el formulario de cierre no pudo revisarse en navegador por no haber una compra pendiente disponible. No se iniciaron servidores de validación; se conserva el 3030 del usuario y se verificó 3031 libre.
+
+
+## 07-10-2026 — Inicio del Hito de Cotizaciones
+
+Se crea `docs/HITO-COTIZACIONES.md` con etapas y checklist tras autorización para continuar al siguiente módulo. Se revisaron esquema y checkpoints: la ruta todavía es provisional y las decisiones de líneas cotizadas, precios/impuestos, estados, vigencia y PDF requieren respuesta explícita. No se trasladan automáticamente las reglas de Compras al dominio de ventas ni se marca Inventario cerrado. Sin cambios de código, esquema o datos en esta preparación. Respaldo de este registro antes de editar: `backups/20261007_222858_plan_cotizaciones`.
+
+
+## 07-10-2026 — Referencia real y decisiones de Cotizaciones
+
+Se revisa el PDF de dos páginas proporcionado por el usuario (texto completo y primera página visual), sin modificarlo ni importar datos. Se actualiza `docs/HITO-COTIZACIONES.md`: sólo productos/servicios, precios finales con IVA y descuentos desglosados, totales sin decimales; estados/vigencia y PDF/venta posterior aprobados. Se identifican campos faltantes de folio, desglose, dirección, condiciones de pago, descripción técnica y datos bancarios; se consultan cálculo, descuento, numeración y alcance antes de implementarlos. No se asume el descuento ni la tasa futura a partir de un solo ejemplo. Respaldo documental previo: `backups/20261007_224151_referencia_cotizacion`. Revisión documental y diff; sin cambios de código, Prisma o PostgreSQL.
+
+
+## 07-10-2026 — Alcance comercial, pagos y numeración
+
+Se actualiza el Hito de Cotizaciones con las respuestas: cálculo como el PDF, descuento global y alcance de venta de materia prima, productos de catálogo y trabajos a medida. Se registra solicitud de Condiciones de Pago, estados derivados, anticipos de proyecto y numeración configurable. La estructura actual de cuentas/abonos exige una venta; se consulta si basta para los anticipos o se requiere Proyecto/ingreso previo. Catálogo, modalidades de descuento, condiciones y secuencias quedan pendientes de precisión. No hay cambios de código/esquema/datos. Respaldo previo: `backups/20261007_225415_alcance_comercial`; contenido y diff revisados.
+
+
+## 07-10-2026 — Productos terminados, condiciones y panel de cobranza
+
+Se documentan cotizaciones mixtas, existencias/bodega de producto terminado, materia prima utilizada, condiciones extensibles Al día/30/60/90 días, pagos graduales, referencia de factura de venta y panel de deuda/abonos/vencimiento/saldo. Se registran aprobación de descuento global porcentaje o pesos, numeración configurable sin número inicial definido y bancos en Empresa. Se consulta la entidad de los pagos (orden del cliente/venta/trabajo), cardinalidad, consumo al fabricar y fecha base de vencimiento antes de modificar relaciones. Respaldo: `backups/20261007_234323_productos_y_cobranza`. Sólo documentación; diff revisado, sin escrituras de datos.
+
+
+## 07-10-2026 — Flujo aprobado de orden cliente, producción y vencimiento
+
+Se registra en HITO-COTIZACIONES el nombre visible Orden de Compra Cliente (SalesOrder técnico conservado), una sola Orden de Trabajo por orden, consumo de materias primas al fabricar y salida de terminado al vender sin doble consumo. Vencimiento desde fecha de factura registrada con folio al finalizar el trabajo, según días de condición; anticipos vinculados a la orden sin crear deuda duplicada ni vencimiento ficticio. Se actualizan checks de decisiones, conservando pendientes de implementación. Próxima dependencia: mantenedor de Condiciones de Pago. Respaldo previo: `backups/20261007_235529_flujo_comercial_aprobado`. Sólo revisión documental y diff; no cambios de Prisma, datos o servidores.

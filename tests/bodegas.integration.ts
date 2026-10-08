@@ -7,6 +7,7 @@ import type { Bodega } from "../src/lib/tipos/bodega";
 async function main() {
   assert(new URL(process.env.DATABASE_URL!).pathname.startsWith("/mtx_validacion_"), "Las pruebas requieren una base temporal mtx_validacion_*.");
   const nombre = `Bodega prueba ${Date.now()}`;
+  let tipoDocumentoId: number | undefined;
   const ids: number[] = [];
   let unidadId: number | undefined;
   let materialId: number | undefined;
@@ -67,10 +68,15 @@ async function main() {
     await prisma.stockMovement.delete({ where: { id: movimiento.id } });
 
     proveedorId = (await prisma.supplier.create({ data: { name: nombre, rut: nombre } })).id;
-    compraId = (await prisma.purchase.create({ data: { supplierId: proveedorId, totalAmount: "1" } })).id;
-    const detalleCompra = await prisma.purchaseDetail.create({ data: { purchaseId: compraId, rawMaterialId: materialId, warehouseId: relacionada.id, quantity: "1", unitPrice: "1" } });
+    const codigoDocumento = `PRUEBA-${Date.now()}`;
+    tipoDocumentoId = (await prisma.documentType.create({data:{code:codigoDocumento,name:nombre}})).id;
+    compraId = (await prisma.purchase.create({ data: { supplierId: proveedorId, supplierRut:"11111111-1", documentTypeId:tipoDocumentoId, documentTypeCode:codigoDocumento, documentNumber:"001", documentNumberNormalized:"001", warehouseId:relacionada.id, totalAmount: "1" } })).id;
+    await verificarBloqueo(relacionada, "compras"); // Cabecera sin líneas también protege la bodega.
+    const detalleCompra = await prisma.purchaseDetail.create({ data: { purchaseId: compraId, rawMaterialId: materialId, warehouseId: relacionada.id, quantity: "1", purchasedQuantity:"1", presentation:"Unidad", unitFactor:"1", lineAmount:"1", unitPrice: "1" } });
     await verificarBloqueo(relacionada, "compras");
     await prisma.purchaseDetail.delete({ where: { id: detalleCompra.id } });
+    await verificarBloqueo(relacionada, "compras");
+    await prisma.purchase.delete({where:{id:compraId}});compraId=undefined;
 
     trabajoId = (await prisma.workOrder.create({ data: { productName: nombre } })).id;
     const detalleTrabajo = await prisma.workOrderDetail.create({ data: { workOrderId: trabajoId, rawMaterialId: materialId, warehouseId: relacionada.id, quantityNeeded: "1" } });
@@ -87,9 +93,10 @@ async function main() {
     await prisma.warehouseStock.deleteMany({ where: { warehouseId: { in: ids } } });
     await prisma.purchaseDetail.deleteMany({ where: { warehouseId: { in: ids } } });
     await prisma.workOrderDetail.deleteMany({ where: { warehouseId: { in: ids } } });
-    await prisma.warehouse.deleteMany({ where: { id: { in: ids } } });
     if (compraId !== undefined) await prisma.purchase.delete({ where: { id: compraId } });
+    await prisma.warehouse.deleteMany({ where: { id: { in: ids } } });
     if (trabajoId !== undefined) await prisma.workOrder.delete({ where: { id: trabajoId } });
+    if(tipoDocumentoId)await prisma.documentType.delete({where:{id:tipoDocumentoId}});
     if (proveedorId !== undefined) await prisma.supplier.delete({ where: { id: proveedorId } });
     if (materialId !== undefined) await prisma.rawMaterial.delete({ where: { id: materialId } });
     if (unidadId !== undefined) await prisma.unitMeasure.delete({ where: { id: unidadId } });

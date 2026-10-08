@@ -12,6 +12,8 @@ function registro(resultado: ResultadoProveedor): Proveedor {
 async function main() {
   assert(new URL(process.env.DATABASE_URL!).pathname.startsWith("/mtx_validacion_"), "Las pruebas requieren una copia temporal mtx_validacion_*.");
   const nombre = `Proveedor prueba ${Date.now()}`;
+  let tipoDocumentoId: number | undefined;
+  let bodegaCompraId: number | undefined;
   const ids: number[] = [];
   let compraId: number | undefined;
   const crear = async (rut: string) => {
@@ -60,7 +62,10 @@ async function main() {
     assert.equal(simultaneos.filter(r => r.ok).length, 1);
     for (const r of simultaneos) if (r.ok && r.proveedor) ids.push(r.proveedor.id);
     // Asociación posterior a abrir la confirmación: la FK debe conservar proveedor y compra.
-    compraId = (await prisma.purchase.create({ data: { supplierId: vacios.id, totalAmount: "1" } })).id;
+    bodegaCompraId = (await prisma.warehouse.create({data:{name:nombre}})).id;
+    const codigoDocumento = `PRUEBA-${Date.now()}`;
+    tipoDocumentoId = (await prisma.documentType.create({data:{code:codigoDocumento,name:nombre}})).id;
+    compraId = (await prisma.purchase.create({ data: { supplierId: vacios.id, supplierRut:"11111111-1", documentTypeId:tipoDocumentoId, documentTypeCode:codigoDocumento, documentNumber:"001", documentNumberNormalized:"001", warehouseId:bodegaCompraId, totalAmount: "1" } })).id;
     assert.equal(registro(await consultarProveedor(vacios.id)).compras, 1);
     const protegido = await eliminarProveedor(vacios);assert(!protegido.ok && protegido.mensaje.includes("compras"));
     assert(await prisma.purchase.findUnique({ where: { id: compraId } }));
@@ -71,6 +76,8 @@ async function main() {
     console.log("Correcto: CRUD, RUT canónico/DV K y 0, correo, límites, opcionales, duplicados heredados y concurrentes, control de versión y compra posterior a la confirmación.");
   } finally {
     if (compraId !== undefined) await prisma.purchase.delete({ where: { id: compraId } });
+    if(tipoDocumentoId)await prisma.documentType.delete({where:{id:tipoDocumentoId}});
+    if(bodegaCompraId)await prisma.warehouse.delete({where:{id:bodegaCompraId}});
     await prisma.supplier.deleteMany({ where: { id: { in: ids } } });
   }
 }

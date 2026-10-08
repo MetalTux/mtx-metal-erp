@@ -1,5 +1,3 @@
-import { ModulePlaceholder } from "@/components/layout/module-placeholder";
-
-export default function Page() {
-  return <ModulePlaceholder ruta="/configuracion/empresa" />;
-}
+import { consultarEmpresa } from "@/lib/servicios/empresa";
+import { ConfiguracionEmpresa } from "@/components/configuracion/empresa";
+export default async function Page() { return <ConfiguracionEmpresa perfilInicial={await consultarEmpresa()} />; }

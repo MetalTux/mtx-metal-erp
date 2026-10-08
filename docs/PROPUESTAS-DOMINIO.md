@@ -2,7 +2,7 @@
 
 Fecha: **2026-10-06**.
 
-Estado: **estructuras de Stock Mínimo, Empresa y Cobranza implementadas y migradas; módulos y lógica de aplicación pendientes**.
+Estado: **estructuras de Stock Mínimo, Empresa y Cobranza implementadas y migradas; Empresa implementada y validada localmente; lógica de Stock Mínimo y Cobranza pendiente**.
 
 Este documento complementa [GUIA-INTERFAZ.md](GUIA-INTERFAZ.md), sin modificarla. Describe recomendaciones y avances sobre el [esquema actual](../prisma/schema.prisma). Solo están aprobados e implementados los alcances indicados en las checklists y en el registro de decisiones.
 
@@ -70,16 +70,18 @@ Ejemplo: Tubo 40×40 en metros, con saldo de 12 m y mínimo de 20 m en Producci�
 - [x] Comparar mínimo global, por bodega y con valor predeterminado.
 - [x] Proponer reglas para valores nulos, cero y límite de alerta.
 - [x] Adoptar mínimo por material y bodega; mantener como regla para la futura alerta `saldo < mínimo` (la igualdad no dispara stock bajo).
-- [ ] Definir la política de saldos negativos y las combinaciones que se monitorean.
+- [x] Aprobar configuración explícita de combinaciones a monitorear, incluso sin stock previo.
+- [ ] Definir la política de saldos negativos para ajustes/salidas.
 - [x] Respaldar los archivos afectados, el cliente generado anterior y la base PostgreSQL antes de migrar.
 - [x] Crear y aplicar la migración sin alterar los saldos existentes; mínimos iniciales sin configurar.
 - [x] Incorporar y verificar el CHECK para mínimos no negativos y distintos de `NaN`.
 - [x] Regenerar el cliente Prisma y validar el esquema y su correspondencia con PostgreSQL.
 - [x] Verificar estructura: `NULL`, cero, tres decimales, límite numérico, rechazo de negativos/`NaN`, mínimos independientes en dos bodegas y unicidad de material/bodega.
 - [x] Comparar datos previos y secuencias en las 17 tablas del dominio después de migrar.
-- [ ] Implementar edición, validación y consultas de alertas.
+- [x] Implementar edición, validación y consultas de reposición en Stock; notificaciones/Dashboard fuera del alcance aprobado.
 - [ ] Incorporar el KPI y el detalle por bodega.
-- [ ] Verificar: sin mínimo, saldo cero, saldo igual al mínimo, fracciones, dos bodegas y un material contado una sola vez.
+- [x] Verificar sin mínimo, cero, igualdad, fracciones y dos bodegas; consultas de reposición con total/paginación.
+- [ ] Verificar material contado una sola vez cuando se implemente el KPI (diferido).
 
 ## 2. Datos de la empresa
 
@@ -138,8 +140,8 @@ La generación de PDFs y la copia histórica pueden implementarse junto con Vent
 - [x] Verificar perfil incompleto, persistencia de los campos, ID predeterminado, rechazo de segundos perfiles y de cambios a otro ID.
 - [x] Verificar la tabla real, la conservación del CHECK de stock mínimo y los datos/secuencias de las 17 tablas previas.
 - [x] Validar Prisma, estado y diferencias de migraciones, ESLint y build con comprobación de tipos.
-- [ ] Implementar formulario y validación compartida entre servidor e interfaz.
-- [ ] Definir almacenamiento del logo e implementar carga cuando corresponda.
+- [x] Implementar formulario y validación compartida entre servidor e interfaz.
+- [x] Definir almacenamiento local del logo e implementar carga; contrato preparado para futuro adaptador S3.
 - [ ] Integrar perfil y copia histórica al emitir cotizaciones/PDFs.
 - [ ] Verificar en los módulos: validación de RUT, requisitos de emisión y conservación de documentos antiguos tras editar la empresa.
 
@@ -269,3 +271,10 @@ La definición de cuentas vigentes debe incluir el tratamiento de ventas anulada
 - **2026-10-06 (implementación de estructura):** stock mínimo migrado en PostgreSQL local y cliente Prisma regenerado. Respaldos en `backups/20261006_120436_stock_minimo/` (locales, excluidos de git). Detalle y validaciones en [CAMBIOS.md](CAMBIOS.md). La guía de interfaz y los módulos permanecen sin cambios.
 - **2026-10-06 (estructura de Empresa):** `CompanyProfile` migrado y cliente regenerado, con prueba previa sobre tabla temporal y validación posterior. Respaldos en `backups/20261006_124537_empresa/` (locales, excluidos de git). Se conservaron Stock Mínimo, los datos existentes y la guía de interfaz; no se desarrollaron módulos.
 - **2026-10-06 (estructura de Cobranza):** `AccountReceivable` y `Payment` migrados tras una prueba en tablas temporales; cliente Prisma regenerado. Respaldos en `backups/20261006_125530_cobranza/`. Se conservaron las 18 tablas previas y los campos heredados de las guías. Los tres puntos quedan preparados a nivel de estructura; los módulos y la lógica de cobro siguen pendientes.
+
+- **2026-10-06 (módulo Empresa):** perfil único configurable y carga local de logo implementados y validados. Ver [etapas, reglas, almacenamiento y evidencias](HITO-EMPRESA.md). Requisitos de emisión y conservación de documentos históricos siguen pendientes de Ventas.
+
+- **2026-10-06 (consultas de inventario):** Stock por bodega y Kardex implementados/validados con filtros y paginación de servidor; consulta del mínimo distingue `null` de cero. La edición de mínimos y sus alertas siguen pendientes. Ver [HITO-COMPRAS.md](HITO-COMPRAS.md) para las etapas siguientes y reglas de Compras aún sin respuesta.
+
+
+- **07-10-2026 — Inventario etapa 1:** usuario aprobó configurar combinaciones nuevas con saldo cero y avisos/filtro sólo en Stock. Mínimos implementados/validados sin alterar cantidades/Kardex, con control concurrente y unidad protegida. Política de saldos negativos, ajustes/traslados, KPI y Dashboard siguen pendientes. Ver [HITO-INVENTARIO.md](HITO-INVENTARIO.md).

@@ -12,6 +12,8 @@ Se termina y valida un mantenedor antes de avanzar al siguiente. Dentro de cada 
 4. **Clientes (`Client`)** — RUT único, nombre y datos opcionales de contacto. Comparte complejidad con Proveedores; aprovecha sus validaciones y controla las referencias de cotizaciones. Ruta: `/mantenedores/clientes`.
 5. **Materias primas (`RawMaterial`)** — código único, nombre, descripción opcional y unidad obligatoria. Depende del catálogo de unidades y tiene relaciones con inventario y documentos. Ruta: `/mantenedores/materiales`.
 
+6. **Tipos de documentos de compra** — catálogo fijo cargado: Factura de Compra, Boleta de Compra y Guía de Compra. Por decisión del usuario no tendrá CRUD de momento. Plan en [HITO-COMPRAS.md](HITO-COMPRAS.md).
+
 El stock mínimo pertenece al material **por bodega** (`WarehouseStock.minStock`); su configuración corresponde a Inventario y no se añadirá como un campo de `RawMaterial`.
 
 ## Patrón común de interfaz
@@ -192,8 +194,21 @@ La base temporal fue retirada y el servidor de validación liberó 3031; se cons
 
 - [x] Confirmación del usuario de que la primera serie de mantenedores funciona correctamente.
 - [x] Preparar [Configuración de Empresa por etapas](HITO-EMPRESA.md) como siguiente hito recomendado.
-- [ ] Desarrollar y validar Configuración de Empresa; su checklist detallado está en el nuevo plan.
+- [x] Desarrollar y validar localmente Configuración de Empresa, con carga local de logo y protección concurrente; seguimiento en [HITO-EMPRESA.md](HITO-EMPRESA.md).
+- [ ] Completar comprobación del túnel y revisión funcional del usuario antes de avanzar al siguiente proceso.
 
 ## Reglas de cierre y seguimiento
 
 Respaldar archivos existentes antes de modificarlos. Registrar las entregas en [CAMBIOS.md](CAMBIOS.md) y actualizar este checklist. Detener los servidores iniciados para validar y comprobar que liberen su puerto; preservar los servidores previos del usuario.
+
+## Continuación: inventario y Compras
+
+- [x] Consultas de Stock por bodega y Kardex, con selectores buscables y paginación/orden de servidor.
+- [x] Preparar [Compras por etapas](HITO-COMPRAS.md), conservando los pendientes de cierre de Empresa.
+- [x] Recibir y documentar reglas principales de recepción parcial, valor por presentación, documento, bodega, anulación, redondeo y cierre de pendientes.
+- [x] Resolver precisiones y validar estructura/migración de Compras; detalles en [HITO-COMPRAS.md](HITO-COMPRAS.md).
+- [ ] Implementar operaciones de compra, recepción, cierre y anulación según el hito.
+- [x] Cargar tres tipos documentales fijos; CRUD descartado para esta entrega por decisión del usuario.
+- [ ] Revisión funcional del usuario de las consultas.
+
+Estas pantallas consultan operaciones/existencias y no son CRUD de catálogos. No se ofrecen Crear/Editar/Eliminar movimientos históricos.

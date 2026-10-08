@@ -4,8 +4,13 @@
 // (debe ir antes de importar el cliente, que lee DATABASE_URL al crearse)
 import 'dotenv/config';
 import { prisma } from '../src/lib/prisma';
+import { cargarTiposDocumentoCompra } from './seed-documentos';
 
 async function main() {
+  await cargarTiposDocumentoCompra();
+  console.log('Tipos de documentos de compra disponibles');
+  if (process.argv.includes('--documentos')) return;
+
   console.log('Iniciando el poblado de la base de datos (Seeding)...');
 
   // 1. Crear Roles base

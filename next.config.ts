@@ -5,14 +5,17 @@ const dominioTunel = "b1315pk2-3030.brs.devtunnels.ms";
 
 const nextConfig: NextConfig = {
   reactCompiler: true,
-  ...(esDesarrollo && {
-    allowedDevOrigins: [dominioTunel],
-    experimental: {
-      serverActions: {
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "3mb",
+      ...(esDesarrollo && {
         // Devtunnels reescribe Origin a localhost aunque conserva el host público.
         allowedOrigins: ["localhost:3030", dominioTunel],
-      },
+      }),
     },
+  },
+  ...(esDesarrollo && {
+    allowedDevOrigins: [dominioTunel],
   }),
 };
 

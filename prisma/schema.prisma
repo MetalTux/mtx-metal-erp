@@ -55,7 +55,7 @@ model UnitMeasure {
 }
 
 // Cada material se maneja siempre en UNA sola unidad (la de unitMeasure).
-// Todas sus cantidades (stock, compras, consumos, cotizaciones) se expresan en esa unidad.
+// Stock, movimientos y consumos usan esa unidad; las compras conservan además su presentación comercial.
 model RawMaterial {
   id            Int         @id @default(autoincrement())
   code          String      @unique
@@ -64,11 +64,13 @@ model RawMaterial {
   unitMeasureId Int
   unitMeasure   UnitMeasure @relation(fields: [unitMeasureId], references: [id])
 
-  stocks         WarehouseStock[]
-  stockMovements StockMovement[]
-  purchases      PurchaseDetail[]
-  workOrders     WorkOrderDetail[]
-  quoteDetails   QuoteDetail[]
+  inventoryTransfers   InventoryTransfer[]
+  inventoryAdjustments InventoryAdjustment[]
+  stocks               WarehouseStock[]
+  stockMovements       StockMovement[]
+  purchases            PurchaseDetail[]
+  workOrders           WorkOrderDetail[]
+  quoteDetails         QuoteDetail[]
 
   createdAt DateTime @default(now()) // Fecha de registro (no se modifica)
   updatedAt DateTime @updatedAt // Última modificación (automática)
@@ -80,13 +82,17 @@ model RawMaterial {
 // 3. BODEGA Y STOCK
 // ==========================================
 model Warehouse {
-  id               Int               @id @default(autoincrement())
-  name             String
-  location         String?
-  stocks           WarehouseStock[]
-  stockMovements   StockMovement[]
-  purchaseDetails  PurchaseDetail[]
-  workOrderDetails WorkOrderDetail[]
+  outgoingTransfers    InventoryTransfer[]   @relation("BodegaOrigen")
+  incomingTransfers    InventoryTransfer[]   @relation("BodegaDestino")
+  id                   Int                   @id @default(autoincrement())
+  name                 String
+  location             String?
+  inventoryAdjustments InventoryAdjustment[]
+  stocks               WarehouseStock[]
+  stockMovements       StockMovement[]
+  purchaseDetails      PurchaseDetail[]
+  purchases            Purchase[]
+  workOrderDetails     WorkOrderDetail[]
 
   createdAt DateTime @default(now()) // Fecha de registro (no se modifica)
   updatedAt DateTime @updatedAt // Última modificación (automática)
@@ -119,28 +125,136 @@ model WarehouseStock {
 // Historial (kardex) de cada entrada, salida o ajuste de stock.
 // quantity lleva signo: positivo suma al stock, negativo descuenta.
 model StockMovement {
-  id                Int               @id @default(autoincrement())
-  date              DateTime          @default(now())
-  type              StockMovementType
-  quantity          Decimal           @db.Decimal(14, 3)
-  note              String? // Motivo, sobre todo en los ajustes
-  warehouseId       Int
-  rawMaterialId     Int
-  // Origen del movimiento (opcional: un ajuste manual no tiene origen)
-  purchaseDetailId  Int?
-  workOrderDetailId Int?
+  id                      Int                  @id @default(autoincrement())
+  date                    DateTime             @default(now())
+  type                    StockMovementType
+  quantity                Decimal              @db.Decimal(14, 3)
+  note                    String? // Motivo, sobre todo en los ajustes
+  warehouseId             Int
+  rawMaterialId           Int
+  // Origen persistido; los movimientos antiguos pueden no tener documento asociado.
+  outgoingTransferId      Int?                 @unique
+  incomingTransferId      Int?                 @unique
+  outgoingTransfer        InventoryTransfer?   @relation("SalidaTraslado", fields: [outgoingTransferId, warehouseId, rawMaterialId], references: [id, sourceWarehouseId, rawMaterialId], onDelete: Restrict)
+  incomingTransfer        InventoryTransfer?   @relation("EntradaTraslado", fields: [incomingTransferId, warehouseId, rawMaterialId], references: [id, destinationWarehouseId, rawMaterialId], onDelete: Restrict)
+  inventoryAdjustmentId   Int?                 @unique
+  inventoryAdjustment     InventoryAdjustment? @relation(fields: [inventoryAdjustmentId, warehouseId, rawMaterialId], references: [id, warehouseId, rawMaterialId], onDelete: Restrict)
+  purchaseDetailId        Int?
+  workOrderDetailId       Int?
+  purchaseReceiptDetailId Int?                 @unique
+  reversedReceiptDetailId Int?                 @unique
 
   warehouse       Warehouse        @relation(fields: [warehouseId], references: [id])
   rawMaterial     RawMaterial      @relation(fields: [rawMaterialId], references: [id])
   purchaseDetail  PurchaseDetail?  @relation(fields: [purchaseDetailId], references: [id])
   workOrderDetail WorkOrderDetail? @relation(fields: [workOrderDetailId], references: [id])
 
+  purchaseReceiptDetail PurchaseReceiptDetail? @relation("EntradaRecepcion", fields: [purchaseReceiptDetailId], references: [id], onDelete: Restrict)
+  reversedReceiptDetail PurchaseReceiptDetail? @relation("ReversionRecepcion", fields: [reversedReceiptDetailId], references: [id], onDelete: Restrict)
+
   createdAt DateTime @default(now()) // Fecha de registro (no se modifica)
 
+  @@unique([outgoingTransferId, warehouseId, rawMaterialId])
+  @@unique([incomingTransferId, warehouseId, rawMaterialId])
+  @@unique([inventoryAdjustmentId, warehouseId, rawMaterialId])
   @@index([warehouseId, rawMaterialId, date])
   @@index([rawMaterialId])
   @@index([purchaseDetailId])
   @@index([workOrderDetailId])
+}
+
+// Motivos internos fijos: etiquetas visibles centralizadas en el cliente.
+enum InventoryAdjustmentReason {
+  CONTEO_FISICO
+  MERMA_PERDIDA
+  DETERIORO_DANO
+  CORRECCION_REGISTRO
+  OTRO
+  INVENTARIO_INICIAL
+}
+
+enum InventoryOperationType {
+  TRASLADAR
+  REVERTIR_TRASLADO
+  AJUSTAR
+  CARGAR_INICIAL
+  CORREGIR
+}
+
+// Documento histórico inmutable. Los saldos son evidencia del conteo, no otro saldo vigente.
+model InventoryAdjustment {
+  id                    Int                       @id @default(autoincrement())
+  date                  DateTime                  @db.Date
+  reason                InventoryAdjustmentReason
+  note                  String
+  previousQuantity      Decimal                   @db.Decimal(14, 3)
+  finalQuantity         Decimal                   @db.Decimal(14, 3)
+  difference            Decimal                   @db.Decimal(14, 3)
+  warehouseId           Int
+  rawMaterialId         Int
+  correctedAdjustmentId Int?
+  warehouse             Warehouse                 @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  rawMaterial           RawMaterial               @relation(fields: [rawMaterialId], references: [id], onDelete: Restrict)
+  correctedAdjustment   InventoryAdjustment?      @relation("CorreccionInventario", fields: [correctedAdjustmentId, warehouseId, rawMaterialId], references: [id, warehouseId, rawMaterialId], onDelete: Restrict)
+  corrections           InventoryAdjustment[]     @relation("CorreccionInventario")
+  movement              StockMovement?
+  operation             InventoryOperation?
+  createdAt             DateTime                  @default(now())
+  updatedAt             DateTime                  @updatedAt
+
+  @@unique([id, warehouseId, rawMaterialId])
+  @@index([warehouseId, rawMaterialId, date])
+  @@index([rawMaterialId])
+  @@index([correctedAdjustmentId, warehouseId, rawMaterialId])
+  @@index([date, id])
+}
+
+// UUID estable y huella del contenido: se guarda junto con sus efectos en la misma transacción.
+// Independiente de PurchaseOperation; exactamente un ajuste o traslado por operación (CHECK SQL).
+model InventoryOperation {
+  transferId     Int?                   @unique
+  transfer       InventoryTransfer?     @relation(fields: [transferId], references: [id], onDelete: Restrict)
+  idempotencyKey String                 @id @db.Uuid
+  type           InventoryOperationType
+  requestHash    String                 @db.Char(64)
+  adjustmentId   Int?                   @unique
+  adjustment     InventoryAdjustment?   @relation(fields: [adjustmentId], references: [id], onDelete: Restrict)
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+}
+
+// Traslado inmediato de un material. Los saldos conservan la evidencia previa/final de ambas bodegas.
+// Corregir registra un traslado inverso completo, vinculado; nunca modifica este documento.
+model InventoryTransfer {
+  id                          Int                 @id @default(autoincrement())
+  date                        DateTime            @db.Date
+  note                        String
+  quantity                    Decimal             @db.Decimal(14, 3)
+  sourcePreviousQuantity      Decimal             @db.Decimal(14, 3)
+  sourceFinalQuantity         Decimal             @db.Decimal(14, 3)
+  destinationPreviousQuantity Decimal             @db.Decimal(14, 3)
+  destinationFinalQuantity    Decimal             @db.Decimal(14, 3)
+  rawMaterialId               Int
+  sourceWarehouseId           Int
+  destinationWarehouseId      Int
+  correctedTransferId         Int?                @unique
+  rawMaterial                 RawMaterial         @relation(fields: [rawMaterialId], references: [id], onDelete: Restrict)
+  sourceWarehouse             Warehouse           @relation("BodegaOrigen", fields: [sourceWarehouseId], references: [id], onDelete: Restrict)
+  destinationWarehouse        Warehouse           @relation("BodegaDestino", fields: [destinationWarehouseId], references: [id], onDelete: Restrict)
+  correctedTransfer           InventoryTransfer?  @relation("CorreccionTraslado", fields: [correctedTransferId], references: [id], onDelete: Restrict)
+  correction                  InventoryTransfer?  @relation("CorreccionTraslado")
+  outgoingMovement            StockMovement?      @relation("SalidaTraslado")
+  incomingMovement            StockMovement?      @relation("EntradaTraslado")
+  operation                   InventoryOperation?
+  createdAt                   DateTime            @default(now())
+  updatedAt                   DateTime            @updatedAt
+
+  @@unique([id, sourceWarehouseId, rawMaterialId])
+  @@unique([id, destinationWarehouseId, rawMaterialId])
+  @@index([rawMaterialId, date])
+  @@index([sourceWarehouseId, date])
+  @@index([destinationWarehouseId, date])
+  @@index([date, id])
 }
 
 enum StockMovementType {
@@ -164,38 +278,149 @@ model Supplier {
   updatedAt DateTime @updatedAt // Última modificación (automática)
 }
 
+// Catálogo de identificación del documento de compra; sin tipos ficticios iniciales.
+model DocumentType {
+  id        Int        @id @default(autoincrement())
+  code      String     @unique @db.VarChar(50)
+  name      String     @unique @db.VarChar(100)
+  purchases Purchase[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
 model Purchase {
-  id          Int              @id @default(autoincrement())
-  date        DateTime         @default(now())
-  totalAmount Decimal          @db.Decimal(14, 2)
-  supplierId  Int
-  supplier    Supplier         @relation(fields: [supplierId], references: [id])
-  details     PurchaseDetail[]
+  id                       Int                 @id @default(autoincrement())
+  date                     DateTime            @default(now())
+  totalAmount              Decimal             @db.Decimal(14, 2)
+  supplierId               Int
+  supplierRut              String              @db.VarChar(12) // Identidad histórica; no cambia al editar el proveedor.
+  documentTypeId           Int
+  documentTypeCode         String              @db.VarChar(50) // Código histórico del tipo.
+  documentNumber           String              @db.VarChar(100) // Texto; conserva ceros iniciales.
+  documentNumberNormalized String              @db.VarChar(100) // Trim y mayúsculas, sin quitar ceros.
+  warehouseId              Int // Bodega única para líneas y recepciones.
+  version                  Int                 @default(1)
+  voidedAt                 DateTime?
+  voidReason               String?
+  deletedAt                DateTime? // Eliminación lógica sólo después de anular; conserva origen en Kardex.
+  supplier                 Supplier            @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  documentType             DocumentType        @relation(fields: [documentTypeId], references: [id], onDelete: Restrict)
+  warehouse                Warehouse           @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  details                  PurchaseDetail[]
+  receipts                 PurchaseReceipt[]
+  operations               PurchaseOperation[]
+  createdAt                DateTime            @default(now())
+  updatedAt                DateTime            @updatedAt
 
-  createdAt DateTime @default(now()) // Fecha de registro (no se modifica)
-  updatedAt DateTime @updatedAt // Última modificación (automática)
-
-  @@index([supplierId])
+  @@unique([supplierRut, documentTypeId, documentNumberNormalized])
+  @@unique([supplierId, documentTypeId, documentNumberNormalized])
+  @@unique([id, warehouseId])
+  @@index([documentTypeId])
+  @@index([warehouseId])
+  @@index([deletedAt, date])
 }
 
 model PurchaseDetail {
-  id             Int             @id @default(autoincrement())
-  quantity       Decimal         @db.Decimal(14, 3)
-  unitPrice      Decimal         @db.Decimal(14, 2)
-  purchaseId     Int
-  rawMaterialId  Int
-  warehouseId    Int // Bodega donde se recibe el material
-  purchase       Purchase        @relation(fields: [purchaseId], references: [id])
-  rawMaterial    RawMaterial     @relation(fields: [rawMaterialId], references: [id])
-  warehouse      Warehouse       @relation(fields: [warehouseId], references: [id])
-  stockMovements StockMovement[]
+  id                Int                      @id @default(autoincrement())
+  quantity          Decimal                  @db.Decimal(14, 3) // Total comprado en unidad de inventario; conserva significado previo.
+  purchasedQuantity Decimal                  @db.Decimal(14, 3) // Cantidad de presentaciones compradas.
+  presentation      String                   @db.VarChar(100)
+  unitFactor        Decimal                  @db.Decimal(14, 3) // Contenido por presentación en unidad del material.
+  unitPrice         Decimal                  @db.Decimal(14, 2) // Precio por presentación; inmutable desde INSERT mediante trigger SQL.
+  lineAmount        Decimal                  @db.Decimal(14, 2) // ROUND(purchasedQuantity * unitPrice, 2).
+  purchaseId        Int
+  rawMaterialId     Int
+  warehouseId       Int // Debe coincidir con cabecera; FK compuesta.
+  purchase          Purchase                 @relation(fields: [purchaseId, warehouseId], references: [id, warehouseId], onDelete: Restrict)
+  rawMaterial       RawMaterial              @relation(fields: [rawMaterialId], references: [id], onDelete: Restrict)
+  warehouse         Warehouse                @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  stockMovements    StockMovement[]
+  receiptDetails    PurchaseReceiptDetail[]
+  closures          PurchasePendingClosure[]
+  createdAt         DateTime                 @default(now())
+  updatedAt         DateTime                 @updatedAt
 
-  createdAt DateTime @default(now()) // Fecha de registro (no se modifica)
-  updatedAt DateTime @updatedAt // Última modificación (automática)
-
-  @@index([purchaseId])
+  @@unique([id, purchaseId])
+  @@index([purchaseId, warehouseId])
   @@index([rawMaterialId])
   @@index([warehouseId])
+}
+
+// El saldo pendiente/estado de recepción se deriva, no se guarda duplicado.
+model PurchaseReceipt {
+  id         Int                     @id @default(autoincrement())
+  purchaseId Int
+  date       DateTime                @default(now())
+  note       String?
+  purchase   Purchase                @relation(fields: [purchaseId], references: [id], onDelete: Restrict)
+  details    PurchaseReceiptDetail[]
+  operation  PurchaseOperation?
+  createdAt  DateTime                @default(now())
+  updatedAt  DateTime                @updatedAt
+
+  @@unique([id, purchaseId])
+  @@index([purchaseId, date])
+}
+
+model PurchaseReceiptDetail {
+  id                Int             @id @default(autoincrement())
+  purchaseId        Int // Las dos FK compuestas impiden mezclar compras.
+  receiptId         Int
+  purchaseDetailId  Int
+  receivedQuantity  Decimal         @db.Decimal(14, 3) // Presentaciones recibidas; se admiten fracciones exactas.
+  inventoryQuantity Decimal         @db.Decimal(14, 3) // Equivalente exacto; validar con factor histórico bajo bloqueo.
+  receipt           PurchaseReceipt @relation(fields: [receiptId, purchaseId], references: [id, purchaseId], onDelete: Restrict)
+  purchaseDetail    PurchaseDetail  @relation(fields: [purchaseDetailId, purchaseId], references: [id, purchaseId], onDelete: Restrict)
+  entryMovement     StockMovement?  @relation("EntradaRecepcion")
+  reversalMovement  StockMovement?  @relation("ReversionRecepcion")
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  @@unique([receiptId, purchaseDetailId])
+  @@index([receiptId, purchaseId])
+  @@index([purchaseDetailId, purchaseId])
+}
+
+model PurchasePendingClosure {
+  purchaseId       Int
+  id               Int                @id @default(autoincrement())
+  purchaseDetailId Int
+  quantity         Decimal            @db.Decimal(14, 3) // Pendiente cerrado en presentaciones; no modifica lo comprado.
+  reason           String
+  purchaseDetail   PurchaseDetail     @relation(fields: [purchaseDetailId, purchaseId], references: [id, purchaseId], onDelete: Restrict)
+  operation        PurchaseOperation?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  @@unique([id, purchaseId])
+  @@index([purchaseDetailId, purchaseId])
+}
+
+enum PurchaseOperationType {
+  CREAR
+  RECIBIR
+  CERRAR_PENDIENTE
+  ANULAR
+  ELIMINAR
+}
+
+// Registrar junto con los efectos, en la misma transacción; sin generar una clave nueva al reintentar.
+model PurchaseOperation {
+  idempotencyKey String                  @id @db.Uuid
+  type           PurchaseOperationType
+  requestHash    String                  @db.Char(64)
+  purchaseId     Int
+  receiptId      Int?                    @unique
+  closureId      Int?                    @unique
+  purchase       Purchase                @relation(fields: [purchaseId], references: [id], onDelete: Restrict)
+  receipt        PurchaseReceipt?        @relation(fields: [receiptId, purchaseId], references: [id, purchaseId], onDelete: Restrict)
+  closure        PurchasePendingClosure? @relation(fields: [closureId, purchaseId], references: [id, purchaseId], onDelete: Restrict)
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+
+  @@unique([receiptId, purchaseId])
+  @@unique([closureId, purchaseId])
+  @@index([purchaseId, type])
 }
 
 // ==========================================
@@ -257,12 +482,12 @@ enum QuoteStatus {
 }
 
 model SalesOrder {
-  id         Int         @id @default(autoincrement())
-  date       DateTime    @default(now())
-  quoteId    Int
-  pdfUrl     String? // URL del archivo almacenado (para cuando usemos AWS S3)
-  quote      Quote       @relation(fields: [quoteId], references: [id])
-  workOrders WorkOrder[]
+  id                Int                @id @default(autoincrement())
+  date              DateTime           @default(now())
+  quoteId           Int
+  pdfUrl            String? // URL del archivo almacenado (para cuando usemos AWS S3)
+  quote             Quote              @relation(fields: [quoteId], references: [id])
+  workOrders        WorkOrder[]
   accountReceivable AccountReceivable? // Una cuenta por venta; se crea al confirmar en el futuro módulo
 
   createdAt DateTime @default(now()) // Fecha de registro (no se modifica)
@@ -394,14 +619,14 @@ model AccountReceivable {
 // Historial de abonos. Los registros anulados se conservan y no reducen el saldo.
 // Control de sobrepagos, concurrencia y edición/borrado: responsabilidad del futuro módulo.
 model Payment {
-  id                  Int      @id @default(autoincrement())
+  id                  Int       @id @default(autoincrement())
   accountReceivableId Int
-  amount              Decimal  @db.Decimal(14, 2) // Estrictamente positivo y distinto de NaN: CHECK SQL
-  paidAt              DateTime @default(now())
+  amount              Decimal   @db.Decimal(14, 2) // Estrictamente positivo y distinto de NaN: CHECK SQL
+  paidAt              DateTime  @default(now())
   method              String // Medio de pago; texto no vacío, sin catálogo cerrado por ahora
   reference           String? // Referencia externa; no se usa como clave de idempotencia
   voucherUrl          String?
-  idempotencyKey      String   @unique @db.Uuid // La aplicación debe reutilizarla al reintentar; sin default
+  idempotencyKey      String    @unique @db.Uuid // La aplicación debe reutilizarla al reintentar; sin default
   voidedAt            DateTime?
   voidReason          String? // Fecha y motivo obligatorios juntos al anular: CHECK SQL
 

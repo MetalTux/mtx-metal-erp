@@ -28,6 +28,7 @@ export const navegacion: GrupoNavegacion[] = [
   { titulo: "Inventario", elementos: [
     { titulo: "Stock por bodega", ruta: "/inventario/stock", icono: PackageSearch, descripcion: "Consulta existencias y mínimos de reposición por material y bodega." },
     { titulo: "Movimientos", ruta: "/inventario/movimientos", icono: ArrowLeftRight, descripcion: "Revisa las entradas, salidas y ajustes de materiales en el kardex." },
+    { titulo: "Traslados", ruta: "/inventario/traslados", icono: Truck, descripcion: "Traslada materiales entre bodegas conservando su historial." },
     { titulo: "Ajustes de stock", ruta: "/inventario/ajustes", icono: SlidersHorizontal, descripcion: "Registra correcciones de inventario y sus motivos." },
   ] },
   { titulo: "Compras", elementos: [
