@@ -1,0 +1,51 @@
+import assert from "node:assert/strict";
+import { randomUUID } from "node:crypto";
+import { prisma } from "../src/lib/prisma";
+import { asignarFolio, configurarNumeracion, listarNumeraciones } from "../src/lib/servicios/numeracion";
+import { vistaPreviaFolio } from "../src/config/numeracion-documental";
+async function main() {
+  const url = new URL(process.env.DATABASE_URL!);
+  assert(["localhost", "127.0.0.1"].includes(url.hostname) && url.pathname.startsWith("/mtx_validacion_numeracion_"), "Usar exclusivamente copia local descartable de numeración.");
+  const inicio = await listarNumeraciones(); assert.equal(inicio.length, 4);
+  assert(inicio.every(f => f.nextNumber === null && !f.usada));
+  const cot = inicio.find(f => f.type === "COTIZACION")!;
+  const asignar = (clave = randomUUID()) => prisma.$transaction(tx => asignarFolio(tx, "COTIZACION", clave), { timeout: 20000 });
+  await assert.rejects(asignar(), /Configura primero/);
+  for (const n of ["0", "-1", "1.5", "1000000000000000000", "abc"]) assert.equal((await configurarNumeracion({ ...cot, padding: 4, nextNumber: n })).ok, false);
+  assert.equal((await configurarNumeracion({ ...cot, prefix: "<script>", padding: 4, nextNumber: "1" })).ok, false);
+  assert.equal((await configurarNumeracion({ ...cot, prefix: "COT-", padding: 4, nextNumber: "25" })).ok, true);
+  assert.equal((await configurarNumeracion({ ...cot, padding: 4, nextNumber: "30" })).ok, false); // Versión antigua.
+  assert.equal(vistaPreviaFolio("COT-", "25", 4), "COT-0025");
+  assert.equal(vistaPreviaFolio("", "12345", 2), "12345");
+  assert.equal(await prisma.documentFolio.count(), 0);
+  const clave = randomUUID();
+  const reintentos = await Promise.all([asignar(clave), asignar(clave), asignar(clave)]);
+  assert(reintentos.every(f => f.id === reintentos[0].id)); assert.equal(reintentos[0].folio, "COT-0025");
+  await assert.rejects(prisma.$transaction(tx => asignarFolio(tx, "ORDEN_TRABAJO", clave)), /otro tipo/);
+  const simultaneos = await Promise.all(Array.from({ length: 8 }, () => asignar()));
+  assert.equal(new Set(simultaneos.map(f => f.number.toString())).size, 8);
+  const antes = await prisma.documentNumbering.findUniqueOrThrow({ where: { id: cot.id } });
+  const cantidad = await prisma.documentFolio.count();
+  await assert.rejects(prisma.$transaction(async tx => { await asignarFolio(tx, "COTIZACION", randomUUID()); throw new Error("Fallo posterior del documento"); }), /Fallo posterior/);
+  assert.equal(await prisma.documentFolio.count(), cantidad);
+  assert.equal((await prisma.documentNumbering.findUniqueOrThrow({ where: { id: cot.id } })).nextNumber, antes.nextNumber);
+  for (const cambio of [{ prefix: "OT-" }, { padding: 5 }, { nextNumber: "1" }]) assert.equal((await configurarNumeracion({ ...antes, nextNumber: antes.nextNumber!.toString(), ...cambio })).ok, false);
+  await assert.rejects(prisma.documentNumbering.update({ where: { id: cot.id }, data: { prefix: "X" } }));
+  await assert.rejects(prisma.documentFolio.delete({ where: { id: reintentos[0].id } }));
+  await assert.rejects(prisma.documentFolio.update({ where: { id: reintentos[0].id }, data: { folio: "X" } }));
+  await assert.rejects(prisma.documentNumbering.delete({ where: { id: cot.id } }));
+  const saltos = await Promise.all([configurarNumeracion({ ...antes, nextNumber: "100" }), configurarNumeracion({ ...antes, nextNumber: "200" })]);
+  assert.equal(saltos.filter(r => r.ok).length, 1);
+  assert.equal((await prisma.documentFolio.findUniqueOrThrow({ where: { id: reintentos[0].id } })).folio, "COT-0025");
+  const trabajo = inicio.find(f => f.type === "ORDEN_TRABAJO")!;
+  assert((await configurarNumeracion({ ...trabajo, prefix: "OT-", padding: 18, nextNumber: "999999999999999999" })).ok);
+  const ultimo = await prisma.$transaction(tx => asignarFolio(tx, "ORDEN_TRABAJO", randomUUID()));
+  assert.equal(ultimo.folio, "OT-999999999999999999");
+  await assert.rejects(prisma.$transaction(tx => asignarFolio(tx, "ORDEN_TRABAJO", randomUUID())), /agotada/);
+  const config = await prisma.documentNumbering.findUniqueOrThrow({ where: { id: cot.id } });
+  // Un SQL/Prisma externo sin avance tampoco debe confirmar una asignación huérfana.
+  await assert.rejects(prisma.documentFolio.create({ data: { numberingId: cot.id, number: config.nextNumber!, prefix: config.prefix, padding: config.padding!, folio: vistaPreviaFolio(config.prefix, config.nextNumber!.toString(), config.padding)!, idempotencyKey: randomUUID() } }));
+  assert.equal(await prisma.documentFolio.count(), cantidad + 1);
+  console.log("OK: configuración, concurrencia, idempotencia, rollback, saltos, inmutabilidad, SQL y agotamiento.");
+}
+main().finally(() => prisma.$disconnect()).catch(error => { console.error(error); process.exitCode = 1; });

@@ -1,6 +1,6 @@
 # Hito: Cotizaciones
 
-Fecha: 07-10-2026. **Estado: inicio autorizado; esquema y checkpoints revisados; cálculo del PDF, descuento global y estados aprobados; alcance comercial ampliado a materia prima, catálogo de productos terminados y trabajos a medida; flujo de Orden de Compra Cliente, producción y vencimiento definido; quedan precisiones de implementación/configuración. Dependencias implementadas: CRUD de Condiciones de Pago y Clientes con sucursales; Cotizaciones, catálogo de productos, numeración y procesos comerciales siguen pendientes.**
+Fecha: 07-10-2026. **Estado: inicio autorizado; esquema y checkpoints revisados; cálculo del PDF, descuento global y estados aprobados; alcance comercial ampliado a materia prima, catálogo de productos terminados y trabajos a medida; flujo de Orden de Compra Cliente, producción y vencimiento definido; quedan precisiones de implementación/configuración. Dependencias implementadas: CRUD de Condiciones de Pago y Clientes con sucursales; Numeración y cuentas bancarias de Empresa implementadas como dependencias; Cotizaciones, catálogo de productos y procesos comerciales siguen pendientes.**
 
 Referencias: `AGENTS.md`, [guía de interfaz](GUIA-INTERFAZ.md), [Inventario](HITO-INVENTARIO.md), [Compras](HITO-COMPRAS.md), [propuestas de dominio](PROPUESTAS-DOMINIO.md) y `prisma/schema.prisma`.
 
@@ -158,7 +158,7 @@ El usuario confirma cálculo como el PDF y descuento global. Amplía el alcance:
 - [x] El plazo empieza con el trabajo finalizado y el registro de folio/fecha de factura. La fecha de factura es la base del cálculo de fecha tope según condición; abonos no alteran plazo.
 - [ ] Implementar finalización/factura y cálculo de vencimiento con fechas de calendario y copia del plazo acordado.
 - [x] Datos bancarios opcionales en Empresa aprobados. No copiar automáticamente los datos del PDF a la BD.
-- [ ] Implementar estructura y configuración bancaria tras respaldos/validación.
+- [x] Implementar estructura y configuración bancaria tras respaldos/validación.
 - [ ] Definir numeración única por tipo, asignación transaccional, reintentos y reglas de cambio de configuración sin colisión. No renumerar documentos ya guardados.
 - [x] Cotizaciones mixtas y stock propio de producto terminado aprobados.
 - [ ] Definir unidades/precios, receta y proceso de fabricación/ingreso antes de implementarlos.
@@ -192,7 +192,7 @@ Preguntas enviadas en esta sesión. Se espera respuesta explícita antes de deci
 - [ ] Diseñar saldo/Kardex de producto terminado separado del stock de materia prima actual, con documentos de ingreso/salida, precisión, concurrencia y trazabilidad.
 - [ ] Mantener consumo de materias primas y movimientos atómicos; producción no debe duplicar consumo al vender.
 - [ ] Preservar venta directa de materia prima con salida propia y trabajos a medida con consumo real.
-- [ ] Incorporar Condiciones de Pago, configuración de folios y datos bancarios mediante mantenedores/configuración con respaldos.
+- [x] Incorporar Condiciones de Pago, configuración de folios y datos bancarios mediante mantenedores/configuración con respaldos.
 - [ ] Implementar registro de orden del cliente, referencia de factura y cuenta por cobrar conforme a entidad confirmada.
 - [ ] Panel de cobranza con monto acordado menos abonos vigentes, excluyendo anulaciones; estados de pago y vencimiento derivados.
 - [ ] Mantener anticipos idempotentes, control transaccional de sobrepagos, anulaciones con motivo y protección del historial.
@@ -333,3 +333,160 @@ La dirección pendiente se conserva sólo para Casa Central heredada. Nuevas suc
 Respaldo/evidencias: `backups/20261008_005221_sucursales_clientes`, con originales, dump, huellas, logs, scripts, captura móvil y SHA256SUMS. Ningún cliente/cotización ficticio se guardó en PostgreSQL real.
 
 **Continuación:** configuración de numeración/datos bancarios y catálogo de productos/recetas, conforme al orden acordado. Las unidades del catálogo se tomarán del mantenedor con Unidades por defecto; no forzar todo el producto terminado a cantidades enteras.
+
+
+## 10-10-2026 — diferencia entre Editar y Sucursales
+
+- [x] Respaldar componente y documentación antes de modificar: `/home/metaltux/Proyectos/mtx-metal-erp/backups/20261010_200520_cabecera_sucursales`.
+- [x] Mantener la acción Sucursales, con RUT, nombre y contacto/teléfono/correo generales en sólo lectura.
+- [x] Permitir edición de sucursales en ese modo; Editar continúa habilitando cabecera y sucursales, y Ver mantiene todo en sólo lectura.
+- [x] Ajustar descripción del formulario y omitir marcas de obligatorio en la cabecera de consulta.
+- [x] ESLint y compilación de producción (incluidos tipos) correctos; diff sin errores.
+- [ ] Revisión visual del usuario de la diferencia entre ambos botones.
+
+No se modifican Prisma, migraciones, servicios ni registros. La prueba de navegador no pudo ejecutarse porque el entorno temporal de Playwright de la sesión anterior ya no existe; no se afirma validación visual automática de esta mejora. No se iniciaron servidores propios.
+
+
+## 10-10-2026 — inicio de Configuración de numeración
+
+**Estado:** reglas aprobadas explícitamente; configuración y asignador transaccional implementados. Validación y despliegue local registrados al final de esta sección.
+
+### Reglas ya aprobadas
+
+- [x] Configuración por tipo documental con prefijo, próximo número y cantidad de dígitos/ceros iniciales.
+- [x] Secuencia continua, sin reinicio anual inicial, con protección contra duplicados.
+- [x] Inicio de Cotizaciones todavía no definido; no asignar 1, 0202 ni otro valor por defecto.
+- [x] Conservar documentos históricos y no renumerarlos al cambiar configuración.
+
+### Precisiones consultadas
+
+- [x] Aprobados tipos internos: Cotización, Orden de Compra Cliente, Orden de Trabajo y Guía de Despacho. El número externo de la orden del cliente y folio de factura son referencias independientes.
+- [x] Aprobada asignación al guardar el documento por primera vez.
+- [x] Aprobado que tras primer uso se bloquea el formato (prefijo/dígitos) y sólo se permite adelantar el próximo número. Respuesta explícita del usuario.
+- [x] Aprobada conservación de folios consumidos ante eliminación/anulación; no reciclar ni retroceder.
+
+### Etapa N1 — esquema, respaldo y migración
+
+- [x] Revisar Git, estado real del esquema, menú y decisiones existentes; conservar cambios previos de Clientes.
+- [x] Respaldar documentos antes de registrar esta preparación.
+- [x] Respaldar archivos de código y PostgreSQL antes de editar/aplicar migración.
+- [x] Diseñar configuración única por tipo confirmado, versión y próximo número sin valor inicial inventado.
+- [x] Diseñar registro persistido de asignaciones con tipo, número, formato histórico y clave estable de operación.
+- [x] Garantizar unicidad por tipo/número, folio histórico y clave de reintento; definir índices y restricciones de positivos/límites.
+- [x] Preservar compatibilidad con documentos anteriores sin deducir sus folios del ID ni del PDF de muestra.
+- [x] Generar SQL versionado, revisar/probar en copia, validar Prisma y generar cliente; aplicar sólo tras validación.
+
+### Etapa N2 — servicio y concurrencia
+
+- [x] Guardar configuración con control de versión y validación de formato/entero positivo; no convertir números largos a number.
+- [x] Permitir estado sin configurar y bloquear asignaciones hasta completar configuración por el usuario.
+- [x] Mostrar vista previa sin reservar ni consumir folio.
+- [x] Preparar asignador con bloqueo transaccional de secuencia; contrato exige que el futuro módulo guarde el documento en esa misma transacción. La integración documental sigue pendiente.
+- [x] Reintentos reconocidos por clave estable antes de consumir otro número; fallo de guardado revierte asignación/avance.
+- [x] Resolver límites de secuencia, longitud y cambios de configuración según respuestas; no depender sólo de la interfaz.
+- [ ] Integrar asignación en cada módulo cuando se implemente, no al consultar ni al abrir un formulario.
+
+### Etapa N3 — interfaz en Configuración
+
+- [x] Ruta propuesta `/configuracion/numeracion`, añadida al menú centralizado.
+- [x] Tabla con filtro, tipo, estado, prefijo, próximo número y formato de ejemplo; consulta/edición sobre el listado.
+- [x] Tipo fijo confirmado, sin mantenedor libre que cree tipos de documentos inexistentes.
+- [x] Formulario con ayudas, campos explícitos sin inicio por defecto, controles de formato y advertencia de cambios irreversibles/saltos según reglas aprobadas.
+- [x] Confirmación/avisos/descarte reutilizables, teclado/foco, cursor y revisión móvil.
+
+### Etapa N4 — validación y cierre
+
+- [x] Validar sin configurar, ceros iniciales, prefijos, límite/agotamiento, caracteres y valores inválidos.
+- [x] Probar asignaciones concurrentes, reintentos y fallo posterior a reservar número sin asignaciones huérfanas.
+- [x] Probar conservación de folio histórico y restricciones de cambio de configuración.
+- [x] Probar navegador escritorio/móvil, carga/vacíos/errores y control de versión.
+- [x] Ejecutar lint/build, revisar diff y documentación; no marcar asignación integrada a Cotizaciones antes de desarrollarla.
+- [x] Comparar tablas anteriores y retirar copias/servidores propios; verificar puertos preservando procesos del usuario.
+- [x] Aprobación funcional del usuario de Numeración.
+
+El usuario aprobó ambas precisiones. El número inicial se elegirá en el módulo: las cuatro configuraciones se crean sin próximo número ni dígitos definidos. No se infiere ningún inicio de documentos externos.
+
+
+### Entrega técnica — 10-10-2026
+
+- [x] Migración `20261011001000_numeracion_documental` validada en copia y aplicada a PostgreSQL local; estado de migraciones actualizado.
+- [x] `DocumentNumbering`: cuatro tipos fijos sin inicio supuesto, versión y contador BigInt. `DocumentFolio`: historial permanente, UUID único y formato copiado; restricciones SQL de formato, rango, avance y protección de registros utilizados.
+- [x] `/configuracion/numeracion`: filtro, Ver/Configurar, formularios sobre listado, ayudas «i», vista previa y confirmación de guardado/saltos; descarte reutilizable y campos bloqueados al primer uso.
+- [x] Prueba de integración en copia: no configurado, formato, versión, asignaciones concurrentes, reintentos, rollback, saltos, histórico, SQL y agotamiento.
+- [x] Chromium escritorio/móvil: consulta, campos bloqueados, guardado confirmado, validación, descarte, filtro y ayuda; sin errores de página.
+- [x] Prisma format/validate/generate, TypeScript, lint y build correctos.
+- [x] Las 30 tablas anteriores conservan exactamente sus conteos y huellas. Base real: cuatro configuraciones sin próximo número/dígitos y cero folios asignados.
+- [x] Servidor propio 3031 detenido. Servidor previo 3030/PID 13696 conservado. Copia descartable retirada al cierre.
+- [x] Revisión funcional del usuario de Configuración de numeración.
+
+**Límites técnicos:** número positivo de hasta 18 dígitos; prefijo opcional de hasta 20 caracteres (letras ASCII, números, punto, guion, barra o guion bajo). Dígitos mínimos entre 1 y 18: los números mayores que ese ancho no se truncan. El contador interno admite un valor adicional exclusivamente para representar agotamiento después del último folio.
+
+**Uso futuro del servicio:** `asignarFolio(tx, tipo, UUID)` se invoca dentro de la transacción que crea el documento; no tiene una acción pública de reserva. El módulo debe validar el contenido e idempotencia de su documento y guardar su folio/vínculo en esa misma transacción. Reutilizar el UUID para reintentos; un fallo posterior revierte asignación y contador. Cotizaciones/órdenes/guías existentes no se renumeran ni reciben vínculos inferidos. Esta dependencia no implementa sus formularios ni emisión de PDF.
+
+**Respaldo:** `backups/20261010_211026_numeracion_documental`, con originales, dump PostgreSQL válido, huellas, logs, scripts, captura móvil y SHA256SUMS. El primer intento de captura binaria falló y fue corregido antes de modificar archivos o datos; el archivo identificado como `respaldo_fallido_no_utilizar.dump` no sirve para restaurar.
+
+**Próxima dependencia:** datos bancarios de Empresa y catálogo/productos/recetas, según el orden del hito; requieren sus definiciones antes de implementar. El número inicial se elegirá manualmente desde esta nueva pantalla.
+
+
+El usuario validó el funcionamiento de Configuración de numeración. Se cierra esta dependencia; la integración del asignador con los documentos comerciales permanece pendiente. Continúa la configuración bancaria de Empresa, antes del catálogo y Cotizaciones.
+
+
+## Cuentas bancarias de Empresa — definición y etapas
+
+**Estado:** ambas precisiones aprobadas explícitamente. Configuración bancaria implementada y validada técnicamente; revisión funcional del usuario aprobada; integración del selector en Cotizaciones pendiente.
+
+- [x] Permitir varias cuentas bancarias de la empresa.
+- [x] Identificar una principal, utilizada por defecto, y permitir elegir otra al registrar una cotización.
+- [x] Datos bancarios opcionales: no crear cuentas ficticias ni copiar automáticamente datos del PDF.
+- [x] Preservar copia histórica de la cuenta seleccionada en el documento emitido.
+- [x] Aprobados campos obligatorios y titular: banco, tipo de cuenta, número como texto, nombre y RUT propio del titular; correo opcional.
+- [x] Aprobada baja mediante desactivación para cuentas utilizadas, conservando referencias/histórico, y elección explícita de nueva principal antes de desactivar la vigente.
+
+### B1 — estructura y migración
+
+- [x] Respaldar archivos afectados y PostgreSQL.
+- [x] Incorporar cuentas relacionadas con Empresa, principal única y control de versión/concurrencia; no exigir cuentas para configurar otros datos de Empresa.
+- [x] Validar RUT del titular y conservar número de cuenta como texto, incluidos ceros iniciales.
+- [x] Preparar referencia y copia histórica bancaria para Cotizaciones, sin inferir datos en documentos anteriores.
+- [x] Agregar índices/restricciones y probar migración en copia antes de aplicar; validar Prisma y generar cliente.
+
+### B2 — configuración e interfaz
+
+- [x] Gestionar cuentas dentro de Configuración de Empresa: listado, filtro, Crear/Ver/Editar y baja según regla aprobada.
+- [x] Permitir marcar principal con confirmación y control transaccional, sin dos principales concurrentes.
+- [x] Formularios sobre el listado, ayudas y alertas/descarte reutilizables.
+- [x] Preparar consulta de cuentas activas y servicio de snapshot: principal por defecto, alternativa elegible y opción sin cuenta.
+- [ ] Integrar selector buscable en el futuro formulario de Cotizaciones.
+
+### B3 — validación y cierre
+
+- [x] Probar obligatorios, RUT, números como texto, principal, conflictos y conservación histórica.
+- [x] Probar interfaz escritorio/móvil, consulta readonly, confirmaciones y errores.
+- [x] Ejecutar lint/build, comparar datos anteriores y actualizar documentación.
+- [x] Retirar copias/servidores propios y verificar puertos, preservando procesos previos.
+- [x] Revisión funcional del usuario de cuentas bancarias.
+
+
+### Entrega bancaria — 10-10-2026
+
+- [x] Respaldar originales y PostgreSQL en `backups/20261010_231031_cuentas_bancarias`.
+- [x] Migración `20261011023500_cuentas_bancarias_empresa` probada en copia y aplicada a PostgreSQL local; esquema validado y cliente generado.
+- [x] CompanyBankAccount relacionada con el perfil único; principal única, activa y requerida desde la primera cuenta. No crear perfil/cuentas automáticamente durante consultas o migración.
+- [x] Campos obligatorios: Banco, Tipo de cuenta, Número, Titular y RUT; correo opcional. Banco/tipo son texto libre por ahora, con ejemplos en ayuda, sin inventar un catálogo fijo de bancos.
+- [x] Número como texto, conservando ceros iniciales; identidad banco/tipo/número única sin distinguir mayúsculas/espacios exteriores. RUT normalizado y DV validado en formulario, servicio y SQL, incluidos K y 0.
+- [x] Cambios bajo bloqueo Empresa → cuentas, versión entera y principal anterior esperada; cambio de principal atómico, con rollback ante error.
+- [x] Primera cuenta principal; para desactivarla elegir otra antes. Baja lógica para todas las cuentas, incluso sin uso, conservando historial; reactivación disponible. No hay borrado físico.
+- [x] Empresa incorpora tabla/filtro y Crear/Ver/Editar, Principal y Desactivar/Activar; formularios sobre listado, ayudas por campo, confirmaciones/descarte reutilizables y errores.
+- [x] Quote prepara FK Restrict y siete campos bancarios históricos; CHECK exige snapshot completo cuando hay cuenta. Documentos existentes permanecen con campos nuevos nulos.
+- [x] `datosBancariosParaCotizacion` captura datos bajo bloqueo dentro de la transacción del futuro documento; ID omitido propone principal, ID explícito exige cuenta activa y null omite datos bancarios.
+- [x] `tests/cuentas-bancarias.integration.ts` en copia local: obligatorios, RUT/K/0, ceros, duplicados, versiones, principal, concurrencia, rollback, baja/reactivación y conservación de snapshots/referencias.
+- [x] Chromium escritorio/móvil: crear, validar RUT, consulta readonly sin guardar con Enter, descarte, cambio de principal, baja/reactivación, filtro/vacío, cursor, ayuda y edición.
+- [x] Prisma format/validate/generate, TypeScript, lint y build correctos; sin nuevas dependencias del proyecto.
+- [x] Conteos/huellas de 32 tablas anteriores iguales; en Quote se excluyen sólo las siete columnas nuevas, que quedan nulas en documentos anteriores.
+- [x] Copia descartable retirada y servidor propio 3031 detenido. Se conserva servidor previo 3030/PID 13696.
+- [x] Revisión funcional del usuario de las cuentas bancarias.
+- [ ] Integración del selector buscable y guardado del snapshot en Cotizaciones; no hay emisión de PDF implementada.
+
+Para usarlo, ingresar en **Configuración → Empresa → Cuentas bancarias**. Si no existe perfil, guardarlo primero; la configuración bancaria continúa siendo opcional. La principal se aplica a cotizaciones nuevas, sin alterar documentos previos.
+
+**Siguiente dependencia:** catálogo de productos y recetas, con unidades del mantenedor y definición de producción/stock terminado antes de habilitar escrituras de inventario.

@@ -473,27 +473,35 @@ model PaymentCondition {
 }
 
 model Quote {
-  id                   Int               @id @default(autoincrement())
-  date                 DateTime          @default(now())
+  id                   Int                 @id @default(autoincrement())
+  date                 DateTime            @default(now())
   validUntil           DateTime? // Fecha hasta la que se mantiene la oferta
-  status               QuoteStatus       @default(PENDIENTE)
-  totalAmount          Decimal           @db.Decimal(14, 2)
+  status               QuoteStatus         @default(PENDIENTE)
+  totalAmount          Decimal             @db.Decimal(14, 2)
   clientId             Int
-  client               Client            @relation(fields: [clientId], references: [id])
+  client               Client              @relation(fields: [clientId], references: [id])
   details              QuoteDetail[]
   salesOrders          SalesOrder[]
   paymentConditionId   Int?
-  paymentCondition     PaymentCondition? @relation(fields: [paymentConditionId], references: [id], onDelete: Restrict)
+  paymentCondition     PaymentCondition?   @relation(fields: [paymentConditionId], references: [id], onDelete: Restrict)
   paymentConditionName String? // Copia histórica; no se recalcula al editar el catálogo
   paymentTermDays      Int? // Plazo acordado, no vencimiento ni cuotas
   clientBranchId       Int?
-  clientBranch         ClientBranch?     @relation(fields: [clientBranchId, clientId], references: [id, clientId], onDelete: Restrict)
+  clientBranch         ClientBranch?       @relation(fields: [clientBranchId, clientId], references: [id, clientId], onDelete: Restrict)
   branchName           String?
   branchAddress        String?
   branchCity           String?
   branchContact        String?
   branchPhone          String?
   branchEmail          String?
+  bankAccountId        Int?
+  bankAccount          CompanyBankAccount? @relation(fields: [bankAccountId], references: [id], onDelete: Restrict)
+  bankName             String?
+  bankAccountType      String?
+  bankAccountNumber    String?
+  bankHolderName       String?
+  bankHolderRut        String?
+  bankEmail            String?
 
   createdAt DateTime @default(now()) // Fecha de registro (no se modifica)
   updatedAt DateTime @updatedAt // Última modificación (automática)
@@ -501,6 +509,7 @@ model Quote {
   @@index([clientId])
   @@index([paymentConditionId])
   @@index([clientBranchId, clientId])
+  @@index([bankAccountId])
 }
 
 // Línea de una cotización. Puede ser un material del catálogo (rawMaterialId)
@@ -621,7 +630,7 @@ enum PaymentStatus {
 // Los datos son opcionales para configurar la empresa de forma gradual.
 // Antes de emitir documentos, la aplicación deberá exigir los datos acordados.
 model CompanyProfile {
-  id               Int     @id @default(1)
+  id               Int                  @id @default(1)
   legalName        String? // Razón social o nombre del emisor
   tradeName        String? // Nombre comercial
   rut              String? // Convención: sin puntos, con guion y dígito verificador en mayúscula
@@ -632,6 +641,7 @@ model CompanyProfile {
   email            String?
   phone            String?
   logoUrl          String? // Referencia al logo; almacenamiento por definir
+  bankAccounts     CompanyBankAccount[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -683,4 +693,62 @@ model Payment {
   updatedAt DateTime @updatedAt
 
   @@index([accountReceivableId, voidedAt, paidAt])
+}
+
+// Tipos internos; los números del cliente y de facturas externas son independientes.
+enum DocumentNumberType {
+  COTIZACION
+  ORDEN_COMPRA_CLIENTE
+  ORDEN_TRABAJO
+  GUIA_DESPACHO
+}
+
+model DocumentNumbering {
+  id          Int                @id @default(autoincrement())
+  type        DocumentNumberType @unique
+  prefix      String             @default("") @db.VarChar(20)
+  padding     Int?
+  nextNumber  BigInt?
+  version     Int                @default(1)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  assignments DocumentFolio[]
+}
+
+// Registro permanente: ni anular ni eliminar un documento libera su folio.
+model DocumentFolio {
+  id             Int               @id @default(autoincrement())
+  numberingId    Int
+  numbering      DocumentNumbering @relation(fields: [numberingId], references: [id], onDelete: Restrict)
+  number         BigInt
+  prefix         String            @db.VarChar(20)
+  padding        Int
+  folio          String            @db.VarChar(38)
+  idempotencyKey String            @unique @db.Uuid
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  @@unique([numberingId, number])
+  @@unique([numberingId, folio])
+}
+
+// La baja es lógica: conservar cuentas y referencias de documentos históricos.
+model CompanyBankAccount {
+  id            Int            @id @default(autoincrement())
+  companyId     Int            @default(1)
+  company       CompanyProfile @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  bankName      String         @db.VarChar(100)
+  accountType   String         @db.VarChar(100)
+  accountNumber String         @db.VarChar(60)
+  holderName    String         @db.VarChar(150)
+  holderRut     String         @db.VarChar(20)
+  email         String?        @db.VarChar(254)
+  isActive      Boolean        @default(true)
+  isPrimary     Boolean        @default(false)
+  version       Int            @default(1)
+  quotes        Quote[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@index([companyId])
 }

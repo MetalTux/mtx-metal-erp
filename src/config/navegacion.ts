@@ -45,6 +45,7 @@ export const navegacion: GrupoNavegacion[] = [
     { titulo: "Guías de despacho", ruta: "/trabajos/despachos", icono: Truck, descripcion: "Gestiona las entregas y los documentos de despacho." },
   ] },
   { titulo: "Configuración", elementos: [
+    { titulo: "Numeración", ruta: "/configuracion/numeracion", icono: FileText, descripcion: "Configura los folios internos de cotizaciones, órdenes y guías." },
     { titulo: "Empresa", ruta: "/configuracion/empresa", icono: Building2, descripcion: "Configura los datos de tu empresa para cotizaciones y documentos." },
   ] },
 ];

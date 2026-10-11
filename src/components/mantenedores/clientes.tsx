@@ -33,6 +33,7 @@ const sucursalNueva = (central = false) => ({ name: central ? "Casa Central" : "
 /** Cliente y sucursales son un único borrador: cancelar no escribe cambios parciales. */
 function FormularioCliente({ editor, pendiente, onCerrar, onGuardar }: { editor: Editor; pendiente: boolean; onCerrar: () => void; onGuardar: (datos: DatosCliente) => Promise<ResultadoCliente> }) {
   const consulta = editor.modo === "ver";
+  const cabeceraSoloLectura = consulta || editor.modo === "sucursales";
   const [error, setError] = useState<string>();
   const [descarte, setDescarte] = useState(false);
   const [eliminarSucursal, setEliminarSucursal] = useState<number>();
@@ -61,8 +62,8 @@ function FormularioCliente({ editor, pendiente, onCerrar, onGuardar }: { editor:
       {error && <Aviso titulo={error} />}
       <div className="grid gap-3 sm:grid-cols-2">
         {generales.map(([campo, titulo, tipo, limite]) => <div key={campo} className="space-y-1">
-          <Label htmlFor={`cliente-${campo}`}>{titulo}{!consulta && campo !== "email" && " *"}</Label>
-          <Input id={`cliente-${campo}`} type={tipo} {...register(campo)} readOnly={consulta} disabled={pendiente} maxLength={limite} aria-invalid={Boolean(errors[campo])} aria-describedby={errors[campo] ? `cliente-${campo}-error` : undefined} />
+          <Label htmlFor={`cliente-${campo}`}>{titulo}{!cabeceraSoloLectura && campo !== "email" && " *"}</Label>
+          <Input id={`cliente-${campo}`} type={tipo} {...register(campo)} readOnly={cabeceraSoloLectura} disabled={pendiente} maxLength={limite} aria-invalid={Boolean(errors[campo])} aria-describedby={errors[campo] ? `cliente-${campo}-error` : undefined} />
           {errors[campo] && <p id={`cliente-${campo}-error`} role="alert" className="text-sm text-destructive">{errors[campo]?.message}</p>}
         </div>)}
       </div>
@@ -161,7 +162,7 @@ export function Clientes({ clientes }: { clientes: Cliente[] }) {
     {pendiente && !editor && !aEliminar && <p role="status" className="flex items-center gap-2 text-sm text-muted-foreground"><LoaderCircle className="size-4 animate-spin" aria-hidden="true" />Consultando cliente…</p>}
     <Dialog open={Boolean(editor)} onOpenChange={(abierto) => { if (!abierto && !pendiente) setEditor(undefined); }}>
       <DialogContent showCloseButton={false} className="max-h-[90dvh] overflow-y-auto rounded-lg sm:max-w-3xl" onCloseAutoFocus={(event) => { event.preventDefault(); restaurarFoco(); }} onEscapeKeyDown={(event) => { event.preventDefault(); if (!pendiente) document.getElementById("cliente-cancelar")?.click(); }} onInteractOutside={(event) => event.preventDefault()}>
-        <DialogHeader><DialogTitle>{editor?.modo === "crear" ? "Crear cliente" : editor?.modo === "sucursales" ? "Sucursales del cliente" : editor?.modo === "editar" ? "Editar cliente" : "Ver cliente"}</DialogTitle><DialogDescription>{editor?.modo === "ver" ? "Consulta los datos de contacto y las cotizaciones asociadas a este cliente." : "Completa datos generales y sucursales. Nombre y teléfono de contacto, dirección y ciudad son obligatorios; correo opcional."}</DialogDescription></DialogHeader>
+        <DialogHeader><DialogTitle>{editor?.modo === "crear" ? "Crear cliente" : editor?.modo === "sucursales" ? "Sucursales del cliente" : editor?.modo === "editar" ? "Editar cliente" : "Ver cliente"}</DialogTitle><DialogDescription>{editor?.modo === "ver" ? "Consulta los datos de contacto y las cotizaciones asociadas a este cliente." : editor?.modo === "sucursales" ? "Administra las sucursales y sus contactos. Los datos generales del cliente son de sólo lectura; para modificarlos, utiliza Editar." : "Completa datos generales y sucursales. Nombre y teléfono de contacto, dirección y ciudad son obligatorios; correo opcional."}</DialogDescription></DialogHeader>
         {editor && <FormularioCliente key={`${editor.modo}-${editor.cliente?.updatedAt ?? "nueva"}`} editor={editor} pendiente={pendiente} onCerrar={() => setEditor(undefined)} onGuardar={guardar} />}
       </DialogContent>
     </Dialog>

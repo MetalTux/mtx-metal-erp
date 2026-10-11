@@ -183,3 +183,27 @@ Ver [HITO-INVENTARIO.md](HITO-INVENTARIO.md) para reglas, respaldos y evidencia.
 - [ ] Revisión funcional del usuario y cierre restante del Hito de Inventario.
 
 Ver [HITO-INVENTARIO.md](HITO-INVENTARIO.md) para reglas, migración, respaldos y evidencia.
+
+
+## 10-10-2026 — Numeración documental
+
+- [x] Ruta `/configuracion/numeracion` y navegación centralizada en Configuración.
+- [x] Tabla filtrable con cuatro tipos fijos, estado, prefijo, próximo número y vista previa.
+- [x] Ver/Configurar sobre listado, ayudas por campo, confirmación/saltos y descarte reutilizables.
+- [x] Formato readonly tras primer uso; estado sin configurar y agotamiento explícitos.
+- [x] Chromium escritorio/móvil y validación de lint/tipos/build.
+- [x] Aprobación funcional del usuario de Configuración de numeración.
+
+Ver [HITO-COTIZACIONES.md](HITO-COTIZACIONES.md) para migración, reglas, respaldo e integración pendiente en cada documento.
+
+
+## 10-10-2026 — Cuentas bancarias en Empresa
+
+- [x] Sección de cuentas bancarias integrada en Configuración → Empresa.
+- [x] Tabla/filtro, Crear/Ver/Editar, principal y baja/reactivación lógica.
+- [x] Campos con ayudas, validación de RUT, consulta readonly, confirmaciones/descarte y cursor.
+- [x] Chromium escritorio/móvil y lint/tipos/build.
+- [ ] Selección buscable de cuenta en el futuro formulario de Cotizaciones.
+- [x] Aprobación funcional del usuario de cuentas bancarias.
+
+Ver [HITO-EMPRESA.md](HITO-EMPRESA.md) y [HITO-COTIZACIONES.md](HITO-COTIZACIONES.md).

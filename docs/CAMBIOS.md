@@ -745,3 +745,31 @@ Se incorpora ClientBranch y la migración `20261008065000_sucursales_clientes`. 
 Cliente/sucursales se crean/editan juntos en transacción bajo bloqueo de cliente y timestamp monotónico. Formularios permiten agregar/editar/quitar sucursales desde Crear/Editar/listado sin navegar, con confirmación/descarte y modo readonly. IDs ajenos o repetidos se rechazan; sucursal con cotizaciones no se elimina y el guardado completo revierte. Quote recibe referencia compuesta al mismo cliente y snapshots opcionales para futuros documentos; no se infieren sucursales históricas.
 
 Prisma validado/generado; migración probada en copia y aplicada localmente. Pruebas específicas de sucursales y regresión de Clientes, caso de migración heredada en segunda copia, Chromium escritorio/móvil y lint/TypeScript/build correctos. Huellas/conteos de 29 tablas previas intactos. Respaldo: `backups/20261008_005221_sucursales_clientes`. Copias retiradas y servidor propio 3031 detenido; 3030/PID 61346 del usuario conservado. Revisión funcional y conexión de sucursal al formulario de Cotizaciones pendientes.
+
+
+## 10-10-2026 — cabecera de Clientes en sólo lectura al administrar Sucursales
+
+La acción Sucursales conserva los datos generales como contexto de consulta y habilita sólo las sucursales. Editar conserva la edición completa y Ver mantiene sólo lectura. Se adapta descripción del diálogo y marcas de obligatorio. Cambio únicamente de interfaz; sin modificación de esquema/datos. Respaldo previo: `/home/metaltux/Proyectos/mtx-metal-erp/backups/20261010_200520_cabecera_sucursales`. ESLint, build con verificación de tipos y diff correctos; revisión visual pendiente (Playwright temporal anterior no disponible). Sin servidores propios iniciados; se conserva el servidor del usuario en 3030/PID 13696.
+
+
+## 10-10-2026 — Preparación de Configuración de numeración
+
+Se desglosa en HITO-COTIZACIONES el diseño y checklist de numeración por tipo, configuración sin inicio inventado, asignación transaccional/idempotente y conservación histórica. Se consultan tipos internos/momento de asignación y política de modificación tras uso antes de implementar. Estado real: no hay módulo ni migración de numeración. Respaldo previo: `backups/20261010_201622_plan_numeracion`; revisión documental y diff; sin servidores, build ni escrituras de datos.
+
+
+## 10-10-2026 — Configuración de numeración documental
+
+Configuración en `/configuracion/numeracion` para Cotización, Orden de Compra Cliente, Orden de Trabajo y Guía de Despacho. Folio al primer guardado, secuencia continua sin reinicio anual, formato bloqueado desde primer uso y sólo avance del próximo número; números externos independientes. Migración `20261011001000_numeracion_documental`: cuatro filas sin inicio inventado, BigInt, versión, registro permanente de folios, UUID/índices únicos, CHECK y triggers de protección/avance. No altera documentos históricos.
+
+Asignador reutilizable bajo bloqueo de UUID y secuencia; llamadas secuenciales con cliente transaccional. El futuro módulo guardará su documento en la misma transacción y validará su contenido/idempotencia. No se conecta aún a módulos pendientes ni se expone reserva de folios desde la interfaz. Rango 1–999999999999999999, ancho mínimo 1–18, prefijo hasta 20 caracteres; agotamiento explícito.
+
+Validación en copia PostgreSQL: concurrencia, reintentos, versiones, rollback, histórico, restricciones SQL y límite. Chromium escritorio/móvil, Prisma validate/generate, lint/tipos/build correctos. Migración aplicada a base local; las 30 tablas anteriores mantienen huellas/conteos; cuatro configuraciones sin número y cero asignaciones reales. Respaldo `backups/20261010_211026_numeracion_documental`; ver checklist en HITO-COTIZACIONES. Servidor propio 3031 detenido; 3030/PID 13696 pertenece al servidor previo y se conserva.
+
+
+## 10-10-2026 — Cuentas bancarias de Empresa
+
+Empresa admite varias cuentas con una principal activa. Modelo CompanyBankAccount, campos obligatorios banco/tipo/número/titular/RUT, correo opcional y número de cuenta como texto para conservar ceros. Banco/tipo libres por ahora. Principal única y obligatoria desde la primera cuenta, bloqueo del perfil y versión entera para serializar cambios; al cambiar principal se comprueba además la principal anterior esperada. Desactivación/reactivación lógica, sin borrar cuentas; elegir otra antes de desactivar la principal.
+
+Migración `20261011023500_cuentas_bancarias_empresa`, transaccional, sin crear datos bancarios: FK/índices, identidad normalizada única, CHECK de RUT con DV, principal activa, trigger de bloqueo y comprobación diferida de principal. Quote incorpora referencia Restrict y snapshot bancario completo opcional, sin inferir datos antiguos. Servicio preparado para escoger principal/alternativa activa/ninguna dentro de la transacción de Cotizaciones; integración del selector y PDF sigue pendiente.
+
+Configuración en Empresa con tabla, filtro, Crear/Ver/Editar, Principal, Desactivar/Activar, ayudas y componentes reutilizables de confirmación/alerta/descarte. Pruebas de dominio en copia local, incluida concurrencia, rollback e historial; Chromium escritorio/móvil; Prisma validate/generate, tipos/lint/build correctos. Migración aplicada localmente; 32 tablas anteriores conservan huellas (Quote excluye siete nuevas columnas nulas). Copia/servidor 3031 retirados; preservar servidor previo 3030/PID13696. Respaldo `backups/20261010_231031_cuentas_bancarias`; revisión funcional del usuario pendiente.

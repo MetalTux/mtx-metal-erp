@@ -151,3 +151,17 @@ La copia temporal se retiró; 3031 quedó libre y se conservó el servidor previ
 La revisión automática de permisos rechazó la comprobación del túnel público por posible exposición de datos privados y falta de autorización específica del destino. Se solicitó esa autorización al usuario; el check queda pendiente hasta su respuesta y ejecución efectiva.
 
 Referencias técnicas: [opciones de Sharp](https://sharp.pixelplumbing.com/api-constructor/) y [límite de Server Actions de Next.js](https://nextjs.org/docs/app/api-reference/config/next-config-js/serverActions).
+
+
+## 10-10-2026 — Cuentas bancarias
+
+- [x] Varias cuentas con una principal, campos obligatorios y correo opcional aprobados.
+- [x] Modelo/migración, RUT válido, número como texto, principal única y control de versión/concurrencia.
+- [x] Listado con filtro, Crear/Ver/Editar, marcar principal, desactivar y reactivar sin salir de Empresa.
+- [x] Primera cuenta principal; elegir otra antes de desactivarla. Conservar todas las cuentas mediante baja lógica.
+- [x] Preparar referencia/snapshot bancario de Cotización; cambios de la cuenta no reescriben documentos anteriores.
+- [x] Pruebas en copia, escritorio/móvil, lint/tipos/build y comparación de datos anteriores.
+- [ ] Selección buscable de cuenta en el futuro formulario de Cotizaciones.
+- [x] Revisión funcional del usuario de esta ampliación.
+
+Banco y tipo de cuenta se ingresan como texto libre; el titular/RUT pertenecen a cada cuenta. No se copian datos automáticamente del perfil ni del PDF. Sin perfil guardado, registrar primero Empresa. Respaldo `backups/20261010_231031_cuentas_bancarias`; detalle y evidencias en [HITO-COTIZACIONES.md](HITO-COTIZACIONES.md).

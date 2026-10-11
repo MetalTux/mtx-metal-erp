@@ -21,6 +21,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
+import { CuentasBancariasEmpresa } from "@/components/configuracion/cuentas-bancarias-empresa";
+import type { CuentaBancaria } from "@/lib/tipos/cuenta-bancaria";
+
 type Campo = keyof DatosEmpresa;
 const grupos: { titulo: string; campos: { nombre: Campo; titulo: string; limite: number; tipo?: "email" | "tel"; placeholder?: string }[] }[] = [
   { titulo: "Identificación", campos: [
@@ -91,7 +94,7 @@ function EditorEmpresa({ perfil, pendiente, onCerrar, onGuardar, onRestaurarFoco
   </>;
 }
 
-export function ConfiguracionEmpresa({ perfilInicial }: { perfilInicial: Empresa | null }) {
+export function ConfiguracionEmpresa({ perfilInicial, cuentasIniciales }: { perfilInicial: Empresa | null; cuentasIniciales: CuentaBancaria[] }) {
   const router = useRouter();
   const [perfil, setPerfil] = useState(perfilInicial);
   const [editor, setEditor] = useState(false);
@@ -126,6 +129,7 @@ export function ConfiguracionEmpresa({ perfilInicial }: { perfilInicial: Empresa
       <div className="grid gap-6 lg:grid-cols-2">{grupos.map(grupo => <SectionCard key={grupo.titulo} titulo={grupo.titulo}><dl className="space-y-4">{grupo.campos.map(campo => <div key={campo.nombre}><dt className="text-xs text-muted-foreground">{campo.titulo}</dt><dd className="mt-1 break-words text-sm">{perfil[campo.nombre] ? campo.nombre === "rut" ? formatearRut(perfil.rut!) : perfil[campo.nombre] : <span className="text-muted-foreground">Sin configurar</span>}</dd></div>)}</dl></SectionCard>)}<SectionCard titulo="Identidad visual"><VistaLogo key={perfil.logoUrl} url={perfil.logoUrl} /></SectionCard></div>
       <p className="text-xs text-muted-foreground">Registro: {fecha(perfil.createdAt)} · Última actualización: {fecha(perfil.updatedAt)}</p>
     </>}
+    <CuentasBancariasEmpresa cuentasIniciales={cuentasIniciales} empresaConfigurada={Boolean(perfil)} />
     {editor && <EditorEmpresa perfil={perfil} pendiente={pendiente} onCerrar={() => setEditor(false)} onGuardar={guardar} onRestaurarFoco={restaurarFoco} />}
   </div>;
 }
