@@ -335,3 +335,29 @@ La comparación excluye sólo nuevas columnas nulas `outgoingTransferId`/`incomi
 - [ ] Mantener revisión funcional del usuario de Traslados antes de cerrar el Hito completo.
 
 Respaldo: `backups/20261007_220650_cliente_prisma_hmr`. La corrección permite que HMR sustituya el cliente antiguo cuando carga el constructor recién generado; no reutilizar indefinidamente una instancia de otro esquema. Un reinicio sigue siendo útil si el entorno no observa los archivos generados, pero no fue necesario para recuperar la ruta comprobada en 3030.
+
+
+## Clasificación de bodegas — 11-10-2026
+
+Materia prima y Mixta son aptas para las operaciones actuales de materiales. Producto terminado exclusivo se excluye de selectores de Compras/Inventario y de escrituras mediante restricciones SQL. Bodegas anteriores permanecen sin clasificar y operativas hasta decisión explícita al editarlas. No se cambia stock/Kardex. Una bodega con referencias de materias primas, incluido stock cero o compras, no puede convertirse en exclusiva de terminado. Ver HITO-PRODUCTOS para migración, pruebas y respaldo. Stock/Kardex e inventario inicial de terminado implementados en P5 de HITO-PRODUCTOS; revisión funcional pendiente.
+
+
+## Inventario de producto terminado — P5
+
+- [x] Ruta independiente `/inventario/productos-terminados`, con Stock, Ingresos iniciales y Movimientos.
+- [x] Carga inicial sin receta ni consumo de materiales; sólo producto activo/bodega apta con cero y sin movimientos previos.
+- [x] Protecciones, transacciones, historial, pruebas y consultas propias.
+- [ ] Revisión funcional del usuario, según [HITO-PRODUCTOS.md](HITO-PRODUCTOS.md).
+- [ ] Ajustes/traslados/producción/salidas de terminado: no reutilizar automáticamente los servicios de materia prima.
+
+Stock y Movimientos anteriores continúan mostrando materia prima; los nuevos saldos y Kardex se consultan en Productos terminados.
+
+
+## P6 — ajustes de producto terminado
+
+- [x] Implementar conteo físico final y correcciones vinculadas de terminado sin consumo de materia prima.
+- [x] Mantener separados documentos, stock, Kardex y UUID de materias primas; conservar historial inicial.
+- [x] Pruebas de concurrencia, saldo/Kardex, rollback y regresión de carga inicial.
+- [x] Revisión funcional del usuario de P6; confirma funcionamiento, según [HITO-PRODUCTOS.md](HITO-PRODUCTOS.md).
+
+Ruta `/inventario/productos-terminados`: Ajustar stock o Corregir sobre ingreso/ajuste; consulta Ajustes de terminado. Cuenta final no negativa, fecha sin futuro y observación; se calcula la diferencia sobre el saldo actual. Motivos fijos existentes; corrección identifica exactamente un documento del mismo producto/bodega. Saldo cero conserva historia y bloquea repetir inicial.

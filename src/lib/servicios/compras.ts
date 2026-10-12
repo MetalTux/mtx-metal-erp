@@ -124,6 +124,8 @@ export async function catalogosCompra(): Promise<CatalogosCompra> {
         orderBy: { name: "asc" },
       }),
       prisma.warehouse.findMany({
+        // Heredadas sin clasificar siguen operativas; terminado exclusivo no recibe materias primas.
+        where: { OR: [{ classification: null }, { classification: { in: ["MATERIA_PRIMA", "MIXTA"] } }] },
         select: { id: true, name: true },
         orderBy: { name: "asc" },
       }),

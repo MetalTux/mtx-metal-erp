@@ -15,7 +15,7 @@ async function main() {
   let compraId: number | undefined;
   let trabajoId: number | undefined;
   const registrar = async (name: string): Promise<Bodega> => {
-    const resultado = await guardarBodega({ name });
+    const resultado = await guardarBodega({ classification: "MATERIA_PRIMA", name });
     assert(resultado.ok && resultado.bodega);
     ids.push(resultado.bodega.id);
     return resultado.bodega;
@@ -31,23 +31,23 @@ async function main() {
   };
   try {
     assert((await listarBodegas()).every((bodega) => typeof bodega.createdAt === "string" && typeof bodega.referencias.stocks === "number"));
-    assert.equal((await guardarBodega({ name: "   " })).ok, false);
-    assert.equal((await guardarBodega({ name: "A".repeat(101) })).ok, false);
-    assert.equal((await guardarBodega({ name: nombre, location: "A".repeat(201) })).ok, false);
-    assert.equal((await guardarBodega({ name: nombre, location: 42 })).ok, false);
-    assert.equal((await guardarBodega({ name: nombre }, null)).ok, false);
+    assert.equal((await guardarBodega({ classification: "MATERIA_PRIMA", name: "   " })).ok, false);
+    assert.equal((await guardarBodega({ classification: "MATERIA_PRIMA", name: "A".repeat(101) })).ok, false);
+    assert.equal((await guardarBodega({ classification: "MATERIA_PRIMA", name: nombre, location: "A".repeat(201) })).ok, false);
+    assert.equal((await guardarBodega({ classification: "MATERIA_PRIMA", name: nombre, location: 42 })).ok, false);
+    assert.equal((await guardarBodega({ classification: "MATERIA_PRIMA", name: nombre }, null)).ok, false);
     assert.equal((await consultarBodega("1")).ok, false);
     assert.equal((await eliminarBodega({ id: -1, updatedAt: "ayer" })).ok, false);
 
     const bodega = await registrar(`  ${nombre}  `);
     assert.equal(bodega.name, nombre);
     assert.equal(bodega.location, null);
-    const editada = await guardarBodega({ name: `${nombre} editada`, location: "  Patio norte  " }, { id: bodega.id, updatedAt: bodega.updatedAt });
+    const editada = await guardarBodega({ classification: "MATERIA_PRIMA", name: `${nombre} editada`, location: "  Patio norte  " }, { id: bodega.id, updatedAt: bodega.updatedAt });
     assert(editada.ok && editada.bodega);
     assert.equal(editada.bodega.location, "Patio norte");
-    assert.equal((await guardarBodega({ name: "No debe sobrescribir" }, { id: bodega.id, updatedAt: bodega.updatedAt })).ok, false);
+    assert.equal((await guardarBodega({ classification: "MATERIA_PRIMA", name: "No debe sobrescribir" }, { id: bodega.id, updatedAt: bodega.updatedAt })).ok, false);
     assert.equal((await eliminarBodega({ id: bodega.id, updatedAt: bodega.updatedAt })).ok, false);
-    const sinUbicacion = await guardarBodega({ name: editada.bodega.name, location: "   " }, { id: bodega.id, updatedAt: editada.bodega.updatedAt });
+    const sinUbicacion = await guardarBodega({ classification: "MATERIA_PRIMA", name: editada.bodega.name, location: "   " }, { id: bodega.id, updatedAt: editada.bodega.updatedAt });
     assert(sinUbicacion.ok && sinUbicacion.bodega?.location === null);
 
     // Warehouse.name no es único en el esquema: se conserva esa regla.

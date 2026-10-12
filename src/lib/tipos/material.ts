@@ -2,7 +2,7 @@ export type UnidadMaterial = { id: number; name: string; abbreviation: string };
 export type Material = {
   id: number; code: string; name: string; description: string | null;
   unitMeasureId: number; unidad: UnidadMaterial; createdAt: string; updatedAt: string;
-  referencias: { stocks: number; movimientos: number; compras: number; trabajos: number; cotizaciones: number };
+  referencias: { stocks: number; movimientos: number; compras: number; trabajos: number; cotizaciones: number; recetas: number };
 };
 export type ResultadoMaterial =
   | { ok: true; mensaje: string; material?: Material }

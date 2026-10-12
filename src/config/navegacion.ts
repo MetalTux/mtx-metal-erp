@@ -19,6 +19,7 @@ export const navegacion: GrupoNavegacion[] = [
     { titulo: "Dashboard", ruta: "/", icono: LayoutDashboard, descripcion: "Una vista general de tu taller, tus materiales y tus trabajos." },
   ] },
   { titulo: "Mantenedores", elementos: [
+    { titulo: "Productos", ruta: "/mantenedores/productos", icono: Package, descripcion: "Organiza productos terminados, imágenes y recetas de materiales." },
     { titulo: "Materias primas", ruta: "/mantenedores/materiales", icono: Package, descripcion: "Organiza el catálogo de materiales y sus unidades de medida." },
     { titulo: "Unidades de medida", ruta: "/mantenedores/unidades", icono: Ruler, descripcion: "Define las unidades utilizadas para medir tus materiales." },
     { titulo: "Bodegas", ruta: "/mantenedores/bodegas", icono: Warehouse, descripcion: "Organiza las bodegas donde almacenas tus materiales." },
@@ -27,6 +28,7 @@ export const navegacion: GrupoNavegacion[] = [
     { titulo: "Clientes", ruta: "/mantenedores/clientes", icono: Users, descripcion: "Mantén los datos de tus clientes para cotizar y gestionar ventas." },
   ] },
   { titulo: "Inventario", elementos: [
+    { titulo: "Productos terminados", ruta: "/inventario/productos-terminados", icono: Package, descripcion: "Consulta stock y movimientos e ingresa existencias iniciales de producto terminado." },
     { titulo: "Stock por bodega", ruta: "/inventario/stock", icono: PackageSearch, descripcion: "Consulta existencias y mínimos de reposición por material y bodega." },
     { titulo: "Movimientos", ruta: "/inventario/movimientos", icono: ArrowLeftRight, descripcion: "Revisa las entradas, salidas y ajustes de materiales en el kardex." },
     { titulo: "Traslados", ruta: "/inventario/traslados", icono: Truck, descripcion: "Traslada materiales entre bodegas conservando su historial." },

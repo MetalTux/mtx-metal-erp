@@ -490,3 +490,46 @@ El usuario validó el funcionamiento de Configuración de numeración. Se cierra
 Para usarlo, ingresar en **Configuración → Empresa → Cuentas bancarias**. Si no existe perfil, guardarlo primero; la configuración bancaria continúa siendo opcional. La principal se aplica a cotizaciones nuevas, sin alterar documentos previos.
 
 **Siguiente dependencia:** catálogo de productos y recetas, con unidades del mantenedor y definición de producción/stock terminado antes de habilitar escrituras de inventario.
+
+
+## Continuación — catálogo y recetas
+
+- [x] Revisar estado real y preparar [HITO-PRODUCTOS.md](HITO-PRODUCTOS.md), con etapas y decisiones pendientes.
+- [x] Recibir confirmación de campos, receta por unidad, productos sin receta y bloqueo de unidad antes de implementar.
+- [x] Implementar/validar catálogo, recetas e imágenes siguiendo ese checklist; catálogo validado funcionalmente; P5 de terminado implementado con revisión funcional pendiente.
+
+La preparación anterior se continúa con la implementación descrita en HITO-PRODUCTOS. Los envíos a GitHub quedan a cargo del usuario.
+
+
+## 11-10-2026 — precisiones de productos
+
+- [x] Campos/unidad/precio, receta por unidad, producto sin receta y bloqueo de unidad aprobados; código automático UUID en lugar de código manual opcional.
+- [x] Agregar una o varias imágenes por producto y carga inicial de terminado sin consumo de materia prima.
+- [x] Confirmar almacenamiento local reemplazable y elegibilidad de carga inicial según [HITO-PRODUCTOS.md](HITO-PRODUCTOS.md).
+
+Catálogo, recetas e imágenes implementados y validados funcionalmente; revisión visual de la reorganización pendiente. Los checks se registran en HITO-PRODUCTOS. Clasificación de bodegas aprobada e implementada; stock inicial de terminado implementado y validado técnicamente en P5 de HITO-PRODUCTOS; revisión funcional pendiente. Integración del catálogo en el formulario de Cotizaciones pendiente.
+
+
+### Dependencia P5 — inventario inicial de terminado
+
+- [x] Stock por bodega, ingreso inicial y Kardex propios implementados; no consumen materia prima. Ver [HITO-PRODUCTOS.md](HITO-PRODUCTOS.md).
+- [x] Validación funcional del usuario de P5.
+- [ ] Producción/consumo y salidas de terminado: no habilitados por la carga inicial.
+- [ ] Integración de catálogo en Cotizaciones y emisión de documentos.
+
+
+### Correcciones del inventario terminado — P6
+
+- [x] Implementar ajustes de conteo final y correcciones vinculadas sin borrar inventario inicial ni consumir materias primas.
+- [x] Revisión funcional del usuario de P6; solicita revisar la interfaz de Clientes/Sucursales antes de continuar Cotizaciones.
+
+Ver [HITO-PRODUCTOS.md](HITO-PRODUCTOS.md). Fabricación y salidas de terminado todavía pendientes.
+
+
+### Sucursales en grilla — 11-10-2026
+
+- [x] Aplicar a Sucursales el patrón de grilla/modal de la receta de Productos; Crear/Editar/Sucursales/Ver conservan su alcance.
+- [x] Validar borrador, Enter, descarte/foco, persistencia conjunta, referencias protegidas y escritorio/móvil; sin cambios en la estructura ni servicios.
+- [ ] Revisión del usuario de la nueva presentación.
+
+Checklist y respaldo en [MANTENEDORES-DATOS.md](MANTENEDORES-DATOS.md). Cotizaciones siguen pendientes; esta reorganización no emite documentos ni altera sus copias históricas.

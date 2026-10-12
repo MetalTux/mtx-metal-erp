@@ -237,3 +237,36 @@ No hay relación obligatoria entre condición y abonos. Ver [Hito de Cotizacione
 - [ ] Seleccionar sucursal con búsqueda y guardar copia histórica al implementar Cotizaciones.
 
 Detalles y evidencia en [Hito de Cotizaciones](HITO-COTIZACIONES.md). No se emitieron PDFs ni se implementaron procesos comerciales futuros.
+
+
+## 11-10-2026 — Sucursales en grilla y diálogo
+
+- [x] Respaldar Clientes y documentación antes de cambiar: `backups/20261011_182716_sucursales_grilla`; dump/copia PostgreSQL para validación aislada.
+- [x] Mostrar sucursal, Dirección/Ciudad, contacto, teléfono/correo y acciones en una grilla del formulario de Clientes.
+- [x] Agregar/Editar mediante diálogo modal; Ver con controles de sólo lectura. Botón Agregar sucursal al pie, con retorno del foco al botón o fila.
+- [x] Validar cada sucursal antes de incorporarla al borrador: obligatorios, correo opcional, límites y nombre único por cliente sin distinguir mayúsculas/espacios laterales.
+- [x] Casa Central obligatoria, nombre fijo y sin acción Quitar; máximo 100 sucursales y aviso de datos heredados pendientes.
+- [x] Aplicar/Quitar sólo modifica el borrador; guardar cliente mantiene la misma transacción y controles de pertenencia/versión/referencias.
+- [x] Conservar modo Sucursales con cabecera readonly, Editar completo y Ver completamente readonly.
+- [x] Cancelación/descarte del detalle y cliente, eliminación confirmada, Escape/foco; Enter dentro del diálogo no guarda el formulario principal.
+- [x] Chromium en copia: ocho altas consecutivas, validación/duplicados, edición/consulta, descarte/Escape, foco, eliminación protegida por cotización y rollback, guardado y datos heredados. Escritorio/móvil sin desbordamiento, capturas tras completar animaciones.
+- [x] Lint/tipos/build aprobados. Sin cambios de Prisma, migraciones ni servicios; base real intacta por conteos/huellas de sus 41 tablas.
+- [x] Retirar copia y servidores propios; 3031 libre y servidor previo 3030/PID43873 conservado.
+- [ ] Revisión visual/funcional del usuario de la nueva grilla de Sucursales.
+
+Implementación en `src/components/mantenedores/sucursales-cliente.tsx`, integrada mediante el mismo borrador React Hook Form de Clientes. Los IDs de sucursal se conservan al editar; no hay guardado independiente ni cambios de datos históricos de cotizaciones. Una sucursal referenciada puede editarse, pero no eliminarse al guardar.
+
+
+## 11-10-2026 — Clientes/Sucursales sin scroll horizontal
+
+- [x] Respaldar componentes/documentación y preparar copia de validación: `backups/20261011_203604_sucursales_responsive`.
+- [x] Eliminar anchos mínimos acumulados que desbordaban el espacio del formulario.
+- [x] Escritorio desde 768 px: tabla con ancho fijo repartido por columnas, textos ajustables e iconos de acción con nombre accesible y tooltip.
+- [x] Móvil/tablet estrecha: filas apiladas con etiquetas; una columna o dos desde 640 px. Todos los datos y acciones se conservan.
+- [x] Permitir que nombres, direcciones y correos largos se partan dentro de su columna; campos generales con min-w-0. No ocultar un desbordamiento para simular adaptación.
+- [x] Chromium: medir página, diálogo y contenedor de tabla a 320/360/390/480/640/767/768/820/1024/1440 px, sin scroll horizontal interno, con textos al límite. Crear/Editar/Ver comprobados a 320 px.
+- [x] Regresión de alta/edición/consulta/descarte/confirmación, foco, Enter y guardado conjunto; lint/build con tipos aprobados.
+- [x] PostgreSQL real intacto: huellas/conteos de 41 tablas. Copia y servidor propios retirados; 3031 libre y servidor previo del usuario en 3030 conservado.
+- [ ] Revisión visual del usuario del ajuste responsivo.
+
+El formulario conserva scroll vertical cuando necesita más altura. El diseño adapta el contenido; no fuerza al usuario a desplazarse horizontalmente para ver las sucursales o sus acciones. Sin cambios en Prisma, migraciones ni servicios.

@@ -207,3 +207,82 @@ Ver [HITO-COTIZACIONES.md](HITO-COTIZACIONES.md) para migración, reglas, respal
 - [x] Aprobación funcional del usuario de cuentas bancarias.
 
 Ver [HITO-EMPRESA.md](HITO-EMPRESA.md) y [HITO-COTIZACIONES.md](HITO-COTIZACIONES.md).
+
+## 11-10-2026 — Productos y recetas
+
+- [x] Ruta `/mantenedores/productos`, navegación centralizada, tabla/filtro y Crear/Ver/Editar/baja lógica.
+- [x] Código automático readonly, precio sugerido opcional al peso y selector buscable de unidad.
+- [x] Galería múltiple, vista previa, principal y retirada con confirmación reutilizable.
+- [x] Receta por unidad con selector buscable de materiales y cantidades decimales; sin escritura de stock.
+- [x] Consulta readonly, ayudas, cursor, descarte y errores/versiones.
+- [x] Cierre de validación técnica y revisión móvil final, sin desbordamiento horizontal.
+- [ ] Revisión funcional del usuario del catálogo/recetas.
+- [x] Carga inicial de terminado; revisión funcional pendiente en HITO-PRODUCTOS.
+- [ ] Conexión del catálogo con Cotizaciones.
+
+Ver [HITO-PRODUCTOS.md](HITO-PRODUCTOS.md) para esquema, almacenamiento local/futuro S3, respaldo y etapas pendientes.
+
+
+## 11-10-2026 — Clasificación en Bodegas
+
+- [x] Columna/búsqueda de clasificación y formulario con tres opciones, ayuda y consulta readonly.
+- [x] Sin clasificar para bodegas anteriores, selección obligatoria al guardar y bloqueo de uso incompatible.
+- [x] Selectores de materia prima excluyen bodegas exclusivas de terminado.
+- [x] Chromium escritorio/móvil, pruebas específicas y lint/tipos/build.
+- [ ] Revisión completa del usuario; stock inicial de terminado pendiente de desarrollo.
+
+Ver [HITO-PRODUCTOS.md](HITO-PRODUCTOS.md).
+
+
+## 11-10-2026 — Grilla de receta de Producto
+
+- [x] Materias primas en tabla compacta, con acciones Ver/Editar/Quitar.
+- [x] Alta/edición en diálogo modal, búsqueda interna, ayuda, cantidad y unidad.
+- [x] Botón de agregar al pie y retorno del foco; borrador sin guardar el producto por Enter.
+- [x] Cancelación/descarte y confirmaciones reutilizables; pruebas escritorio/móvil y lint/build.
+- [ ] Aprobación visual del usuario de la reorganización.
+
+Ver [HITO-PRODUCTOS.md](HITO-PRODUCTOS.md).
+
+
+## 11-10-2026 — Inventario inicial de producto terminado
+
+- [x] Navegación Inventario → Productos terminados y consultas Stock/Ingresos iniciales/Movimientos.
+- [x] Filtros, tablas paginadas y selectores con búsqueda interna.
+- [x] Formulario modal con revisión de saldo, cantidad/unidad, fecha, observación y confirmación reusable.
+- [x] Documento histórico readonly, ayudas y bloqueo de repetición de carga inicial.
+- [x] Chromium escritorio/móvil, lint/tipos/build.
+- [ ] Revisión funcional del usuario de P5; ajustes/fabricación/salidas pendientes.
+
+
+## P6 — ajustes de producto terminado
+
+- [x] Acciones Ajustar stock/Ajustar/Corregir con ayudas informativas.
+- [x] Formulario modal de conteo físico final y confirmación de saldos/diferencia.
+- [x] Motivos y origen con búsqueda, producto/bodega fijos en corrección, documento histórico readonly.
+- [x] Consulta Ajustes de terminado, variación con signo y saldo anterior/final; Kardex distingue Entrada inicial/Ajuste.
+- [x] Cierre de validación escritorio/móvil, foco, lint/tipos/build y limpieza.
+- [x] Revisión funcional del usuario de P6.
+
+
+## 11-10-2026 — Clientes/Sucursales en grilla
+
+- [x] Grilla compacta con dirección/ciudad, contacto, teléfono/correo y Ver/Editar/Quitar.
+- [x] Alta/edición en diálogo sobre Clientes, botón al pie y retorno del foco, consulta readonly.
+- [x] Casa Central protegida, obligatorios/duplicados, borrador único y confirmaciones/descarte reutilizables.
+- [x] Cabecera readonly en Sucursales y completamente readonly en Ver.
+- [x] Chromium escritorio/móvil, Enter/Escape, persistencia, referencias protegidas, legado, lint/tipos/build y puertos.
+- [ ] Revisión visual/funcional del usuario de la nueva organización.
+
+Detalle en [MANTENEDORES-DATOS.md](MANTENEDORES-DATOS.md).
+
+
+## 11-10-2026 — Ajuste responsivo de Clientes/Sucursales
+
+- [x] Tabla ajustada al ancho del formulario en escritorio, sin mínimos acumulados.
+- [x] Filas apiladas con etiquetas en móvil; acciones accesibles y textos largos ajustables.
+- [x] Medición de scroll horizontal interno en diez anchos, con datos largos; formulario general/detalle y Crear/Editar/Ver.
+- [x] Regresión de funcionalidades, lint/build, conservación de datos y limpieza del entorno.
+- [ ] Revisión visual del usuario.
+
+Ver [MANTENEDORES-DATOS.md](MANTENEDORES-DATOS.md).

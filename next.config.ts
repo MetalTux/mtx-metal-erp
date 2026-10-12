@@ -7,7 +7,8 @@ const nextConfig: NextConfig = {
   reactCompiler: true,
   experimental: {
     serverActions: {
-      bodySizeLimit: "3mb",
+      // Hasta diez imágenes de 2 MB y margen para metadatos del formulario.
+      bodySizeLimit: "22mb",
       ...(esDesarrollo && {
         // Devtunnels reescribe Origin a localhost aunque conserva el host público.
         allowedOrigins: ["localhost:3030", dominioTunel],

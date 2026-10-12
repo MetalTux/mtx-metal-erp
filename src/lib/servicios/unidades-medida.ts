@@ -16,7 +16,7 @@ function serializar(unidad: Prisma.UnitMeasureGetPayload<{ select: typeof selecc
 function errorOperacion(error: unknown): ResultadoUnidad {
   if (error instanceof Prisma.PrismaClientKnownRequestError) {
     if (error.code === "P2002") return { ok: false, mensaje: "Ya existe una unidad con ese nombre.", campos: { name: ["El nombre debe ser único."] } };
-    if (error.code === "P2003") return { ok: false, mensaje: "No se puede eliminar esta unidad porque tiene materiales asociados." };
+    if (error.code === "P2003") return { ok: false, mensaje: "No se puede eliminar esta unidad porque tiene materiales o productos asociados." };
     if (error.code === "P2025") return { ok: false, mensaje: "El registro cambió o ya no existe. Actualiza el listado y vuelve a abrirlo." };
   }
   console.error("Error en Unidades de medida:", error);

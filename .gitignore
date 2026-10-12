@@ -43,3 +43,6 @@ next-env.d.ts
 /src/generated/prisma
 # Logos de Empresa: datos persistentes locales; respaldar junto con PostgreSQL.
 /var/empresa/logos/
+
+# Imágenes de productos: datos locales persistentes, respaldar junto con PostgreSQL.
+/var/productos/imagenes/

@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useForm, useFieldArray } from "react-hook-form";
+import { useForm, useFieldArray, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Eye, LoaderCircle, Pencil, Plus, RefreshCw, Users, Trash2, Building2 } from "lucide-react";
 import { guardarDatosCliente, eliminarDatosCliente, obtenerCliente } from "@/app/(app)/mantenedores/clientes/actions";
@@ -18,7 +18,7 @@ import { SectionCard } from "@/components/section-card";
 import { EmptyState } from "@/components/empty-state";
 import { ConfirmarDescarte } from "@/components/alertas/confirmar-descarte";
 import { BotonConAyuda } from "@/components/formularios/boton-con-ayuda";
-import { AyudaCampo } from "@/components/formularios/ayuda-campo";
+import { SucursalesCliente } from "@/components/mantenedores/sucursales-cliente";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -36,8 +36,8 @@ function FormularioCliente({ editor, pendiente, onCerrar, onGuardar }: { editor:
   const cabeceraSoloLectura = consulta || editor.modo === "sucursales";
   const [error, setError] = useState<string>();
   const [descarte, setDescarte] = useState(false);
-  const [eliminarSucursal, setEliminarSucursal] = useState<number>();
-  const { register, handleSubmit, control, formState: { errors, isDirty } } = useForm<DatosCliente>({
+  const detalleBloqueado = useRef(false);
+  const { register, handleSubmit, control, setValue, formState: { errors, isDirty } } = useForm<DatosCliente>({
     resolver: zodResolver(clienteSchema),
     defaultValues: {
       rut: editor.cliente ? formatearRut(editor.cliente.rut) : "", name: editor.cliente?.name ?? "",
@@ -46,54 +46,48 @@ function FormularioCliente({ editor, pendiente, onCerrar, onGuardar }: { editor:
     },
   });
   const { fields, append, remove } = useFieldArray({ control, name: "branches", keyName: "claveFormulario" });
-  const cerrar = () => { if (pendiente) return; if (!consulta && isDirty) setDescarte(true); else onCerrar(); };
+  const branches = useWatch({ control, name: "branches" });
+  const cerrar = () => { if (pendiente || detalleBloqueado.current || descarte) return; if (!consulta && isDirty) setDescarte(true); else onCerrar(); };
   const submit = handleSubmit(async datos => {
     if (consulta || pendiente) return;
     setError(undefined);
     const r = await onGuardar(datos);
     if (!r.ok) setError(r.mensaje);
-  });
+  }, invalidos => { if (invalidos.branches) setError("Completa los datos pendientes de las sucursales mediante Editar antes de guardar el cliente."); });
   const generales = [
     ["rut", "RUT", "text", 20], ["name", "Nombre del cliente", "text", 150],
     ["contact", "Contacto general", "text", 150], ["phone", "Teléfono general", "tel", 40], ["email", "Correo general (opcional)", "email", 254],
   ] as const;
   return <>
-    <form onSubmit={consulta ? e => e.preventDefault() : submit} noValidate aria-busy={pendiente} className="space-y-5">
+    <form onSubmit={e => { if (consulta || detalleBloqueado.current) e.preventDefault(); else void submit(e); }} noValidate aria-busy={pendiente} className="min-w-0 space-y-5">
       {error && <Aviso titulo={error} />}
       <div className="grid gap-3 sm:grid-cols-2">
-        {generales.map(([campo, titulo, tipo, limite]) => <div key={campo} className="space-y-1">
+        {generales.map(([campo, titulo, tipo, limite]) => <div key={campo} className="min-w-0 space-y-1">
           <Label htmlFor={`cliente-${campo}`}>{titulo}{!cabeceraSoloLectura && campo !== "email" && " *"}</Label>
           <Input id={`cliente-${campo}`} type={tipo} {...register(campo)} readOnly={cabeceraSoloLectura} disabled={pendiente} maxLength={limite} aria-invalid={Boolean(errors[campo])} aria-describedby={errors[campo] ? `cliente-${campo}-error` : undefined} />
           {errors[campo] && <p id={`cliente-${campo}-error`} role="alert" className="text-sm text-destructive">{errors[campo]?.message}</p>}
         </div>)}
       </div>
-      <section className="space-y-3" aria-labelledby="sucursales-titulo">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h3 id="sucursales-titulo" className="font-medium">Sucursales</h3>
-          <AyudaCampo nombre="Sucursales del cliente" texto="Casa Central es obligatoria. Cada sucursal tiene dirección, ciudad y contacto propios. Los cambios se guardan junto con el cliente; las cotizaciones conservarán la copia de los datos acordados." />
-          {!consulta && <Button id="cliente-agregar-sucursal" type="button" variant="outline" disabled={pendiente || fields.length >= 100} onClick={() => append(sucursalNueva())}><Plus />Agregar sucursal</Button>}
-        </div>
-        {editor.cliente?.branches.some(b => b.legacyIncomplete) && <Aviso tipo="informacion" titulo="Completa los datos de Casa Central">Se conservaron los contactos existentes. Completa dirección, ciudad y contactos pendientes antes de guardar.</Aviso>}
-        {errors.branches?.message && <p role="alert" className="text-sm text-destructive">{errors.branches.message}</p>}
-        {fields.map((b, i) => <div key={b.claveFormulario} className="space-y-3 rounded-lg border border-border p-3">
-          <div className="flex items-center justify-between gap-2"><p className="font-medium">{b.isHeadOffice ? "Casa Central" : `Sucursal ${i + 1}`}</p>
-            {!consulta && !b.isHeadOffice && <BotonConAyuda ayuda="Quita la sucursal al guardar el cliente. Si tiene cotizaciones, se rechazará la eliminación." type="button" variant="ghost" disabled={pendiente} aria-label={`Eliminar sucursal ${i + 1}`} onClick={() => setEliminarSucursal(i)}><Trash2 />Eliminar</BotonConAyuda>}
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">{([
-            ["name", "Nombre de sucursal", "text", 150], ["address", "Dirección", "text", 250], ["city", "Ciudad", "text", 100],
-            ["contact", "Nombre de contacto", "text", 150], ["phone", "Teléfono de contacto", "tel", 40], ["email", "Correo de contacto (opcional)", "email", 254],
-          ] as const).map(([campo, titulo, tipo, limite]) => <div key={campo} className="space-y-1">
-            <Label htmlFor={`sucursal-${i}-${campo}`}>{titulo}{!consulta && campo !== "email" && " *"}</Label>
-            <Input id={`sucursal-${i}-${campo}`} type={tipo} {...register(`branches.${i}.${campo}`)} readOnly={consulta || (campo === "name" && b.isHeadOffice)} disabled={pendiente} maxLength={limite} aria-invalid={Boolean(errors.branches?.[i]?.[campo])} aria-describedby={errors.branches?.[i]?.[campo] ? `sucursal-${i}-${campo}-error` : undefined} />
-            {errors.branches?.[i]?.[campo] && <p id={`sucursal-${i}-${campo}-error`} role="alert" className="text-sm text-destructive">{errors.branches[i]?.[campo]?.message}</p>}
-          </div>)}</div>
-        </div>)}
-      </section>
+      {editor.cliente?.branches.some(b => b.legacyIncomplete) && <Aviso tipo="informacion" titulo="Completa los datos de Casa Central">Se conservaron los contactos existentes. Edita la sucursal para completar dirección, ciudad y contactos pendientes antes de guardar.</Aviso>}
+      <SucursalesCliente lineas={fields.map((b, i) => ({ ...branches[i], uid: b.claveFormulario }))} consulta={consulta} pendiente={pendiente}
+        error={errors.branches?.message ?? errors.branches?.root?.message}
+        onBloqueo={bloqueado => { detalleBloqueado.current = bloqueado; }}
+        onAplicar={(uid, datos) => {
+          if (uid === null) append(datos);
+          else {
+            const i = fields.findIndex(b => b.claveFormulario === uid);
+            // setValue conserva la clave de fila y el foco; todos los datos siguen en el mismo borrador.
+            if (i >= 0) setValue(`branches.${i}`, datos, { shouldDirty: true, shouldValidate: true });
+          }
+          setError(undefined);
+        }}
+        onQuitar={uid => { const i = fields.findIndex(b => b.claveFormulario === uid); if (i >= 0 && !branches[i].isHeadOffice) remove(i); }}
+      />
       {editor.cliente && <p className="text-xs text-muted-foreground">Cotizaciones: {editor.cliente.cotizaciones} · Última actualización: {fecha(editor.cliente.updatedAt)}</p>}
       <DialogFooter><Button type="button" variant="outline" disabled={pendiente} id="cliente-cancelar" onClick={cerrar}>{consulta ? "Cerrar" : "Cancelar"}</Button>{!consulta && <Button type="submit" disabled={pendiente}>{pendiente ? "Guardando…" : editor.modo === "crear" ? "Crear cliente" : "Guardar cambios"}</Button>}</DialogFooter>
     </form>
     <ConfirmarDescarte abierto={descarte} onAbiertoChange={setDescarte} onConfirmar={onCerrar} onDevolverFoco={() => document.getElementById("cliente-rut")?.focus()} />
-    <ConfirmarEliminacion abierto={eliminarSucursal !== undefined} onAbiertoChange={v => { if (!v) setEliminarSucursal(undefined); }} nombre={eliminarSucursal === undefined ? "" : fields[eliminarSucursal]?.name || `Sucursal ${eliminarSucursal + 1}`} pendiente={pendiente} onConfirmar={() => { if (eliminarSucursal !== undefined) remove(eliminarSucursal); setEliminarSucursal(undefined); }} onRestaurarFoco={() => document.getElementById("cliente-agregar-sucursal")?.focus()} />
+
   </>;
 }
 

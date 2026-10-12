@@ -6,11 +6,11 @@ import { materialEnUso, type Material, type ResultadoMaterial, type UnidadMateri
 const seleccion = {
   id: true, code: true, name: true, description: true, unitMeasureId: true, createdAt: true, updatedAt: true,
   unitMeasure: { select: { id: true, name: true, abbreviation: true } },
-  _count: { select: { stocks: true, stockMovements: true, purchases: true, workOrders: true, quoteDetails: true } },
+  _count: { select: { stocks: true, stockMovements: true, purchases: true, workOrders: true, quoteDetails: true, productRecipes: true } },
 } satisfies Prisma.RawMaterialSelect;
 function serializar(material: Prisma.RawMaterialGetPayload<{ select: typeof seleccion }>): Material {
   const { unitMeasure, _count, createdAt, updatedAt, ...datos } = material;
-  return { ...datos, unidad: unitMeasure, createdAt: createdAt.toISOString(), updatedAt: updatedAt.toISOString(), referencias: { stocks: _count.stocks, movimientos: _count.stockMovements, compras: _count.purchases, trabajos: _count.workOrders, cotizaciones: _count.quoteDetails } };
+  return { ...datos, unidad: unitMeasure, createdAt: createdAt.toISOString(), updatedAt: updatedAt.toISOString(), referencias: { stocks: _count.stocks, movimientos: _count.stockMovements, compras: _count.purchases, trabajos: _count.workOrders, cotizaciones: _count.quoteDetails, recetas: _count.productRecipes } };
 }
 const obsoleto: ResultadoMaterial = { ok: false, mensaje: "El registro cambió o ya no existe. Actualiza el listado y vuelve a abrirlo." };
 function errorOperacion(error: unknown, eliminacion = false): ResultadoMaterial {
@@ -18,7 +18,7 @@ function errorOperacion(error: unknown, eliminacion = false): ResultadoMaterial 
     if (error.code === "P2002") return { ok: false, mensaje: "Ya existe un material con este código.", campos: { code: ["Este código ya está registrado."] } };
     if (error.code === "P2025") return obsoleto;
     if (error.code === "P2003") return eliminacion
-      ? { ok: false, mensaje: "No se puede eliminar este material porque tiene stock, movimientos o documentos asociados." }
+      ? { ok: false, mensaje: "No se puede eliminar este material porque tiene stock, movimientos, recetas o documentos asociados." }
       : { ok: false, mensaje: "La unidad seleccionada ya no existe. Actualiza el listado.", campos: { unitMeasureId: ["Selecciona una unidad existente."] } };
   }
   console.error("Error en Materias primas:", error);
@@ -50,7 +50,7 @@ export async function guardarMaterial(datos: unknown, referencia?: unknown): Pro
         const filas = await tx.$queryRaw<{ id: number }[]>`SELECT id FROM "RawMaterial" WHERE id = ${registro.data.id} AND "updatedAt" = ${new Date(registro.data.updatedAt)} FOR UPDATE`;
         if (!filas.length) return obsoleto;
         const actual = await tx.rawMaterial.findUniqueOrThrow({ where: { id: registro.data.id }, select: seleccion });
-        if (actual.unitMeasureId !== data.unitMeasureId && materialEnUso(serializar(actual))) return { ok: false, mensaje: "No se puede cambiar la unidad de un material con stock, movimientos o documentos asociados.", campos: { unitMeasureId: ["La unidad está bloqueada porque el material tiene referencias."] } };
+        if (actual.unitMeasureId !== data.unitMeasureId && materialEnUso(serializar(actual))) return { ok: false, mensaje: "No se puede cambiar la unidad de un material con stock, movimientos, recetas o documentos asociados.", campos: { unitMeasureId: ["La unidad está bloqueada porque el material tiene referencias."] } };
       }
       if (!await tx.unitMeasure.findUnique({ where: { id: data.unitMeasureId }, select: { id: true } })) return { ok: false, mensaje: "La unidad seleccionada ya no existe. Actualiza el listado.", campos: { unitMeasureId: ["Selecciona una unidad existente."] } };
       const material = registro?.success
@@ -69,7 +69,7 @@ export async function eliminarMaterial(referencia: unknown): Promise<ResultadoMa
       if (!filas.length) return obsoleto;
       const actual = await tx.rawMaterial.findUniqueOrThrow({ where: { id: validacion.data.id }, select: seleccion });
       // QuoteDetail es opcional: no permitir que el borrado desvincule una cotización histórica.
-      if (materialEnUso(serializar(actual))) return { ok: false, mensaje: "No se puede eliminar este material porque tiene stock, movimientos o documentos asociados." };
+      if (materialEnUso(serializar(actual))) return { ok: false, mensaje: "No se puede eliminar este material porque tiene stock, movimientos, recetas o documentos asociados." };
       await tx.rawMaterial.delete({ where: { id: validacion.data.id, updatedAt: new Date(validacion.data.updatedAt) } });
       return { ok: true, mensaje: "Material eliminado." };
     });

@@ -773,3 +773,101 @@ Empresa admite varias cuentas con una principal activa. Modelo CompanyBankAccoun
 Migración `20261011023500_cuentas_bancarias_empresa`, transaccional, sin crear datos bancarios: FK/índices, identidad normalizada única, CHECK de RUT con DV, principal activa, trigger de bloqueo y comprobación diferida de principal. Quote incorpora referencia Restrict y snapshot bancario completo opcional, sin inferir datos antiguos. Servicio preparado para escoger principal/alternativa activa/ninguna dentro de la transacción de Cotizaciones; integración del selector y PDF sigue pendiente.
 
 Configuración en Empresa con tabla, filtro, Crear/Ver/Editar, Principal, Desactivar/Activar, ayudas y componentes reutilizables de confirmación/alerta/descarte. Pruebas de dominio en copia local, incluida concurrencia, rollback e historial; Chromium escritorio/móvil; Prisma validate/generate, tipos/lint/build correctos. Migración aplicada localmente; 32 tablas anteriores conservan huellas (Quote excluye siete nuevas columnas nulas). Copia/servidor 3031 retirados; preservar servidor previo 3030/PID13696. Respaldo `backups/20261010_231031_cuentas_bancarias`; revisión funcional del usuario pendiente.
+
+## 11-10-2026 — Catálogo de productos, recetas e imágenes
+
+Catálogo en `/mantenedores/productos`: tabla/filtro, Crear/Ver/Editar/baja lógica sobre listado, ayudas y confirmaciones reutilizables. Código UUID único, generado al guardar e inmutable; creación con UUID de reintento/huella independiente del código, edición/baja con versión. Nombre/unidad obligatorios, descripción opcional y precio sugerido final con IVA opcional en pesos enteros; cero distinto de sin precio.
+
+Migración `20261011143500_catalogo_productos_recetas_imagenes`: Product, ProductRecipe y ProductImage, FK Restrict e índices; cantidades positivas Decimal(14,3), precio finito no negativo al peso, receta sin material duplicado y galería limitada a diez imágenes. CHECK/triggers protegen identidad, unidad, referencias y retirada lógica. QuoteDetail prepara referencia de producto/código/unidad histórica y exclusión de materia prima en la misma línea; los campos nuevos permanecen nulos en documentos anteriores. Integración del formulario de Cotizaciones pendiente.
+
+Receta por una unidad de producto, sin bodega fija. Guardar no altera stock/Kardex. Transacción con bloqueos materiales ascendentes → producto y consultas secuenciales; cambio de unidad bloqueado por receta/cotizaciones. Materias primas incorpora recetas en consulta, bloqueo de unidad y eliminación; Unidades no elimina unidades con productos. Producción deberá copiar la receta usada y ampliar las protecciones a sus referencias y al stock terminado antes de habilitar operaciones.
+
+Imágenes locales en `var/productos/imagenes/` o `PRODUCTO_IMAGEN_DIR`, con contrato AlmacenImagenesProducto reemplazable por S3. PNG/JPG/WebP, hasta diez de 2 MB, máximo 16 megapíxeles; sharp reprocesa a PNG de hasta 1600×1600. Claves generadas, API controlada y primera imagen principal. Retirar conserva archivo/referencia histórica; un fallo transaccional limpia sólo archivos nuevos. Respaldar/restaurar esta carpeta junto con PostgreSQL. Server Actions admite 22 MB para cargas múltiples, conservando los límites individuales en servidor.
+
+Respaldo previo de originales y PostgreSQL: `backups/20261011_112454_catalogo_productos`. Pruebas específicas en copia: UUID/idempotencia, CRUD, cantidades/precios, unidades/recetas, concurrencia/versiones, imágenes reales/múltiples, retirada, rollback de BD/archivos, snapshots y stock intacto. Validación de interfaz y aplicación, migración local, comparación de datos y limpieza se detallan en [HITO-PRODUCTOS.md](HITO-PRODUCTOS.md).
+
+Carga inicial de producto terminado aprobada sólo sin movimientos y saldo cero, sin consumo de materia prima; etapa P5 pendiente de decisión sobre bodegas. No se resetean datos: el usuario lo solicitará posteriormente. Los envíos a GitHub quedan a cargo del usuario.
+
+Cierre técnico: Prisma validado/generado, migración aplicada y estado al día. ESLint/tipos/build contra copia migrada y Chromium escritorio/móvil correctos; ajuste de ancho del formulario móvil comprobado. Las 33 tablas anteriores conservan huellas/conteos. Copia descartable retirada y servidor propio 3031 detenido/puerto libre; servidor previo del usuario 3030/PID43873 conservado. Catálogo real inicia vacío, sin fixtures; revisión funcional del usuario y P5 pendientes.
+
+
+## 11-10-2026 — Clasificación de bodegas
+
+WarehouseClassification enum interno con Materia prima, Producto terminado y Mixta. Warehouse.classification nullable sin default conserva las bodegas anteriores sin clasificación; crear/guardar desde el mantenedor exige elegir tipo. Tabla/filtro y formulario incorporan selector buscable, ayuda y consulta readonly. Se impide guardar con Enter en Ver y se usa timestamp monotónico para versiones de edición.
+
+Migración `20261011164000_clasificacion_bodegas` sin backfill, con protección de reclasificación y escrituras de materia prima. Bodegas con stock (incluso cero), mínimos, compras, trabajos o historial no se convierten en exclusivas de terminado. Los selectores de Compras/inventario excluyen terminado exclusivo; las heredadas nulas siguen operativas. Triggers validan y bloquean la fila de bodega ante escrituras/reclasificación concurrentes. No cambian cantidades ni Kardex. Al implementar stock de terminado, ampliar protección recíproca y exigir Mixta/Producto terminado.
+
+Respaldo previo: `backups/20261011_122855_clasificacion_bodegas`. Regresión CRUD y prueba específica de clasificación/concurrencia en copia, Chromium escritorio/móvil, Prisma validate/generate, lint/tipos/build correctos. Migración aplicada localmente y 36 tablas previas con huellas/conteos iguales, excluyendo únicamente classification. Copia/servidor propio 3031 retirados; servidor previo del usuario 3030/PID43873 conservado. Revisión funcional del usuario pendiente. Las imágenes locales de productos se añaden a .gitignore para mantener archivos persistentes fuera del código, con respaldo junto a PostgreSQL.
+
+
+## 11-10-2026 — Receta del producto en grilla y modal
+
+Se reemplazan tarjetas de edición en línea por la grilla RecetaProducto, con materia prima/código, cantidad, unidad y Ver/Editar/Quitar. Agregar queda debajo del detalle, con retorno de foco tras altas sucesivas. El diálogo tiene selector buscable que excluye materiales repetidos, validación de cantidad compartida, consulta readonly y descarte reutilizable. Enter en el formulario del portal detiene la propagación para no guardar el producto principal. Los cambios permanecen en el borrador hasta Guardar producto, conservando contrato, servicios, transacción, unidades y stock existentes.
+
+Respaldo previo `backups/20261011_125503_grilla_receta_productos`. Sin modificación de Prisma, migraciones ni datos reales. Lint/build con tipos correctos; Chromium sobre copia aislada prueba ocho altas seguidas/foco, búsqueda/duplicados, cantidades, edición/consulta/eliminación, descarte, persistencia y móvil. Revisión visual del usuario pendiente, previa a P5. Ver HITO-PRODUCTOS.
+
+## 11-10-2026 — P5: inventario inicial de producto terminado
+
+La clasificación Mixta habilitaba la compatibilidad de la bodega, pero aún no existía ingreso de producto terminado. Se implementa la carga inicial aprobada y su consulta en `/inventario/productos-terminados`, separadas del inventario de materia prima. Ver [HITO-PRODUCTOS.md](HITO-PRODUCTOS.md).
+
+- [x] Respaldo de archivos afectados y dump de PostgreSQL en `backups/20261011_132503_stock_inicial_terminado`, antes de modificar.
+- [x] Migración `20261011180000_stock_inicial_producto_terminado`: ProductWarehouseStock, ProductInitialStock, ProductStockMovement y ProductInventoryOperation; Decimal(14,3), índices/FK Restrict, snapshots y UUID/huella.
+- [x] Validación/aplicación primero en copia local y después en PostgreSQL local; conservación exacta por conteos/huellas de las 36 tablas anteriores, incluida clasificación. Cliente Prisma generado.
+- [x] Servicio con bloqueos y versiones, reintentos reconocidos antes de versión, escritura atómica y controles SQL de saldo/Kardex/documento completo. Documento, movimiento y operación inmutables.
+- [x] Stock incluso cero bloquea cambio de unidad/baja de producto y clasificación incompatible de bodega; selectores de terminado sólo Mixta/Producto terminado.
+- [x] Tabla paginada/filtrada en servidor, tres consultas, formulario sobre listado, revisión de saldo, confirmación reutilizable e histórico readonly.
+- [x] Pruebas específicas en copia: precisión/fechas, referencias/versiones, ausencia de consumo, cero sin escritura, reintentos/concurrencia, historial y rollback mediante fallo provocado.
+- [x] Lint, tipos y build; Chromium escritorio/móvil, búsqueda interna sin coincidencias, alta, consultas y bloqueo de carga repetida.
+- [ ] Revisión funcional del usuario de P5.
+
+La cantidad cero no crea documentos ni saldos. Cada combinación admite inicial sólo sin movimientos y saldo cero; no exige receta. Cantidad positiva conserva fecha actual/pasada de Santiago y observación obligatoria. No se generaron fixtures en la base real ni se modificaron datos de compras/materiales. Stock y Kardex anteriores siguen correspondiendo a materias primas. Fabricación, correcciones/ajustes, traslados y salidas de terminado requieren etapas futuras y ampliación del origen tipado de ProductStockMovement mediante migración, antes de habilitar sus escrituras. No reutilizar carga inicial para corregir existencias.
+
+El servidor propio de validación usa 3031 y se retira al terminar; se conserva el servidor previo del usuario en 3030. Los envíos a GitHub continúan a cargo del usuario.
+
+
+## 11-10-2026 — P6: ajustes y correcciones de terminado
+
+Un conteo inicial equivocado se corrige mediante un nuevo documento que cambia el saldo físico actual; no se elimina ni reescribe el inventario inicial. Se incorpora esa funcionalidad en `/inventario/productos-terminados`, conservando aislamiento respecto de materias primas.
+
+- [x] Respaldo previo de archivos y PostgreSQL: `backups/20261011_180503_ajustes_terminado`.
+- [x] ProductInventoryAdjustment con anterior/final/diferencia, motivo existente, fecha, observación, snapshots y vínculos tipados de corrección a ingreso inicial o ajuste.
+- [x] Migración `20261011220000_ajustes_producto_terminado` amplía ProductStockMovement/ProductInventoryOperation, con exactamente un origen. No cambia migraciones anteriores.
+- [x] CHECK/FK/triggers conservan signo, balance, referencia de mismo producto/bodega, documento completo, clasificación compatible e inmutabilidad.
+- [x] Bloqueos/versiones/UUID y confirmación decimal; saldo, AJUSTE, documento y operación atómicos. Sin diferencia no escribe; cero válido conserva historial y no libera otra carga inicial.
+- [x] Acciones Ajustar stock/Ajustar/Corregir, formulario modal, búsqueda de motivo/origen, vista previa en servidor y consulta de ajustes/histórico/Kardex.
+- [x] Integración `tests/ajustes-terminado.integration.ts` sobre copia `mtx_validacion_terminado_ajustes_*`: negativos/positivos/cero, no-op, fechas/precisión, referencia ajena, versiones, reintentos/concurrencia, inmutabilidad, rollback provocado y ausencia de consumo.
+- [x] Regresión de P5, lint/tipos/build y Chromium escritorio/móvil; foco inicial mantiene visible encabezado.
+- [x] Aplicación primero en copia y luego en PostgreSQL local; 40 tablas existentes verificadas por conteo/huella sobre sus columnas anteriores (nuevos adjustmentId nullable excluidos sólo en ProductStockMovement/ProductInventoryOperation). Sin fixtures en base real. Migrate status al día; consulta real HTTP 200.
+- [x] Copia y servidores propios retirados; 3031 libre, 3030/PID43873 del usuario conservado.
+- [ ] Revisión funcional del usuario de P6.
+
+Reglas y uso documentados en [HITO-PRODUCTOS.md](HITO-PRODUCTOS.md). Fabricación, traslados y salidas de terminado continúan pendientes; cada nuevo origen necesita reglas y migración antes de escribir. No se hizo push ni se borraron datos de compras/productos.
+
+
+## 11-10-2026 — Grilla y diálogo de Sucursales
+
+Clientes mostraba todos los campos de cada sucursal en tarjetas largas. Se reemplazan por una grilla y formularios modales, siguiendo el patrón de Receta de Producto. El botón de agregar queda al pie; Ver/Editar/Quitar se ubican por fila.
+
+- [x] Respaldar componentes/documentación y PostgreSQL antes de modificar en `backups/20261011_182716_sucursales_grilla`.
+- [x] Extraer `sucursales-cliente.tsx`: diálogo de detalle con validación compartida, duplicados, consulta readonly, confirmación/descarte y foco.
+- [x] Integrar con useFieldArray/useWatch y setValue, conservando IDs y claves/foco de filas; todos los cambios se guardan juntos al guardar el cliente.
+- [x] Detener propagación de submit del portal: Enter sólo aplica el detalle. Bloquear cierre/envío principal mientras está abierto un diálogo del detalle.
+- [x] Mantener Casa Central obligatoria/fija, datos de contacto/dirección/ciudad y modo Sucursales con cabecera de sólo lectura.
+- [x] Navegador en copia: ocho altas, obligatorios/correo/duplicados, editar/ver/quitar, cancelar/descarte/Escape, foco, referencia por cotización con rollback, guardado y completar legado; escritorio/móvil.
+- [x] Lint, tipos/build y revisión de diff; sin migraciones/cambios de Prisma o servicios. Datos reales de las 41 tablas intactos por huellas/conteos; copias/servidores propios retirados. Se conserva 3030 del usuario.
+- [ ] Revisión del usuario de la nueva presentación.
+
+Avances en [MANTENEDORES-DATOS.md](MANTENEDORES-DATOS.md). P6 de ajustes de terminado quedó validado funcionalmente por el usuario antes de esta mejora. No se hizo push.
+
+
+## 11-10-2026 — Adaptación responsiva de la grilla de Sucursales
+
+Los mínimos de ancho de las columnas superaban el ancho del diálogo de Clientes y generaban scroll horizontal dentro de la grilla. La tabla de escritorio ahora reparte el ancho disponible y ajusta textos largos; por debajo de 768 px cada fila se muestra apilada, con etiquetas de sus campos. Las acciones usan iconos con nombres accesibles/ayudas. Los campos generales también pueden reducirse al ancho disponible.
+
+- [x] Respaldo previo en `backups/20261011_203604_sucursales_responsive`.
+- [x] Chromium mide el diálogo y el contenedor interno de la tabla, además de la página: diez anchos de 320 a 1440 px, incluidos ambos lados del breakpoint y textos al límite. Crear/Editar/Ver comprobados a 320 px.
+- [x] Funcionalidades, teclado/foco, descarte y guardado conjunto conservados; lint/build con tipos aprobados.
+- [x] Sin modificaciones de esquema, migraciones, servicios o datos reales; 41 tablas verificadas por huellas/conteos. Copia y servidor propios retirados; 3031 libre y 3030 del usuario conservado.
+- [ ] Revisión visual del usuario.
+
+Sólo se mantiene desplazamiento vertical en formularios largos. El ajuste no se limita a ocultar una barra horizontal: los elementos y textos caben en el espacio disponible. Checklist en [MANTENEDORES-DATOS.md](MANTENEDORES-DATOS.md).

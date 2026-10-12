@@ -4,15 +4,15 @@ import { bodegaSchema, referenciaBodegaSchema } from "@/lib/validaciones/bodega"
 import type { Bodega, ResultadoBodega } from "@/lib/tipos/bodega";
 
 const seleccion = {
-  id: true, name: true, location: true, createdAt: true, updatedAt: true,
-  _count: { select: { stocks: true, stockMovements: true, purchases: true, workOrderDetails: true } },
+  id: true, name: true, location: true, classification: true, createdAt: true, updatedAt: true,
+  _count: { select: { productStocks: true, stocks: true, stockMovements: true, purchases: true, workOrderDetails: true } },
 } satisfies Prisma.WarehouseSelect;
 
 function serializar(bodega: Prisma.WarehouseGetPayload<{ select: typeof seleccion }>): Bodega {
   const { _count, createdAt, updatedAt, ...datos } = bodega;
   return {
     ...datos, createdAt: createdAt.toISOString(), updatedAt: updatedAt.toISOString(),
-    referencias: { stocks: _count.stocks, movimientos: _count.stockMovements, compras: _count.purchases, trabajos: _count.workOrderDetails },
+    referencias: { productos: _count.productStocks, stocks: _count.stocks, movimientos: _count.stockMovements, compras: _count.purchases, trabajos: _count.workOrderDetails },
   };
 }
 
@@ -42,12 +42,24 @@ export async function guardarBodega(datos: unknown, referencia?: unknown): Promi
   if (!validacion.success) return { ok: false, mensaje: "Revisa los campos del formulario.", campos: validacion.error.flatten().fieldErrors };
   const registro = referencia === undefined ? undefined : referenciaBodegaSchema.safeParse(referencia);
   if (registro && !registro.success) return { ok: false, mensaje: "La referencia del registro no es válida. Actualiza el listado." };
-  const data = { name: validacion.data.name, location: validacion.data.location || null };
+  const data = { name: validacion.data.name, location: validacion.data.location || null, classification: validacion.data.classification };
   try {
-    const bodega = registro?.success
-      ? await prisma.warehouse.update({ where: { id: registro.data.id, updatedAt: new Date(registro.data.updatedAt) }, data, select: seleccion })
-      : await prisma.warehouse.create({ data, select: seleccion });
-    return { ok: true, mensaje: registro ? "Bodega actualizada." : "Bodega creada.", bodega: serializar(bodega) };
+    return await prisma.$transaction(async tx => {
+      if (registro?.success) {
+        // Serializar reclasificación y altas de referencias; las protecciones SQL usan la misma fila.
+        const filas = await tx.$queryRaw<{ id: number }[]>`SELECT id FROM "Warehouse" WHERE id = ${registro.data.id} AND "updatedAt" = ${new Date(registro.data.updatedAt)} FOR UPDATE`;
+        if (!filas.length) return { ok: false, mensaje: "El registro cambió. Actualiza el listado y vuelve a abrirlo." };
+        const actual = await tx.warehouse.findUniqueOrThrow({ where: { id: registro.data.id }, select: seleccion });
+        if (data.classification === "PRODUCTO_TERMINADO" && [actual._count.stocks, actual._count.stockMovements, actual._count.purchases, actual._count.workOrderDetails].some(cantidad => cantidad > 0)) {
+          return { ok: false, mensaje: "Esta bodega tiene referencias de materias primas. Selecciona Materia prima o Mixta.", campos: { classification: ["Las referencias existentes impiden uso exclusivo para producto terminado."] } };
+        }
+        if (data.classification === "MATERIA_PRIMA" && actual._count.productStocks > 0) return { ok: false, mensaje: "Esta bodega tiene inventario de producto terminado. Selecciona Producto terminado o Mixta.", campos: { classification: ["El historial de terminado impide uso exclusivo para materia prima."] } };
+      }
+      const bodega = registro?.success
+        ? await tx.warehouse.update({ where: { id: registro.data.id }, data: { ...data, updatedAt: new Date(Math.max(Date.now(), new Date(registro.data.updatedAt).getTime() + 1)) }, select: seleccion })
+        : await tx.warehouse.create({ data, select: seleccion });
+      return { ok: true, mensaje: registro ? "Bodega actualizada." : "Bodega creada.", bodega: serializar(bodega) };
+    });
   } catch (error) { return errorOperacion(error); }
 }
 

@@ -61,6 +61,7 @@ function FormularioMaterial({ editor, unidades, pendiente, onCerrar, onGuardar }
         <dt>Movimientos</dt><dd>{editor.material.referencias.movimientos}</dd>
         <dt>Líneas de compra</dt><dd>{editor.material.referencias.compras}</dd>
         <dt>Líneas de trabajo</dt><dd>{editor.material.referencias.trabajos}</dd>
+        <dt>Recetas de productos</dt><dd>{editor.material.referencias.recetas}</dd>
         <dt>Líneas de cotización</dt><dd>{editor.material.referencias.cotizaciones}</dd>
       </dl>
       <p>Registro: {fecha(editor.material.createdAt)}</p>

@@ -117,6 +117,8 @@ async function cargarIdentificaciones(
 export async function listarCatalogosInventario(): Promise<CatalogosInventario> {
   const [bodegas, materiales] = await Promise.all([
     prisma.warehouse.findMany({
+        // Heredadas sin clasificar siguen operativas; terminado exclusivo no recibe materias primas.
+        where: { OR: [{ classification: null }, { classification: { in: ["MATERIA_PRIMA", "MIXTA"] } }] },
       select: bodega,
       orderBy: [{ name: "asc" }, { id: "asc" }],
     }),

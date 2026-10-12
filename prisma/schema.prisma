@@ -45,10 +45,13 @@ model User {
 // 2. CONFIGURACIÓN DE MATERIALES
 // ==========================================
 model UnitMeasure {
-  id           Int           @id @default(autoincrement())
-  name         String        @unique // Ej: "Kilos", "Unidades", "Metros"
-  abbreviation String // Ej: "kg", "un", "m"
-  materials    RawMaterial[]
+  id                   Int                          @id @default(autoincrement())
+  name                 String                       @unique // Ej: "Kilos", "Unidades", "Metros"
+  abbreviation         String // Ej: "kg", "un", "m"
+  materials            RawMaterial[]
+  products             Product[]
+  productInitialStocks ProductInitialStock[]
+  productAdjustments   ProductInventoryAdjustment[]
 
   createdAt DateTime @default(now()) // Fecha de registro (no se modifica)
   updatedAt DateTime @updatedAt // Última modificación (automática)
@@ -71,6 +74,7 @@ model RawMaterial {
   purchases            PurchaseDetail[]
   workOrders           WorkOrderDetail[]
   quoteDetails         QuoteDetail[]
+  productRecipes       ProductRecipe[]
 
   createdAt DateTime @default(now()) // Fecha de registro (no se modifica)
   updatedAt DateTime @updatedAt // Última modificación (automática)
@@ -81,10 +85,22 @@ model RawMaterial {
 // ==========================================
 // 3. BODEGA Y STOCK
 // ==========================================
+enum WarehouseClassification {
+  MATERIA_PRIMA
+  PRODUCTO_TERMINADO
+  MIXTA
+}
+
 model Warehouse {
-  outgoingTransfers    InventoryTransfer[]   @relation("BodegaOrigen")
-  incomingTransfers    InventoryTransfer[]   @relation("BodegaDestino")
-  id                   Int                   @id @default(autoincrement())
+  // Sin default: conservar bodegas anteriores sin asignarles una clasificación ficticia.
+  classification       WarehouseClassification?
+  productStocks        ProductWarehouseStock[]
+  productMovements     ProductStockMovement[]
+  productInitialStocks ProductInitialStock[]
+  productAdjustments   ProductInventoryAdjustment[]
+  outgoingTransfers    InventoryTransfer[]          @relation("BodegaOrigen")
+  incomingTransfers    InventoryTransfer[]          @relation("BodegaDestino")
+  id                   Int                          @id @default(autoincrement())
   name                 String
   location             String?
   inventoryAdjustments InventoryAdjustment[]
@@ -515,20 +531,26 @@ model Quote {
 // Línea de una cotización. Puede ser un material del catálogo (rawMaterialId)
 // o un ítem libre como mano de obra, flete o instalación (rawMaterialId nulo).
 model QuoteDetail {
-  id            Int          @id @default(autoincrement())
-  description   String
-  quantity      Decimal      @db.Decimal(14, 3)
-  unitPrice     Decimal      @db.Decimal(14, 2)
-  quoteId       Int
-  rawMaterialId Int?
-  quote         Quote        @relation(fields: [quoteId], references: [id])
-  rawMaterial   RawMaterial? @relation(fields: [rawMaterialId], references: [id])
+  id                      Int          @id @default(autoincrement())
+  description             String
+  quantity                Decimal      @db.Decimal(14, 3)
+  unitPrice               Decimal      @db.Decimal(14, 2)
+  quoteId                 Int
+  rawMaterialId           Int?
+  productId               Int?
+  product                 Product?     @relation(fields: [productId], references: [id], onDelete: Restrict)
+  productCode             String?      @db.Uuid
+  productUnitName         String?
+  productUnitAbbreviation String?
+  quote                   Quote        @relation(fields: [quoteId], references: [id])
+  rawMaterial             RawMaterial? @relation(fields: [rawMaterialId], references: [id])
 
   createdAt DateTime @default(now()) // Fecha de registro (no se modifica)
   updatedAt DateTime @updatedAt // Última modificación (automática)
 
   @@index([quoteId])
   @@index([rawMaterialId])
+  @@index([productId])
 }
 
 enum QuoteStatus {
@@ -751,4 +773,173 @@ model CompanyBankAccount {
   updatedAt     DateTime       @updatedAt
 
   @@index([companyId])
+}
+
+model Product {
+  id                  Int                          @id @default(autoincrement())
+  code                String                       @unique @default(uuid()) @db.Uuid
+  creationKey         String                       @unique @db.Uuid
+  creationFingerprint String                       @db.VarChar(64)
+  name                String                       @db.VarChar(150)
+  description         String?
+  unitMeasureId       Int
+  unitMeasure         UnitMeasure                  @relation(fields: [unitMeasureId], references: [id], onDelete: Restrict)
+  suggestedPrice      Decimal?                     @db.Decimal(14, 2)
+  version             Int                          @default(1)
+  deletedAt           DateTime?
+  recipes             ProductRecipe[]
+  images              ProductImage[]
+  quoteDetails        QuoteDetail[]
+  stocks              ProductWarehouseStock[]
+  stockMovements      ProductStockMovement[]
+  initialStocks       ProductInitialStock[]
+  adjustments         ProductInventoryAdjustment[]
+  createdAt           DateTime                     @default(now())
+  updatedAt           DateTime                     @updatedAt
+
+  @@index([unitMeasureId])
+}
+
+model ProductRecipe {
+  id            Int         @id @default(autoincrement())
+  productId     Int
+  product       Product     @relation(fields: [productId], references: [id], onDelete: Restrict)
+  rawMaterialId Int
+  rawMaterial   RawMaterial @relation(fields: [rawMaterialId], references: [id], onDelete: Restrict)
+  quantity      Decimal     @db.Decimal(14, 3)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@unique([productId, rawMaterialId])
+  @@index([rawMaterialId])
+}
+
+model ProductImage {
+  id        Int       @id @default(autoincrement())
+  productId Int
+  product   Product   @relation(fields: [productId], references: [id], onDelete: Restrict)
+  fileKey   String    @unique @db.VarChar(40)
+  position  Int
+  removedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([productId, position])
+}
+
+// Inventario de terminado separado de materias primas. Una combinación conserva su historial.
+model ProductWarehouseStock {
+  id          Int       @id @default(autoincrement())
+  warehouseId Int
+  productId   Int
+  warehouse   Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  product     Product   @relation(fields: [productId], references: [id], onDelete: Restrict)
+  quantity    Decimal   @db.Decimal(14, 3)
+  version     Int       @default(1)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([warehouseId, productId])
+  @@index([productId])
+}
+
+// Documento inmutable de existencias anteriores: no representa una fabricación.
+model ProductInitialStock {
+  id               Int                          @id @default(autoincrement())
+  warehouseId      Int
+  productId        Int
+  unitMeasureId    Int
+  warehouse        Warehouse                    @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  product          Product                      @relation(fields: [productId], references: [id], onDelete: Restrict)
+  unitMeasure      UnitMeasure                  @relation(fields: [unitMeasureId], references: [id], onDelete: Restrict)
+  quantity         Decimal                      @db.Decimal(14, 3)
+  date             DateTime                     @db.Date
+  note             String
+  productCode      String                       @db.Uuid
+  productName      String
+  unitName         String
+  unitAbbreviation String
+  corrections      ProductInventoryAdjustment[] @relation("CorreccionInicialTerminado")
+  movement         ProductStockMovement?
+  operation        ProductInventoryOperation?
+  createdAt        DateTime                     @default(now())
+  updatedAt        DateTime                     @updatedAt
+
+  @@unique([id, productId, warehouseId])
+  @@unique([warehouseId, productId])
+  @@index([productId])
+  @@index([unitMeasureId])
+  @@index([date, id])
+}
+
+model ProductStockMovement {
+  id             Int                         @id @default(autoincrement())
+  warehouseId    Int
+  productId      Int
+  warehouse      Warehouse                   @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  product        Product                     @relation(fields: [productId], references: [id], onDelete: Restrict)
+  adjustmentId   Int?                        @unique
+  adjustment     ProductInventoryAdjustment? @relation(fields: [adjustmentId, productId, warehouseId], references: [id, productId, warehouseId], onDelete: Restrict)
+  initialStockId Int?                        @unique
+  initialStock   ProductInitialStock?        @relation(fields: [initialStockId, productId, warehouseId], references: [id, productId, warehouseId], onDelete: Restrict)
+  type           StockMovementType
+  quantity       Decimal                     @db.Decimal(14, 3)
+  date           DateTime                    @db.Date
+  note           String
+  createdAt      DateTime                    @default(now())
+
+  @@unique([initialStockId, productId, warehouseId])
+  @@unique([adjustmentId, productId, warehouseId])
+  @@index([warehouseId, productId, id])
+  @@index([productId])
+}
+
+// La operación y su documento se confirman junto con saldo y movimiento.
+model ProductInventoryOperation {
+  idempotencyKey String                      @id @db.Uuid
+  fingerprint    String                      @db.VarChar(64)
+  adjustmentId   Int?                        @unique
+  adjustment     ProductInventoryAdjustment? @relation(fields: [adjustmentId], references: [id], onDelete: Restrict)
+  initialStockId Int?                        @unique
+  initialStock   ProductInitialStock?        @relation(fields: [initialStockId], references: [id], onDelete: Restrict)
+  createdAt      DateTime                    @default(now())
+  updatedAt      DateTime                    @updatedAt
+}
+
+// Conteo físico inmutable: corrige el saldo actual y conserva el documento de origen.
+model ProductInventoryAdjustment {
+  id                      Int                          @id @default(autoincrement())
+  productId               Int
+  warehouseId             Int
+  unitMeasureId           Int
+  product                 Product                      @relation(fields: [productId], references: [id], onDelete: Restrict)
+  warehouse               Warehouse                    @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  unitMeasure             UnitMeasure                  @relation(fields: [unitMeasureId], references: [id], onDelete: Restrict)
+  previousQuantity        Decimal                      @db.Decimal(14, 3)
+  finalQuantity           Decimal                      @db.Decimal(14, 3)
+  quantity                Decimal                      @db.Decimal(14, 3)
+  reason                  InventoryAdjustmentReason
+  date                    DateTime                     @db.Date
+  note                    String
+  productCode             String                       @db.Uuid
+  productName             String
+  unitName                String
+  unitAbbreviation        String
+  correctedInitialStockId Int?
+  correctedInitialStock   ProductInitialStock?         @relation("CorreccionInicialTerminado", fields: [correctedInitialStockId, productId, warehouseId], references: [id, productId, warehouseId], onDelete: Restrict)
+  correctedAdjustmentId   Int?
+  correctedAdjustment     ProductInventoryAdjustment?  @relation("CorreccionAjusteTerminado", fields: [correctedAdjustmentId, productId, warehouseId], references: [id, productId, warehouseId], onDelete: Restrict)
+  corrections             ProductInventoryAdjustment[] @relation("CorreccionAjusteTerminado")
+  movement                ProductStockMovement?
+  operation               ProductInventoryOperation?
+  createdAt               DateTime                     @default(now())
+  updatedAt               DateTime                     @updatedAt
+
+  @@unique([id, productId, warehouseId])
+  @@index([warehouseId, productId, date])
+  @@index([productId])
+  @@index([unitMeasureId])
+  @@index([correctedInitialStockId, productId, warehouseId])
+  @@index([correctedAdjustmentId, productId, warehouseId])
+  @@index([date, id])
 }

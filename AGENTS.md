@@ -7,8 +7,9 @@ Instrucciones para Codex y otros agentes que trabajen en este repositorio. Aplic
 - **Proyecto:** MTX Metal ERP, para fabricación de estructuras metálicas por encargo o para obra propia. Organiza bodegas, materia prima, compras, cotizaciones, producción y entregas.
 - **Idioma:** responde en español. Escribe comentarios, textos visibles y datos de ejemplo en español; conserva los nombres existentes de modelos, campos y APIs. Los valores de los enums del dominio están en español.
 - **Stack:** Next.js 16 con App Router, React 19 con React Compiler, TypeScript estricto, Tailwind CSS v4 y Prisma 7 sobre PostgreSQL 15.
-- **Estado actual:** el tema oscuro y el layout del ERP ya están implementados con shadcn/ui: sidebar responsive, barra superior, buscador de secciones y rutas provisionales. El Dashboard tiene estructura visual sin consultas. Unidades de medida, Bodegas, Proveedores, Clientes y Materias primas ya tienen CRUD completo con Server Actions y Prisma; Empresa también tiene consulta/configuración, carga local de logo y cuentas bancarias con principal y baja/reactivación lógica; Stock por bodega y Movimientos tienen consultas de sólo lectura con paginación/orden en PostgreSQL; Stock también permite configurar mínimos y filtrar reposición sin alterar existencias. Compras tiene listado, registro de documentos y recepciones parciales que generan entradas de stock/Kardex; cierre/anulación de compras también están implementados. Inventario incorpora ajustes, carga inicial y traslados inmediatos con correcciones vinculadas; traslados espera revisión funcional. Clientes admite contacto general y sucursales con Dirección/Ciudad y contacto propios, incluida Casa Central; Condiciones de Pago también tiene CRUD con bases Al día/30/60/90 días; Configuración de numeración documental también está implementada; su integración con documentos futuros sigue pendiente. Cotizaciones, catálogo de productos, consumos de producción, autenticación y métricas reales siguen pendientes.
+- **Estado actual:** el tema oscuro y el layout del ERP ya están implementados con shadcn/ui: sidebar responsive, barra superior, buscador de secciones y rutas provisionales. El Dashboard tiene estructura visual sin consultas. Unidades de medida, Bodegas, Proveedores, Clientes y Materias primas ya tienen CRUD completo con Server Actions y Prisma; Empresa también tiene consulta/configuración, carga local de logo y cuentas bancarias con principal y baja/reactivación lógica; Stock por bodega y Movimientos tienen consultas de sólo lectura con paginación/orden en PostgreSQL; Stock también permite configurar mínimos y filtrar reposición sin alterar existencias. Compras tiene listado, registro de documentos y recepciones parciales que generan entradas de stock/Kardex; cierre/anulación de compras también están implementados. Inventario incorpora ajustes, carga inicial y traslados inmediatos con correcciones vinculadas; traslados espera revisión funcional. Clientes admite contacto general y sucursales con Dirección/Ciudad y contacto propios, incluida Casa Central; Condiciones de Pago también tiene CRUD con bases Al día/30/60/90 días; Configuración de numeración documental también está implementada; su integración con documentos futuros sigue pendiente. Catálogo de productos incorpora CRUD con código UUID automático, recetas e imágenes locales múltiples; stock/Kardex e inventario inicial de terminado implementados y validados funcionalmente; ajustes/correcciones de terminado implementados y validados funcionalmente en P6. Cotizaciones, consumos de producción, autenticación y métricas reales siguen pendientes.
 - Antes de editar, revisa `git status --short` y los archivos afectados. Conserva los cambios previos del usuario y limita la edición al alcance solicitado.
+- Los envíos a GitHub quedan a cargo del usuario; no hacer push.
 - Usa **pnpm** y conserva `pnpm-lock.yaml`. Consulta `package.json` para verificar scripts y dependencias disponibles.
 
 ## Fuentes de referencia
@@ -23,6 +24,7 @@ Instrucciones para Codex y otros agentes que trabajen en este repositorio. Aplic
 | `docs/MANTENEDORES-DATOS.md` | Orden y checklist de los CRUD básicos; requisitos de tablas, formularios y confirmaciones |
 | `docs/HITO-EMPRESA.md` | Etapas de Configuración de Empresa implementada, almacenamiento local de logo/futuro S3 y validaciones; revisión funcional pendiente |
 | `docs/HITO-INVENTARIO.md` | Mínimos y ajustes/carga inicial aprobados; traslados implementados, validaciones/checks y revisión funcional pendiente |
+| `docs/HITO-PRODUCTOS.md` | Catálogo/recetas/imágenes implementados; clasificación de bodegas implementada; stock inicial de terminado validado y ajustes/correcciones P6 con revisión funcional pendiente |
 | `docs/HITO-COTIZACIONES.md` | Reglas comerciales aprobadas, Orden de Compra Cliente, catálogo/stock terminado, anticipos y vencimiento por factura; Condiciones de Pago implementadas, demás dependencias pendientes |
 | `docs/HITO-COMPRAS.md` | Consultas de Stock/Kardex implementadas y etapas de Compras; reglas pendientes de respuestas explícitas |
 | `docs/PROPUESTAS-DOMINIO.md` | Alternativas, decisiones y checklists de stock mínimo, empresa y cobranza; consultar antes de implementar esos temas |
@@ -91,7 +93,7 @@ Flujo principal: **Cotización → Orden de venta → Orden de trabajo → Guía
 | Empresa | `CompanyProfile`: perfil único de la empresa que usa el ERP |
 | Cobranza | `SalesOrder` → `AccountReceivable` (máximo una) → `Payment` (abonos) |
 
-- **Cambio de unidad:** en Materias primas sólo se permite si no hay registros de stock (incluso cero), movimientos, compras, trabajos ni cotizaciones. Otros campos siguen editables. La comprobación se realiza en el servidor dentro de una transacción que bloquea la fila antes de revisar referencias.
+- **Cambio de unidad:** en Materias primas sólo se permite si no hay registros de stock (incluso cero), movimientos, compras, trabajos, cotizaciones ni recetas de productos. Otros campos siguen editables. La comprobación se realiza en el servidor dentro de una transacción que bloquea la fila antes de revisar referencias.
 - **Unidad única:** todas las cantidades de un material usan su `unitMeasure`; no hay conversiones entre unidades. `UnitMeasure.name` es único.
 - **Precisión:** dinero en `Decimal(14,2)` y cantidades en `Decimal(14,3)`. Calcula con `Prisma.Decimal` y métodos como `.plus()` y `.times()`; no uses `+`, `*` ni conversiones a `number` para cálculos del dominio.
 - **Stock y kardex:** cada cambio en `WarehouseStock.quantity` debe crear su `StockMovement` en la misma `prisma.$transaction`, usando el cliente de esa transacción para ambas operaciones. El saldo debe coincidir con la suma de movimientos para la misma bodega y material.
@@ -234,3 +236,57 @@ La fuente detallada es `docs/GUIA-INTERFAZ.md`, cuyas fases de tema y layout ya 
 - Operaciones en `src/lib/servicios/cuentas-bancarias.ts`: bloqueo del perfil antes de cuentas, consultas secuenciales y versión entera. Cambiar principal comprueba también principal anterior esperada; desmarcar/marcar en una sola tx. Formularios y tabla integrados en Empresa.
 - Quote.bankAccountId opcional con Restrict y siete campos de snapshot, CHECK de copia completa. `datosBancariosParaCotizacion(tx,id?)` prepara copia en la tx del futuro documento: undefined propone principal, null omite cuenta, ID explícito exige activa. Consultar/editar Empresa no reescribe snapshots. Integración en Cotizaciones aún pendiente; selector futuro debe tener búsqueda interna.
 - `tests/cuentas-bancarias.integration.ts` sólo en copia local descartable `mtx_validacion_bancos_*`: crea fixtures y trigger temporal de rollback; retirar copia completa al cerrar. Checkpoints en HITO-EMPRESA/HITO-COTIZACIONES.
+
+
+## Catálogo de productos y recetas
+
+- Product.code UUID generado por el sistema, único e inmutable; no confundir con creationKey UUID/huella para reintentar creación. Precio sugerido opcional, final con IVA y pesos enteros; guardar no cambia existencias. Baja lógica conserva identidad/archivos y se bloquea si hay cotizaciones.
+- Receta por una unidad del producto, materiales únicos y cantidades positivas Decimal(14,3), sin bodega fija. Bloquear materiales ascendentes → producto y usar consultas escalares secuenciales en la transacción. Editar/bajar con versión. Producto sin receta se puede guardar; producción futura deberá exigir receta y conservar su copia histórica.
+- Unidad bloqueada por receta/cotizaciones/inventario incluso cero en servicio y SQL. RawMaterial.productRecipes también bloquea cambio de unidad/borrado del material. Stock terminado ya extiende bloqueos de unidad/baja a esas referencias, incluso saldo cero.
+- ProductImage usa almacenamiento local `var/productos/imagenes/` o PRODUCTO_IMAGEN_DIR, con contrato AlmacenImagenesProducto reemplazable por S3. Hasta diez PNG/JPG/WebP de 2 MB, validación real, hasta 16 megapíxeles y reprocesado PNG/1600 px; primera imagen principal. Retirada lógica conserva archivos anteriores; limpiar únicamente archivos nuevos de una transacción fallida. Respaldar carpeta con PostgreSQL. API exige clave generada/referencia existente; sin rutas/URLs libres.
+- QuoteDetail prepara productId/código/unidad históricos y exclusión de materia prima; integración en Cotizaciones pendiente. No inferir productos en documentos existentes ni reescribir snapshots.
+- tests/productos.integration.ts sólo sobre copia local `mtx_validacion_productos_*` y PRODUCTO_IMAGEN_DIR aislado con `imagenes-validacion`. Incluye fixtures, trigger temporal de rollback y archivos: retirar copia y servidor propio al terminar. Ver HITO-PRODUCTOS para evidencia/checks.
+- Stock inicial de terminado aprobado sin consumo de materia prima, sólo sin movimientos y saldo cero por producto/bodega. Implementado y validado funcionalmente en P5; P6 agrega conteos y correcciones de terminado. El usuario pedirá un reseteo de compras/productos después; conservar datos hasta esa petición.
+
+
+## Clasificación de bodegas
+
+- Warehouse.classification usa WarehouseClassification: MATERIA_PRIMA, PRODUCTO_TERMINADO o MIXTA. Nullable sin default sólo preserva legado sin clasificar; el formulario/servicio de Bodegas exige elección explícita al crear/guardar. No reclasificar automáticamente las existentes ni volver una clasificada a null.
+- Bodega exclusiva PRODUCTO_TERMINADO no admite referencias/escrituras de materia prima. Selectores actuales de Compras/Inventario la excluyen; triggers SQL protegen WarehouseStock, StockMovement, Purchase/PurchaseDetail, WorkOrderDetail, InventoryAdjustment e InventoryTransfer y serializan cambios de clasificación.
+- Referencias de material, incluso stock cero/mínimos/historial, bloquean conversión a terminado exclusivo. Legado sin clasificar sigue operativo; MATERIA_PRIMA/MIXTA son aptas para operaciones actuales. Stock terminado exige PRODUCTO_TERMINADO/MIXTA y protege recíprocamente el cambio de tipo, incluso con saldo cero.
+- Tests/bodegas-clasificacion.integration.ts sólo en copia local mtx_validacion_bodegas_*; clasificación no implementa stock inicial/producción de terminado. Ver HITO-PRODUCTOS para avances y revisión pendiente.
+
+
+## Productos terminados: stock inicial P5
+
+- `/inventario/productos-terminados` consulta stock, ingresos iniciales y Kardex propios. ProductWarehouseStock/ProductInitialStock/ProductStockMovement/ProductInventoryOperation están migrados y operativos; P5/P6 validados funcionalmente. Ver docs/HITO-PRODUCTOS.md.
+- `registrarInicialTerminado` usa Decimal(14,3), fecha actual/pasada de Santiago y observación; sólo producto activo y bodega PRODUCTO_TERMINADO/MIXTA. Combinación sin movimientos y saldo cero; receta opcional. Cero no crea documento/stock/movimiento/UUID. Nunca consume materia prima.
+- UUID/huella antes de versión y bloqueos UUID → producto → bodega → stock; saldo/documento/ENTRADA/operación en la misma tx, consultas secuenciales. Conservar CHECK/triggers de balance, inmutabilidad, snapshots y documento completo.
+- Stock incluso cero bloquea cambiar unidad o dar baja al producto y reclasificar la bodega como exclusiva de materia prima.
+- ProductStockMovement admite origen inicial o ajuste mediante XOR y FK compuestas; fabricación/salidas requieren nueva migración y reglas antes de habilitarse. No repetir inicial para corregir ni usar servicios de inventario de materias primas.
+- `tests/stock-terminado.integration.ts` escribe sólo en copia local descartable `mtx_validacion_terminado_*`; retirar copia/servidor al terminar.
+
+
+## Ajustes de producto terminado P6
+
+- ProductInventoryAdjustment guarda saldo anterior/final, diferencia firmada, snapshots, fecha de calendario, motivo y observación. Inmutable; CORRECCION_REGISTRO identifica exactamente un ingreso inicial o ajuste previo del mismo producto/bodega. No revertir a ciegas documentos antiguos.
+- `registrarAjusteTerminado` en stock-terminado.ts conserva orden de bloqueo/UUID de P5, compara versión/cantidad/último ID y suma de Kardex; inicial/ajuste comparten espacio de UUID, con huella distinta. Documento/AJUSTE/stock/operación juntos; reintento antes de versión.
+- Sólo combinaciones ya registradas con movimientos; primero usar inicial si no hay historial. Conteo final cero válido, sin diferencia no escribe. Cero nunca permite repetir inicial. Fecha futura prohibida según Santiago, observación obligatoria, motivos enum existentes excepto INVENTARIO_INICIAL. No requiere receta ni consume materia prima.
+- Vista previa y cantidades en servidor con Decimal; cliente recibe textos. ProductInventoryOperation tiene exactamente un initialStockId o adjustmentId; conservar CHECK/triggers de origen, balance, documento completo e inmutabilidad.
+- Ruta existente `/inventario/productos-terminados` incorpora Ajustes de terminado y acciones Ajustar/Corregir; formulario sobre listado y consulta readonly del origen/saldos.
+- `tests/ajustes-terminado.integration.ts` exige copia local descartable `mtx_validacion_terminado_ajustes_*`, incluye trigger temporal para probar rollback; ejecutar secuencialmente con regresiones y retirar copia/servidor. Checkpoints P6 en docs/HITO-PRODUCTOS.md.
+
+
+## Clientes: Sucursales en grilla/modal
+
+- `sucursales-cliente.tsx` muestra grilla y diálogos de Agregar/Editar/Ver; botón agregar al pie, Quitar con confirmación. Todo es borrador de Clientes y persiste en el mismo guardarCliente; no guardar sucursales por separado.
+- React Hook Form useFieldArray/useWatch conserva IDs, setValue de fila conserva clave/foco. Detener propagación de submit del portal para que Enter no guarde el cliente. Bloquear cierre/envío principal mientras está activo el detalle/confirmación.
+- Casa Central obligatoria/fija sin Quitar; cada detalle valida sucursalClienteSchema y duplicados por nombre dentro del borrador. Servicios/SQL siguen garantizando pertenencia, versión, guardado atómico y protección de cotizaciones.
+- Modo Sucursales conserva cabecera readonly; Editar permite ambos y Ver todo readonly. Cancelar detalle/cliente no escribe. Estado y revisión visual pendiente en docs/MANTENEDORES-DATOS.md.
+
+
+## Formularios responsivos
+
+- En Clientes/Sucursales, desde 768 px usar tabla que reparta el ancho; por debajo, filas apiladas con etiquetas. No restaurar mínimos acumulados que obliguen a desplazar horizontalmente el formulario.
+- En nuevos formularios/detalles, comprobar también scrollWidth/clientWidth del diálogo y sus contenedores, no sólo del documento. Usar min-w-0 y texto ajustable; evitar ocultar desbordamientos como sustituto de adaptar contenido.
+- Verificar escritorio, móvil estrecho (320 px), breakpoints y datos largos. Mantener acciones con nombre accesible/ayuda y scroll vertical cuando sea necesario.
