@@ -133,6 +133,15 @@ export async function guardarCotizacion(entrada: unknown, claveEntrada: unknown,
   } catch (error) { return fallo(error); }
 }
 
+/** Operación interna de aceptación: el llamador confirma la orden en esta misma tx. */
+export async function aprobarCotizacionEnTransaccion(tx: Prisma.TransactionClient, referencia: { id: number; version: number }, clave: string) {
+  const actual = await editable(tx, referencia.id, referencia.version);
+  exigir(!actual.validUntil || actual.validUntil.toISOString().slice(0, 10) >= hoy(), "La cotización venció. Corrige la vigencia antes de aprobarla.");
+  const q = await tx.quote.update({ where: { id: actual.id }, data: { version: { increment: 1 }, status: "APROBADA" } });
+  await tx.quoteOperation.create({ data: { idempotencyKey: clave, fingerprint: huella({ tipo: "APROBAR", referencia }), type: "APROBAR", quoteId: q.id, version: q.version } });
+  return q;
+}
+
 export async function resolverCotizacion(referencia: unknown, claveEntrada: unknown, accion: unknown): Promise<ResultadoCotizacion> {
   const r = referenciaCotizacionSchema.safeParse(referencia), c = claveCotizacionSchema.safeParse(claveEntrada);
   if (!r.success || !c.success || !["APROBAR", "RECHAZAR", "ELIMINAR"].includes(String(accion))) return { ok: false, mensaje: "La acción o referencia no es válida." };
@@ -141,11 +150,14 @@ export async function resolverCotizacion(referencia: unknown, claveEntrada: unkn
     return await prisma.$transaction(async tx => {
       const repetida = await anterior(tx, c.data, fingerprint, tipo); if (repetida) return repetida;
       await tx.$executeRaw`SELECT pg_advisory_xact_lock_shared(73119)`;
+      if (tipo === "APROBAR") {
+        const q = await aprobarCotizacionEnTransaccion(tx, r.data, c.data);
+        return { ok: true as const, mensaje: "Cotización aprobada; su contenido queda protegido.", id: q.id, version: q.version };
+      }
       const actual = await editable(tx, r.data.id, r.data.version);
-      if (tipo === "APROBAR") exigir(!actual.validUntil || actual.validUntil.toISOString().slice(0, 10) >= hoy(), "La cotización venció. Corrige la vigencia antes de aprobarla.");
-      const q = await tx.quote.update({ where: { id: actual.id }, data: { version: { increment: 1 }, ...(tipo === "ELIMINAR" ? { deletedAt: new Date() } : { status: tipo === "APROBAR" ? "APROBADA" : "RECHAZADA" }) } });
+      const q = await tx.quote.update({ where: { id: actual.id }, data: { version: { increment: 1 }, ...(tipo === "ELIMINAR" ? { deletedAt: new Date() } : { status: "RECHAZADA" }) } });
       await tx.quoteOperation.create({ data: { idempotencyKey: c.data, fingerprint, type: tipo, quoteId: q.id, version: q.version } });
-      return { ok: true as const, mensaje: tipo === "ELIMINAR" ? "Cotización ocultada; folio e historial conservados." : tipo === "APROBAR" ? "Cotización aprobada; su contenido queda protegido." : "Cotización rechazada; su contenido queda protegido.", id: q.id, version: q.version };
+      return { ok: true as const, mensaje: tipo === "ELIMINAR" ? "Cotización ocultada; folio e historial conservados." : "Cotización rechazada; su contenido queda protegido.", id: q.id, version: q.version };
     });
   } catch (error) { return fallo(error); }
 }

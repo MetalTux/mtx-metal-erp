@@ -2,6 +2,19 @@
 
 Referencia visual: [GUIA-INTERFAZ.md](GUIA-INTERFAZ.md), conservada sin cambios. Última revisión: 06-10-2026.
 
+## 13-10-2026 — Orden de Compra Cliente
+
+- [x] Reemplazar ruta provisional `/ventas/ordenes` por listado con filtros/paginación/orden en servidor y navegación «Órdenes de Compra Cliente».
+- [x] Crear/Ver sobre el listado, oferta buscable y entrada de aceptación sobre Cotizaciones con vínculo Ver orden.
+- [x] Selección y cantidades aceptadas, contraste oferta/contrato, importes de servidor y revisión de alcance propio.
+- [x] Referencias externas literales, emisión PDF ofrecida opcional, contactos/condiciones históricos y cuenta sin registro de pagos.
+- [x] Anulación con motivo/confirmación, sin edición/ocultación/borrado de compromisos.
+- [x] Errores por línea, confirmación/cancelación sin efectos, UUID estable, teclado/foco/readonly y 320–1440 px; contraste básico de textos computados y ausencia de errores JS/consola en las rutas comprobadas.
+- [x] Evitar cambios falsos de contenido al bloquear/desbloquear el editor compartido; conservar revisión/preview/errores.
+- [x] Usuario confirma «Funciona correctamente» el 13-10-2026; hito cerrado. Casos técnicos de completa/parcial, descuentos, alcance, consulta y anulación documentados en el hito.
+
+Evidencias, pruebas y respaldo: `docs/HITO-ORDEN-COMPRA-CLIENTE.md`, sección 15, y `backups/20261012_232400_registro_orden_compra_cliente/`. No implica implementación de producción, despacho, abonos ni PDF propio de la orden.
+
 ## Tema y layout
 
 - [x] Inicializar shadcn/ui para Next.js, Radix y Tailwind v4 (`components.json`, preset Nova).

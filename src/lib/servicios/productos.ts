@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { prisma } from "@/lib/prisma";
+import { tieneReferenciaHistoricaPlan } from "./referencias-plan-trabajo";
 import { Prisma } from "@/generated/prisma/client";
 import { z } from "zod";
 import { productoSchema, referenciaProductoSchema } from "@/lib/validaciones/producto";
@@ -68,7 +69,7 @@ export async function guardarProducto(datos: unknown, referencia?: unknown, arch
         await tx.$queryRaw`SELECT id FROM "Product" WHERE id = ${ref.data.id} FOR UPDATE`;
         const actual = await tx.product.findUnique({ where: { ...ref.data, deletedAt: null } });
         if (!actual) return obsoleto;
-        if (actual.unitMeasureId !== d.unitMeasureId && (anteriores.length || await tx.quoteDetail.count({ where: { productId: actual.id } }) || await tx.productWarehouseStock.count({ where: { productId: actual.id } }))) return { ok: false, mensaje: "La unidad está bloqueada por recetas, cotizaciones o inventario asociados." };
+        if (actual.unitMeasureId !== d.unitMeasureId && (anteriores.length || await tx.quoteDetail.count({ where: { productId: actual.id } }) || await tx.productWarehouseStock.count({ where: { productId: actual.id } }) || await tx.workOrderLine.count({ where: { productId: actual.id } }) || await tieneReferenciaHistoricaPlan(tx, "Product", actual.id))) return { ok: false, mensaje: "La unidad está bloqueada por recetas, cotizaciones, trabajos o inventario asociados." };
       }
       for (const r of receta) {
         const material = await tx.rawMaterial.findUnique({ where: { id: r.rawMaterialId } });
@@ -103,6 +104,7 @@ export async function eliminarProducto(referencia: unknown): Promise<ResultadoPr
       const actual = await tx.product.findUnique({ where: { ...ref.data, deletedAt: null } });
       if (!actual) return obsoleto;
       if (await tx.quoteDetail.count({ where: { productId: actual.id } })) return { ok: false, mensaje: "No se puede eliminar un producto referenciado en cotizaciones." };
+      if (await tx.workOrderLine.count({ where: { productId: actual.id } }) || await tieneReferenciaHistoricaPlan(tx, "Product", actual.id)) return { ok: false, mensaje: "No se puede eliminar un producto referenciado en órdenes de trabajo actuales o históricas." };
       if (await tx.productWarehouseStock.count({ where: { productId: actual.id } })) return { ok: false, mensaje: "No se puede eliminar un producto con stock o historial de inventario, incluso saldo cero." };
       await tx.product.update({ where: { id: actual.id }, data: { deletedAt: new Date(), version: { increment: 1 } } });
       return { ok: true, mensaje: "Producto eliminado del catálogo; código y archivos históricos conservados." };

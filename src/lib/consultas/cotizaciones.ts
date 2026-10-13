@@ -20,8 +20,8 @@ export async function consultarCotizaciones(entrada: unknown) {
     const campo = f.orden === "total" ? "totalAmount" : f.orden === "cliente" ? "clientName" : "date";
     const filas = await tx.quote.findMany({ where, orderBy: [{ [campo]: f.sentido }, { id: "desc" }], skip: (pagina - 1) * 10, take: 10 });
     const folios = await tx.documentFolio.findMany({ where: { id: { in: filas.flatMap(q => q.folioId ? [q.folioId] : []) } }, select: { id: true, folio: true } });
-    const ordenes = await tx.salesOrder.findMany({ where: { quoteId: { in: filas.map(q => q.id) } }, select: { quoteId: true } });
-    return { filtros: { ...f, pagina }, total, paginas, filas: filas.map(q => ({ id: q.id, version: q.version, folio: folios.find(f => f.id === q.folioId)!.folio, date: q.date.toISOString().slice(0, 10), validUntil: q.validUntil?.toISOString().slice(0, 10) ?? null, clientName: q.clientName!, status: q.status, totalAmount: q.totalAmount.toFixed(0), conOrden: ordenes.some(o => o.quoteId === q.id), correctedQuoteId: q.correctedQuoteId })) };
+    const ordenes = await tx.salesOrder.findMany({ where: { quoteId: { in: filas.map(q => q.id) } }, select: { id: true, quoteId: true } });
+    return { filtros: { ...f, pagina }, total, paginas, filas: filas.map(q => ({ id: q.id, version: q.version, folio: folios.find(f => f.id === q.folioId)!.folio, date: q.date.toISOString().slice(0, 10), validUntil: q.validUntil?.toISOString().slice(0, 10) ?? null, clientName: q.clientName!, status: q.status, totalAmount: q.totalAmount.toFixed(0), conOrden: ordenes.some(o => o.quoteId === q.id), ordenId: ordenes.find(o => o.quoteId === q.id)?.id ?? null, correctedQuoteId: q.correctedQuoteId })) };
   }, { isolationLevel: "RepeatableRead" });
 }
 export async function catalogosCotizacion() {

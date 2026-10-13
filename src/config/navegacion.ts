@@ -39,7 +39,7 @@ export const navegacion: GrupoNavegacion[] = [
   ] },
   { titulo: "Ventas", elementos: [
     { titulo: "Cotizaciones", ruta: "/ventas/cotizaciones", icono: FileText, descripcion: "Prepara y revisa las cotizaciones de tus clientes." },
-    { titulo: "Órdenes de venta", ruta: "/ventas/ordenes", icono: ClipboardList, descripcion: "Organiza las ventas confirmadas y sus trabajos asociados." },
+    { titulo: "Órdenes de Compra Cliente", ruta: "/ventas/ordenes", icono: ClipboardList, descripcion: "Registra lo contratado de cada cotización y consulta sus importes e historial." },
     { titulo: "Cobranza", ruta: "/ventas/cobranza", icono: Banknote, descripcion: "Consulta cuentas por cobrar, vencimientos y abonos por venta." },
   ] },
   { titulo: "Trabajos", elementos: [

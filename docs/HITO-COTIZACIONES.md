@@ -1,6 +1,6 @@
 # Hito: Cotizaciones
 
-Fecha inicial: 07-10-2026. **Estado vigente: Cotizaciones implementado y validado técnicamente en `/ventas/cotizaciones`. Listado/filtros/paginación, registro/consulta/edición de Pendientes, aprobación/rechazo, eliminación lógica y corrección vinculada con nuevo folio. Detalle técnico general enriquecido con imágenes locales; líneas breves. IVA por períodos, descuento global, copias históricas y numeración integrados. Migración aplicada y datos previos conservados. Pendiente revisión funcional del usuario; PDF, conversión a Orden de Compra Cliente y producción son entregas posteriores. Checkpoint detallado: C1–C5 al final.**
+Fecha inicial: 07-10-2026. **Estado vigente: Cotizaciones implementado y validado técnicamente en `/ventas/cotizaciones`. Listado/filtros/paginación, registro/consulta/edición de Pendientes, aprobación/rechazo, eliminación lógica y corrección vinculada con nuevo folio. Detalle técnico general enriquecido con imágenes locales; líneas breves. IVA por períodos, descuento global, copias históricas y numeración integrados. Migración aplicada y datos previos conservados. PDF implementado y validado funcionalmente; envío por correo pendiente de SMTP. Conversión a Orden de Compra Cliente planificada en HITO-ORDEN-COMPRA-CLIENTE; producción continúa como entrega posterior. Checkpoints detallados: C1–C5 y P1–P5 al final.**
 
 Referencias: `AGENTS.md`, [guía de interfaz](GUIA-INTERFAZ.md), [Inventario](HITO-INVENTARIO.md), [Compras](HITO-COMPRAS.md), [propuestas de dominio](PROPUESTAS-DOMINIO.md) y `prisma/schema.prisma`.
 
@@ -210,7 +210,7 @@ Esta sección actualiza las consultas históricas anteriores. Las reglas están 
 
 La sección antes llamada Orden de venta se denominará **Orden de Compra Cliente**. `SalesOrder` y las FK existentes se conservan como identificadores técnicos, evitando renombrados innecesarios de datos/APIs. El usuario ve la denominación aprobada. Las compras a proveedores siguen en Compras.
 
-Una Orden de Compra Cliente proviene de una cotización y genera una sola Orden de Trabajo. Mientras no se genere el trabajo podrá no existir aún; la cardinalidad es cero o uno durante el ciclo, con una sola creación efectiva. Las obras propias conservan `WorkOrder.salesOrderId = null`. No interpretar «una cotización por orden» como prohibición inversa de varias órdenes desde una cotización sin definir esa regla.
+Una Orden de Compra Cliente proviene de una cotización y genera una sola Orden de Trabajo. Mientras no se genere el trabajo podrá no existir aún; la cardinalidad es cero o uno durante el ciclo, con una sola creación efectiva. Las obras propias conservan `WorkOrder.salesOrderId = null`. Actualización del usuario del 12-10-2026: una cotización origina como máximo una Orden de Compra Cliente, que puede aceptar sólo parte de lo cotizado. El esquema actual aún admite varias; la migración y el detalle propio de aceptación se planifican en [HITO-ORDEN-COMPRA-CLIENTE.md](HITO-ORDEN-COMPRA-CLIENTE.md).
 
 - [x] Registrar denominación, una sola Orden de Trabajo y vínculo comercial de abonos.
 - [ ] Actualizar navegación, textos y breadcrumbs al implementar el módulo; conservar ruta/API compatibles.
@@ -827,3 +827,14 @@ El arrastre de movimiento se valida con ratón en Chromium de escritorio. En mó
 - [ ] P6: envío por correo del contacto de Sucursal, consultado desde el mantenedor; solicitar destinatario si falta. En espera de SMTP y contraseña de aplicación del usuario final. Ver `HITO-PDF-COTIZACIONES.md`.
 
 Checkpoint vigente y uso/requisitos: [HITO-PDF-COTIZACIONES.md](HITO-PDF-COTIZACIONES.md), entrega técnica. No se completan automáticamente snapshots antiguos ni se reconstruyen revisiones previas no emitidas.
+
+## Continuación — Orden de Compra Cliente implementada y validada
+
+- [x] Usuario define una sola orden por cotización y admite contratación parcial de su contenido.
+- [x] Revisar modelo, aprobación, numeración, PDF y vínculos a trabajo/cobranza; preparar [HITO-ORDEN-COMPRA-CLIENTE.md](HITO-ORDEN-COMPRA-CLIENTE.md).
+- [x] Resolver decisiones D1–D10 expresamente con el usuario; referencia literal y unicidad por cliente según espacios/mayúsculas.
+- [x] Desarrollar OCC1–OCC5, con respaldos, migración conservadora, servicios, interfaz y validación técnica y funcional. Usuario confirma «Funciona correctamente» el 13-10-2026.
+
+La implementación sustituye la indefinición anterior de cardinalidad. Las cantidades aceptadas y sus importes pertenecen al detalle propio de la orden; se conservan la cotización histórica y sus emisiones. Aprobación, folio, orden y cuenta por total aceptado se registran atómicamente. El checkpoint vigente y las evidencias están en [HITO-ORDEN-COMPRA-CLIENTE.md](HITO-ORDEN-COMPRA-CLIENTE.md).
+
+Pendientes comerciales: Orden de Trabajo y Producción (receta histórica, consumos y terminado), anticipos/abonos y panel de cobranza, finalización/factura/vencimiento y Guías de Despacho. El envío de PDF por correo espera SMTP y contraseña de aplicación. Adjuntos/PDF propio de la orden quedan como ampliación posterior según D10.

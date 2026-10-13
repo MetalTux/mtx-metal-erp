@@ -34,19 +34,22 @@ const Cabecera = TableHeader.extend({ addAttributes() { return { ...this.parent?
 const extensiones = [StarterKit.configure({ code: false, codeBlock: false, link: false, heading: { levels: [1, 2, 3, 4, 5, 6] } }), TextStyleKit, TextAlign.configure({ types: ["heading", "paragraph"] }), Table.configure({ resizable: false }), TableRow, Celda, Cabecera, ImagenDocumento.configure({ allowBase64: false })];
 
 /** Editor reutilizable: JSON validado, formato accesible y subida local reemplazable. */
-export function EditorCotizacion({ valor, onChange, draftKey, disabled, soloLectura, onBloqueo, onValidez }: {
+export function EditorCotizacion({ valor, onChange, draftKey, disabled, soloLectura, onBloqueo, onValidez, permitirSubida = true, etiqueta = "Detalle técnico de la cotización" }: {
   valor: NodoCotizacion; onChange: (v: NodoCotizacion) => void; draftKey: string;
   disabled?: boolean; soloLectura?: boolean; onBloqueo: (v: boolean) => void; onValidez: (v: boolean) => void;
+  permitirSubida?: boolean; etiqueta?: string;
 }) {
   const archivo = useRef<HTMLInputElement>(null), ultimo = useRef<{ archivo: File; clave: string } | null>(null), invalido = useRef(false);
   const [subiendo, setSubiendo] = useState(false), [error, setError] = useState<string>(), [reintento, setReintento] = useState(false);
   const editor = useEditor({ extensions: extensiones, content: valor, immediatelyRender: false, shouldRerenderOnTransaction: false,
     editable: !soloLectura && !disabled,
-    editorProps: { transformPastedHTML: prepararPegadoCotizacion, attributes: { role: "textbox", "aria-label": "Detalle técnico de la cotización", "aria-multiline": "true", class: "min-h-40 p-3 outline-none detalle-cotizacion" } },
+    editorProps: { transformPastedHTML: prepararPegadoCotizacion, attributes: { role: "textbox", "aria-label": etiqueta, "aria-multiline": "true", class: "min-h-40 p-3 outline-none detalle-cotizacion" } },
     onUpdate: ({ editor }) => { try { onChange(validarTextoCotizacion(editor.getJSON())); invalido.current = false; setError(undefined); onValidez(true); } catch (e) { invalido.current = true; onValidez(false); setError(e instanceof Error ? e.message : "Formato inválido."); } },
   });
   const estado = useEditorState({ editor, selector: ({ editor }) => ({ bold: editor?.isActive("bold"), italic: editor?.isActive("italic"), underline: editor?.isActive("underline"), strike: editor?.isActive("strike"), bulletList: editor?.isActive("bulletList"), orderedList: editor?.isActive("orderedList"), blockquote: editor?.isActive("blockquote"), image: editor?.isActive("image"), imageAttrs: editor?.getAttributes("image"), fontSize: editor?.getAttributes("textStyle").fontSize ?? "", fontFamily: editor?.getAttributes("textStyle").fontFamily ?? "", table: editor?.isActive("table") }) });
-  useEffect(() => { editor?.setEditable(!soloLectura && !disabled && !subiendo); }, [editor, soloLectura, disabled, subiendo]);
+  // Bloquear controles no cambia el documento. Emitir onUpdate aquí borraba
+  // la vista previa/errores y desmarcaba la revisión del alcance al consultar.
+  useEffect(() => { editor?.setEditable(!soloLectura && !disabled && !subiendo, false); }, [editor, soloLectura, disabled, subiendo]);
   async function subir() {
     if (!ultimo.current || !editor || subiendo || disabled || soloLectura) return;
     let imagenes = 0; editor.state.doc.descendants(n => { if (n.type.name === "image") imagenes++; });
@@ -87,11 +90,11 @@ export function EditorCotizacion({ valor, onChange, draftKey, disabled, soloLect
       {estado?.image && <div className="flex w-full flex-wrap items-center gap-2 rounded-md bg-muted/30 p-2" aria-label="Disposición de imagen seleccionada"><span className="text-xs">Imagen seleccionada: arrastra la imagen para moverla, o usa Alt + ↑/↓. Las esquinas cambian su tamaño.</span><select aria-label="Posición de imagen" disabled={bloqueado} value={estado.imageAttrs?.placement ?? "bloque"} className="h-8 max-w-full rounded-md border border-input bg-card px-2" onChange={e => editor?.chain().focus().updateAttributes("image", { placement: e.target.value }).run()}><option value="bloque">En bloque</option><option value="izquierda">Izquierda, texto al lado</option><option value="derecha">Derecha, texto al lado</option><option value="centro">Centrada, texto debajo</option></select><label className="flex items-center gap-1 text-xs">Ancho<select aria-label="Ancho de imagen" disabled={bloqueado} value={estado.imageAttrs?.width ?? ""} className="h-8 rounded-md border border-input bg-card px-2" onChange={e => editor?.chain().focus().updateAttributes("image", { width: e.target.value ? Number(e.target.value) : null }).run()}><option value="">Original</option>{estado.imageAttrs?.width && ![25, 33, 50, 66, 75, 100].includes(estado.imageAttrs.width) && <option value={estado.imageAttrs.width}>{estado.imageAttrs.width}%</option>}{[25, 33, 50, 66, 75, 100].map(n => <option key={n} value={n}>{n}%</option>)}</select></label>{boton("Mover imagen antes", () => moverImagen(-1))}{boton("Mover imagen después", () => moverImagen(1))}</div>}
       {boton("Deshacer", () => editor?.chain().focus().undo().run())}
       {boton("Rehacer", () => editor?.chain().focus().redo().run())}
-      <Button type="button" variant="ghost" size="sm" disabled={bloqueado} onClick={() => archivo.current?.click()}>{subiendo ? "Subiendo imagen…" : "Agregar imagen"}</Button>
-      <input ref={archivo} className="sr-only" type="file" accept="image/png,image/jpeg,image/webp" aria-label="Archivo de imagen del detalle técnico" disabled={bloqueado} onChange={e => { const f = e.target.files?.[0]; e.target.value = ""; if (f) { ultimo.current = { archivo: f, clave: crypto.randomUUID() }; void subir(); } }} />
+      {permitirSubida && <><Button type="button" variant="ghost" size="sm" disabled={bloqueado} onClick={() => archivo.current?.click()}>{subiendo ? "Subiendo imagen…" : "Agregar imagen"}</Button>
+      <input ref={archivo} className="sr-only" type="file" accept="image/png,image/jpeg,image/webp" aria-label="Archivo de imagen del detalle técnico" disabled={bloqueado} onChange={e => { const f = e.target.files?.[0]; e.target.value = ""; if (f) { ultimo.current = { archivo: f, clave: crypto.randomUUID() }; void subir(); } }} /></>}
     </div>}
     <EditorContent editor={editor} className="min-w-0 break-words [overflow-wrap:anywhere] [&_.tiptap_p]:my-2 [&_.tiptap_h1]:my-3 [&_.tiptap_h1]:text-xl [&_.tiptap_h1]:font-bold [&_.tiptap_h2]:my-3 [&_.tiptap_h2]:text-lg [&_.tiptap_h2]:font-bold [&_.tiptap_h3]:my-2 [&_.tiptap_h3]:font-bold [&_.tiptap_ul]:list-disc [&_.tiptap_ul]:pl-6 [&_.tiptap_ol]:list-decimal [&_.tiptap_ol]:pl-6 [&_.tiptap_blockquote]:border-l-2 [&_.tiptap_blockquote]:pl-3 [&_.tiptap_img]:h-auto [&_.tiptap_img]:max-w-full [&_.tiptap_hr]:my-4" />
     {error && <div className="p-3"><p role="alert" className="text-sm text-destructive">{error}</p>{reintento && <Button type="button" variant="outline" disabled={bloqueado} onClick={() => void subir()}>Reintentar subida</Button>}</div>}
-    {!soloLectura && <p className="border-t border-border p-3 text-xs text-muted-foreground">Detalle general opcional. Hasta diez imágenes PNG, JPG o WebP de 2 MB. Se conservan las imágenes históricas; editar este borrador no cambia el stock.</p>}
+    {!soloLectura && <p className="border-t border-border p-3 text-xs text-muted-foreground">{permitirSubida ? "Detalle general opcional. Hasta diez imágenes PNG, JPG o WebP de 2 MB. Se conservan las imágenes históricas; editar este borrador no cambia el stock." : "Revisa el alcance contratado. Puedes conservar las imágenes de la oferta; sus archivos originales permanecen archivados."}</p>}
   </div>;
 }

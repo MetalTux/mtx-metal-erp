@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
 import { referenciaUnidadSchema, unidadMedidaSchema } from "@/lib/validaciones/unidad-medida";
 import type { ResultadoUnidad, UnidadMedida } from "@/lib/tipos/unidad-medida";
+import { tieneReferenciaHistoricaPlan } from "./referencias-plan-trabajo";
 
 const seleccion = {
   id: true, name: true, abbreviation: true, createdAt: true, updatedAt: true,
@@ -53,7 +54,12 @@ export async function eliminarUnidad(referencia: unknown): Promise<ResultadoUnid
   if (!validacion.success) return { ok: false, mensaje: "La referencia del registro no es válida. Actualiza el listado." };
   try {
     // La FK de materiales impide el borrado también ante una asociación concurrente.
-    await prisma.unitMeasure.delete({ where: { id: validacion.data.id, updatedAt: new Date(validacion.data.updatedAt) } });
-    return { ok: true, mensaje: "Unidad de medida eliminada." };
+    return await prisma.$transaction(async tx => {
+      const filas = await tx.$queryRaw<{ id: number }[]>`SELECT id FROM "UnitMeasure" WHERE id=${validacion.data.id} AND "updatedAt"=${new Date(validacion.data.updatedAt)} FOR UPDATE`;
+      if (!filas.length) return { ok: false, mensaje: "El registro cambió o ya no existe. Actualiza el listado." };
+      if (await tieneReferenciaHistoricaPlan(tx, "UnitMeasure", validacion.data.id)) return { ok: false, mensaje: "No se puede eliminar esta unidad porque tiene planificación histórica de trabajos." };
+      await tx.unitMeasure.delete({ where: { id: validacion.data.id, updatedAt: new Date(validacion.data.updatedAt) } });
+      return { ok: true, mensaje: "Unidad de medida eliminada." };
+    });
   } catch (error) { return errorOperacion(error); }
 }

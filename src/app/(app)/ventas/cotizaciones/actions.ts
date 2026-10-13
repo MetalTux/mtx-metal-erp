@@ -11,6 +11,7 @@ export async function guardar(datos: unknown, clave: unknown, referencia?: unkno
   if (r.ok) revalidatePath("/ventas/cotizaciones"); return r;
 }
 export async function resolver(referencia: unknown, clave: unknown, accion: unknown) {
+  if (accion === "APROBAR") return { ok: false as const, mensaje: "Utiliza Aceptar y registrar orden para confirmar juntos la aprobación y el compromiso del cliente." };
   const r = await resolverCotizacion(referencia, clave, accion);
   if (r.ok) revalidatePath("/ventas/cotizaciones"); return r;
 }

@@ -2,17 +2,18 @@ import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
 import { bodegaSchema, referenciaBodegaSchema } from "@/lib/validaciones/bodega";
 import type { Bodega, ResultadoBodega } from "@/lib/tipos/bodega";
+import { tieneReferenciaHistoricaPlan } from "./referencias-plan-trabajo";
 
 const seleccion = {
   id: true, name: true, location: true, classification: true, createdAt: true, updatedAt: true,
-  _count: { select: { productStocks: true, stocks: true, stockMovements: true, purchases: true, workOrderDetails: true } },
+  _count: { select: { productStocks: true, stocks: true, stockMovements: true, purchases: true, workOrderDetails: true, workOrderSupplies: true } },
 } satisfies Prisma.WarehouseSelect;
 
 function serializar(bodega: Prisma.WarehouseGetPayload<{ select: typeof seleccion }>): Bodega {
   const { _count, createdAt, updatedAt, ...datos } = bodega;
   return {
     ...datos, createdAt: createdAt.toISOString(), updatedAt: updatedAt.toISOString(),
-    referencias: { productos: _count.productStocks, stocks: _count.stocks, movimientos: _count.stockMovements, compras: _count.purchases, trabajos: _count.workOrderDetails },
+    referencias: { productos: _count.productStocks, stocks: _count.stocks, movimientos: _count.stockMovements, compras: _count.purchases, trabajos: _count.workOrderDetails + _count.workOrderSupplies },
   };
 }
 
@@ -50,10 +51,12 @@ export async function guardarBodega(datos: unknown, referencia?: unknown): Promi
         const filas = await tx.$queryRaw<{ id: number }[]>`SELECT id FROM "Warehouse" WHERE id = ${registro.data.id} AND "updatedAt" = ${new Date(registro.data.updatedAt)} FOR UPDATE`;
         if (!filas.length) return { ok: false, mensaje: "El registro cambió. Actualiza el listado y vuelve a abrirlo." };
         const actual = await tx.warehouse.findUniqueOrThrow({ where: { id: registro.data.id }, select: seleccion });
-        if (data.classification === "PRODUCTO_TERMINADO" && [actual._count.stocks, actual._count.stockMovements, actual._count.purchases, actual._count.workOrderDetails].some(cantidad => cantidad > 0)) {
+        const suministrosMateria = data.classification === "PRODUCTO_TERMINADO" && (await tx.workOrderSupplyPlan.count({ where: { warehouseId: actual.id, rawMaterialId: { not: null } } }) || await tieneReferenciaHistoricaPlan(tx, "WarehouseMateria", actual.id));
+        const suministrosProducto = data.classification === "MATERIA_PRIMA" && (await tx.workOrderSupplyPlan.count({ where: { warehouseId: actual.id, productId: { not: null } } }) || await tieneReferenciaHistoricaPlan(tx, "WarehouseProducto", actual.id));
+        if (data.classification === "PRODUCTO_TERMINADO" && ([actual._count.stocks, actual._count.stockMovements, actual._count.purchases, actual._count.workOrderDetails].some(cantidad => cantidad > 0) || suministrosMateria)) {
           return { ok: false, mensaje: "Esta bodega tiene referencias de materias primas. Selecciona Materia prima o Mixta.", campos: { classification: ["Las referencias existentes impiden uso exclusivo para producto terminado."] } };
         }
-        if (data.classification === "MATERIA_PRIMA" && actual._count.productStocks > 0) return { ok: false, mensaje: "Esta bodega tiene inventario de producto terminado. Selecciona Producto terminado o Mixta.", campos: { classification: ["El historial de terminado impide uso exclusivo para materia prima."] } };
+        if (data.classification === "MATERIA_PRIMA" && (actual._count.productStocks > 0 || suministrosProducto)) return { ok: false, mensaje: "Esta bodega tiene inventario o planificación de producto terminado. Selecciona Producto terminado o Mixta.", campos: { classification: ["Las referencias de terminado impiden uso exclusivo para materia prima."] } };
       }
       const bodega = registro?.success
         ? await tx.warehouse.update({ where: { id: registro.data.id }, data: { ...data, updatedAt: new Date(Math.max(Date.now(), new Date(registro.data.updatedAt).getTime() + 1)) }, select: seleccion })
@@ -68,7 +71,12 @@ export async function eliminarBodega(referencia: unknown): Promise<ResultadoBode
   if (!validacion.success) return { ok: false, mensaje: "La referencia del registro no es válida. Actualiza el listado." };
   try {
     // Las FK protegen incluso saldo cero y compras sin detalles; se cuenta la cabecera una sola vez.
-    await prisma.warehouse.delete({ where: { id: validacion.data.id, updatedAt: new Date(validacion.data.updatedAt) } });
-    return { ok: true, mensaje: "Bodega eliminada." };
+    return await prisma.$transaction(async tx => {
+      const filas = await tx.$queryRaw<{ id: number }[]>`SELECT id FROM "Warehouse" WHERE id=${validacion.data.id} AND "updatedAt"=${new Date(validacion.data.updatedAt)} FOR UPDATE`;
+      if (!filas.length) return { ok: false, mensaje: "El registro cambió o ya no existe. Actualiza el listado." };
+      if (await tieneReferenciaHistoricaPlan(tx, "Warehouse", validacion.data.id)) return { ok: false, mensaje: "No se puede eliminar esta bodega porque tiene planificación histórica de trabajos." };
+      await tx.warehouse.delete({ where: { id: validacion.data.id, updatedAt: new Date(validacion.data.updatedAt) } });
+      return { ok: true, mensaje: "Bodega eliminada." };
+    });
   } catch (error) { return errorOperacion(error); }
 }
