@@ -105,7 +105,7 @@ Flujo principal: **Cotización → Orden de venta → Orden de trabajo → Guía
 - **Transición de cobranza:** `DeliveryNote.paymentStatus`, `paymentPromiseDate` y `voucherUrl` son campos heredados conservados. Las nuevas operaciones usarán cuentas y abonos. No deduzcas pagos antiguos solo por el estado de una guía ni retires esos campos sin revisar la transición.
 - **Signo de movimientos:** `ENTRADA` suma, `SALIDA` resta y `AJUSTE` puede sumar o restar. Vincula compras y consumos con sus detalles de origen cuando corresponda. No edites movimientos históricos; corrige errores con un nuevo `AJUSTE`.
 - **Bodega:** Compras tiene una bodega de recepción en `Purchase.warehouseId`; las líneas coinciden mediante FK compuesta. Producción conserva bodega por línea en `WorkOrderDetail.warehouseId`. Traslados entre bodegas aún pendientes.
-- **Cotizaciones:** calcula `Quote.totalAmount` como la suma de `quantity × unitPrice` de sus detalles. `QuoteDetail.rawMaterialId = null` representa un ítem libre, como mano de obra o flete.
+- **Cotizaciones:** precios finales en pesos enteros con IVA incluido; redondear cada línea al peso, sumar subtotal y aplicar descuento global antes del desglose neto/IVA con la tasa histórica. Usa calcularImportesCotizacion y Prisma.Decimal. QuoteDetail.kind diferencia MATERIA_PRIMA, PRODUCTO y SERVICIO; rawMaterialId null por sí solo no identifica un servicio.
 - **Obra propia:** `WorkOrder.salesOrderId = null` significa fabricación sin cliente. También consume materiales; no fuerces una orden de venta ni un cliente ficticio.
 - **Fechas:** todos los modelos tienen `createdAt`; todos salvo `StockMovement` tienen `updatedAt`. `date` es la fecha del documento o hecho, que puede indicarse manualmente; `createdAt` es la fecha de registro. `Quote.validUntil` es el vencimiento opcional de la oferta.
 - **Índices:** toda clave foránea nueva debe quedar cubierta por un índice apropiado. Sigue el patrón de `@@index` existente y considera la cobertura de índices compuestos o únicos.
@@ -290,3 +290,43 @@ La fuente detallada es `docs/GUIA-INTERFAZ.md`, cuyas fases de tema y layout ya 
 - En Clientes/Sucursales, desde 768 px usar tabla que reparta el ancho; por debajo, filas apiladas con etiquetas. No restaurar mínimos acumulados que obliguen a desplazar horizontalmente el formulario.
 - En nuevos formularios/detalles, comprobar también scrollWidth/clientWidth del diálogo y sus contenedores, no sólo del documento. Usar min-w-0 y texto ajustable; evitar ocultar desbordamientos como sustituto de adaptar contenido.
 - Verificar escritorio, móvil estrecho (320 px), breakpoints y datos largos. Mantener acciones con nombre accesible/ayuda y scroll vertical cuando sea necesario.
+
+
+## IVA por períodos
+
+- VatRatePeriod y /configuracion/iva implementados; inicial 19% desde 2003-10-01, sin fecha hasta. Tasas Decimal(7,4), rango 0–100. Fechas calendario hasta inclusiva, no solapamientos (GiST), exactamente un abierto; abierto futuro no implica tasa aplicable hoy.
+- Configuración bloquea catálogo exclusivo pg_advisory_xact_lock(73119) antes de filas; ivaParaDocumento(tx,fecha) usa compartido antes de seleccionar y copiar referencia/Decimal en la misma tx del futuro documento. No crear tasas por defecto al faltar cobertura.
+- Crear un abierto cierra el anterior el día previo atómicamente y exige versión de abierto esperado. Editar usado bloquea tasa/desde y conserva cobertura; eliminar sólo cerrado sin uso. Conservar CHECK/triggers/índice parcial y FK Restrict.
+- Quote prepara vatRatePeriodId/vatRate nullable; no rellenar históricos. SQL protege copia/rango, conservación física de cotizaciones con IVA y dato tributario/fecha/estado terminal. El servicio completo de Cotizaciones/eliminación lógica/duplicación/importe/futuros documentos sigue pendiente.
+- tests/iva.integration.ts sólo copia local mtx_validacion_iva_*, con fallos provocados; retirar copia/servidores. Checkpoint C1-IVA en docs/HITO-COTIZACIONES.md.
+
+
+## Cotizaciones operativas C1–C5
+
+- `/ventas/cotizaciones` implementa listado/filtros/paginación, registro/consulta/edición de Pendientes, aprobar/rechazar, baja lógica y nueva Pendiente de corrección vinculada con nuevo folio. PDF, conversión y fabricación/cobranza quedan pendientes; seguir el checkpoint final de docs/HITO-COTIZACIONES.md.
+- guardarCotizacion en servicios/cotizaciones.ts integra UUID/huella antes de versión, asignarFolio e ivaParaDocumento dentro de la tx del documento; no reservas/stock/deuda. QuoteOperation propia confirma junto a cabecera/líneas. SQL protege importes/suma, identidad, estados terminales y conservación física; no retirar CHECK/triggers.
+- IVA compartido antes de filas; materiales ascendentes y productos ascendentes FOR UPDATE para coincidir con QuoteDetail_product y evitar ascensos SHARE→UPDATE. Consultas secuenciales en tx. Copias históricas de cliente/contacto/emisor/sucursal/plazo/banco/unidad/código; vista readonly no usa nombres/unidades actuales para reescribir historia.
+- technicalDescription es JSON estructurado con nodos/atributos permitidos y URLs locales verificadas; editor general, líneas breves. Sin HTML arbitrario/base64/imágenes externas. Validar también en servidor; no confiar en totales/tasa del navegador. Vista previa sólo lectura y descartes/confirmaciones reutilizables.
+- AlmacenImagenesCotizacion local: var/cotizaciones/imagenes o COTIZACION_IMAGEN_DIR, reemplazable por S3 conservando claves/URLs y transfiriendo los archivos existentes. PNG/JPG/WebP 2 MB/16 MP, reprocesado PNG/1600 px; diez imágenes. Respaldar carpeta con BD. QuoteImageFile/Link conservan archivos históricos; borradores cancelados no tienen purga automática. Ante commit incierto, no borrar archivo hasta comprobar ausencia de referencia.
+- tests/cotizaciones.integration.ts sólo copia mtx_validacion_cotizaciones_* con COTIZACION_IMAGEN_DIR aislado que incluya imagenes-validacion. Ejecutar secuencialmente, retirar copia/servidor propios; tests/importes-cotizacion.ts es puro y no conecta a BD.
+- SelectorBuscable establece label del Command para dar nombre accesible al buscador. BotonConAyuda es informativo: contenido y contenedor Radix dejan pasar clics; no introducir controles interactivos dentro de esas ayudas.
+
+
+## Editor de Cotizaciones C6
+
+- TextStyleKit/TextAlign/Table y prepararPegadoCotizacion conservan estilos compatibles de HTML recibido (clases/herencia/etiquetas font), sin insertar HTML arbitrario. JSON valida estilos y estructura de tablas, así como placement/width de imágenes; coordinar siempre editor y validador. No requiere nueva migración por usar technicalDescription Json.
+- Imágenes seleccionadas: posición bloque/izquierda/derecha/centro, ancho porcentual y mover antes/después; móviles <640 px apilan texto sin reescribir atributos. Superficie blanca del documento conserva legibilidad de colores copiados.
+- No prometer formato ausente del portapapeles (PDF/plaintext), descarga de fuentes ni importación automática de imágenes externas. Límites/formato del upload anterior se conservan. Renderizado PDF futuro deberá respetar estilos/tabla/disposición. Prueba pura tests/texto-cotizacion.ts e integración ampliada; checkpoint C6 en HITO-COTIZACIONES.
+
+
+## PDF de Cotizaciones
+
+- PDF Carta en cualquier QuoteStatus: fuente HITO-PDF-COTIZACIONES. Quote.commercialTerms opcional (5000 caracteres) no registra pagos ni altera PaymentCondition. Exigir emisor histórico con razón social/RUT/dirección/ciudad; logo/banco opcionales, validar RUT impresos. No completar automáticamente snapshots antiguos; actualización explícita de emisor en Pendientes aprobada e implementada: `actualizarEmisorCotizacion` copia sólo Empresa, exige datos mínimos completos, bloquea versión/estado/orden y crea revisión + QuoteOperation EDITAR atómicamente con UUID estable. Acción en PDF y versiones con confirmación; nunca altera emisiones archivadas.
+- QuotePdfEmission es inmutable: revisión/estado/folio, snapshot completo de Quote/QuoteDetail/DocumentFolio y recursos, archivo/huella/versión de plantilla. QuotePdfRequest UUID estable propio; reconocer antes de comprobar versión. Unique por quoteId/quoteVersion/templateVersion y CHECK/triggers/FK Restrict se conservan.
+- Emitir: captura RepeatableRead secuencial → render fuera de tx → UUID/serialización y Quote FOR SHARE → comprobar versión/huella y archivar emisión/solicitud. No cambiar Quote.version al emitir, reservar folios ni escribir inventario/cobranza. Descartar archivos nuevos sólo tras verificar que no quedó referencia; conservar ante commit incierto.
+- AlmacenPdfCotizacion local en var/cotizaciones/pdfs o COTIZACION_PDF_DIR, futuro S3 mediante fábrica. Respaldar con BD/recursos; sin purga automática. GET /api/cotizaciones/pdfs/[emision] entrega bytes originales comprobando SHA-256, incluso si cambió/ocultó la cotización.
+- Playwright/Chromium instalado como dependencia del proyecto; pnpm exec playwright install chromium al preparar otra máquina, con dependencias del sistema necesarias. COTIZACION_CHROMIUM_PATH opcional. Runtime Node; HTML controlado desde JSON, texto escapado, PNG embebido, JS deshabilitado y red bloqueada; cerrar navegador tras render.
+- Incrementar VERSION_PLANTILLA_PDF al cambiar una plantilla publicada; no regenerar PDFs anteriores al consultar. SnapshotVersion debe versionarse al evolucionar estructura. No se reconstruyen revisiones antiguas que nunca fueron emitidas ni hay restauración/edición de archivos históricos.
+- tests/pdfs-cotizacion.integration.ts sólo copia mtx_validacion_cotizaciones_* y COTIZACION_PDF_DIR con pdfs-validacion, imágenes aisladas; pruebas secuenciales. Incluye fallos y simulaciones de concurrencia/commit incierto. Retirar copia y servidores propios; generación de PDF validada expresamente por el usuario.
+
+- **Envío de PDF por correo (P6): pendiente por instrucción del usuario hasta recibir datos SMTP y contraseña de aplicación válidas del usuario final.** Leer correo actual del contacto de la sucursal seleccionada desde su mantenedor; si falta, solicitarlo al enviar. No implementar ni enviar ahora. No registrar credenciales en documentos/git. Al retomar, consultar si el correo ingresado debe persistir en Sucursal o sólo usarse para el envío; no asumir. Checkpoint: `docs/HITO-PDF-COTIZACIONES.md`.

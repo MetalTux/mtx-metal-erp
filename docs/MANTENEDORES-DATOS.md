@@ -267,6 +267,9 @@ Implementación en `src/components/mantenedores/sucursales-cliente.tsx`, integra
 - [x] Chromium: medir página, diálogo y contenedor de tabla a 320/360/390/480/640/767/768/820/1024/1440 px, sin scroll horizontal interno, con textos al límite. Crear/Editar/Ver comprobados a 320 px.
 - [x] Regresión de alta/edición/consulta/descarte/confirmación, foco, Enter y guardado conjunto; lint/build con tipos aprobados.
 - [x] PostgreSQL real intacto: huellas/conteos de 41 tablas. Copia y servidor propios retirados; 3031 libre y servidor previo del usuario en 3030 conservado.
-- [ ] Revisión visual del usuario del ajuste responsivo.
+- [x] Revisión visual del usuario del ajuste responsivo; confirma funcionamiento.
 
 El formulario conserva scroll vertical cuando necesita más altura. El diseño adapta el contenido; no fuerza al usuario a desplazarse horizontalmente para ver las sucursales o sus acciones. Sin cambios en Prisma, migraciones ni servicios.
+
+
+- [x] Usuario confirma Clientes/Sucursales responsivos y autoriza retomar Cotizaciones. Checkpoint vigente: C1 en [HITO-COTIZACIONES.md](HITO-COTIZACIONES.md).

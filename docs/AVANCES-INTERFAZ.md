@@ -286,3 +286,56 @@ Detalle en [MANTENEDORES-DATOS.md](MANTENEDORES-DATOS.md).
 - [ ] Revisión visual del usuario.
 
 Ver [MANTENEDORES-DATOS.md](MANTENEDORES-DATOS.md).
+
+
+- [x] Usuario confirma Clientes/Sucursales responsivos y autoriza retomar Cotizaciones. Checkpoint vigente: C1 en [HITO-COTIZACIONES.md](HITO-COTIZACIONES.md).
+
+
+## 12-10-2026 — Configuración de IVA
+
+- [x] Ruta /configuracion/iva y navegación centralizada.
+- [x] Tabla/filtro, crear/ver/editar/eliminar sobre listado, ayudas, confirmaciones y descarte.
+- [x] Programado/Aplicable hoy/Finalizado según fecha; período abierto puede ser futuro.
+- [x] Controles readonly de períodos usados, cierre/alta conjunta y mensajes de conflicto/cobertura.
+- [x] Chromium escritorio/móvil 320 px, teclado/Enter, lint/tipos/build y limpieza.
+- [ ] Revisión funcional del usuario.
+
+Cotizaciones sigue provisional; ver C1-IVA en [HITO-COTIZACIONES.md](HITO-COTIZACIONES.md).
+
+
+## 12-10-2026 — Cotizaciones
+
+- [x] Reemplazar ruta provisional por listado con filtros/orden/paginación PostgreSQL y acciones con ayudas.
+- [x] Formularios sobre listado, líneas en grilla/modal, selectores buscables, vista histórica readonly, importes/confirmación y estados/corrección/baja.
+- [x] Editor técnico general con títulos, listas, negrita/cursiva/subrayado/tachado, citas/separadores e imágenes locales históricas.
+- [x] Validar foco/Enter/descarte y ausencia de scroll horizontal 320–1440 px con textos largos e imágenes grandes; tooltips informativos no bloquean botones.
+- [x] Lint/build y Chromium sobre copia, sin servidores propios al terminar.
+- [ ] Revisión funcional del usuario. PDF y conversión quedan fuera de esta entrega.
+
+Estado/reglas/evidencias en [HITO-COTIZACIONES.md](HITO-COTIZACIONES.md), C1–C5.
+
+
+## 12-10-2026 — redimensionar imágenes de Cotizaciones
+
+- [x] Tiradores en cuatro esquinas, cursor diagonal y arrastre táctil con proporción conservada.
+- [x] Ancho porcentual responsivo, menú con tamaños personalizados, Deshacer/Rehacer, Escape y flechas accesibles. Sólo lectura sin tiradores.
+- [x] Validar listas/flotantes, teclado, táctil y anchos 320–1440; JSON compatible con el validador actual, lint/build correctos. Sin escrituras de BD ni servidores propios al terminar.
+- [ ] Revisión funcional del usuario y guardado/reconsulta del tamaño.
+
+Detalle y respaldo en C6.2 de [HITO-COTIZACIONES.md](HITO-COTIZACIONES.md).
+
+
+## 12-10-2026 — PDF de Cotizaciones
+
+- [x] Condiciones comerciales opcionales en Crear/Editar/Ver, diferenciadas del plazo de pago.
+- [x] Acción PDF sobre listado y consulta, historial por revisión/estado/fecha, visor y descarga del archivo conservado.
+- [x] Confirmación reutilizable al emitir; consulta archivada directa, Aviso para errores, carga/procesamiento y retorno de foco.
+- [x] Carta y formato enriquecido/imágenes/tablas paginadas; historial/descargas con contenido anterior intacto.
+- [x] Chromium escritorio/móvil 320–1440, datos largos, revisión nueva, alerta de emisor incompleto y pruebas técnicas; lint/build correctos.
+- [x] Revisión funcional del usuario: generación del PDF aprobada.
+
+Estado y configuración en [HITO-PDF-COTIZACIONES.md](HITO-PDF-COTIZACIONES.md). Actualización explícita del emisor aprobada e implementada; generación del PDF validada por el usuario.
+
+- [x] Cotizaciones: acción explícita «Actualizar emisor desde Empresa» en PDF y versiones, confirmación reutilizable, nueva revisión y conservación de PDF históricos; funcionamiento confirmado por el usuario.
+
+- [ ] Cotizaciones: envío de PDF por correo al contacto de Sucursal; solicitar correo si falta. Pendiente de SMTP y contraseña de aplicación válidas del usuario final; sin implementación ni envíos por ahora.

@@ -8,13 +8,13 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 export function BotonConAyuda({ ayuda, ...props }: ComponentProps<typeof Button> & { ayuda?: string }) {
   if (!ayuda) return <Button {...props} />;
   return (
-    <Tooltip>
+    <Tooltip disableHoverableContent>
       <TooltipTrigger asChild>
         <span className="inline-flex self-end rounded-lg focus-visible:outline-2 focus-visible:outline-ring" tabIndex={props.disabled ? 0 : undefined} aria-label={props.disabled ? `${props["aria-label"] ?? "Acción no disponible"}. ${ayuda}` : undefined}>
           <Button {...props} />
         </span>
       </TooltipTrigger>
-      <TooltipContent side="top" sideOffset={6}>{ayuda}</TooltipContent>
+      <TooltipContent data-ayuda-boton="" className="pointer-events-none" side="top" sideOffset={6}>{ayuda}</TooltipContent>
     </Tooltip>
   );
 }

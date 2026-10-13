@@ -1,5 +1,5 @@
 import {
-  Banknote, Building2, ClipboardList, FileText, Hammer, LayoutDashboard,
+  CalendarDays, Banknote, Building2, ClipboardList, FileText, Hammer, LayoutDashboard,
   Package, PackageSearch, Ruler, SlidersHorizontal, Truck, Users, Warehouse,
   ShoppingCart, ArrowLeftRight, type LucideIcon,
 } from "lucide-react";
@@ -47,6 +47,7 @@ export const navegacion: GrupoNavegacion[] = [
     { titulo: "Guías de despacho", ruta: "/trabajos/despachos", icono: Truck, descripcion: "Gestiona las entregas y los documentos de despacho." },
   ] },
   { titulo: "Configuración", elementos: [
+    { titulo: "IVA", ruta: "/configuracion/iva", icono: CalendarDays, descripcion: "Configura tasas de IVA por fecha de documento y períodos históricos." },
     { titulo: "Numeración", ruta: "/configuracion/numeracion", icono: FileText, descripcion: "Configura los folios internos de cotizaciones, órdenes y guías." },
     { titulo: "Empresa", ruta: "/configuracion/empresa", icono: Building2, descripcion: "Configura los datos de tu empresa para cotizaciones y documentos." },
   ] },

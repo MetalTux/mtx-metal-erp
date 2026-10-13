@@ -105,3 +105,49 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* Las ayudas de botones son informativas. Su contenedor de posicionamiento
+   también debe dejar pasar clics cuando se restaura el foco tras un diálogo. */
+[data-radix-popper-content-wrapper]:has(> [data-ayuda-boton]) {
+  pointer-events: none;
+}
+
+/* Contenido técnico: tablas ajustadas y flotantes con cierre del flujo. */
+/* Cerrar flotantes al terminar el documento, nunca por ítem de lista:
+   los ítems siguientes deben continuar junto a la imagen. */
+.detalle-cotizacion::after { content: ""; display: block; clear: both; }
+.detalle-cotizacion :is(img, .imagen-cotizacion)[data-placement="izquierda"] { float: left; margin: .5rem 1rem .5rem 0; }
+.detalle-cotizacion :is(img, .imagen-cotizacion)[data-placement="derecha"] { float: right; margin: .5rem 0 .5rem 1rem; }
+.detalle-cotizacion :is(img, .imagen-cotizacion)[data-placement="centro"] { display: block; float: none; clear: both; margin: .5rem auto; }
+.detalle-cotizacion :is(img, .imagen-cotizacion)[data-placement="bloque"] { display: block; float: none; clear: both; margin: .5rem 0; }
+.detalle-cotizacion table { table-layout: fixed; width: 100% !important; min-width: 0 !important; border-collapse: collapse; margin-block: 1rem; }
+.detalle-cotizacion col { width: auto !important; }
+.detalle-cotizacion td, .detalle-cotizacion th { border: 1px solid var(--border); padding: .5rem; min-width: 0; overflow-wrap: anywhere; vertical-align: top; }
+.detalle-cotizacion th { background: var(--muted); }
+.detalle-cotizacion h4, .detalle-cotizacion h5, .detalle-cotizacion h6 { font-weight: bold; margin-block: .5rem; }
+@media (max-width: 639px) {
+  .detalle-cotizacion :is(img, .imagen-cotizacion)[data-placement] { float: none; display: block; margin: .5rem auto; }
+}
+
+/* Superficie de documento: conserva legibilidad de colores copiados de Word. */
+.detalle-cotizacion { background: #fff; color: #181818; border-radius: .5rem; }
+.detalle-cotizacion th { background: #f3f3f3; }
+
+/* El contenedor de los tiradores flota como la imagen anterior: no limpiar cada li. */
+.detalle-cotizacion .imagen-cotizacion { position: relative; display: block; max-width: 100%; }
+.detalle-cotizacion .imagen-cotizacion img { display: block; width: 100%; height: auto; float: none; clear: none; margin: 0; }
+.detalle-cotizacion .imagen-seleccionada { outline: 2px solid var(--primary); }
+.detalle-cotizacion .tirador-imagen { position: absolute; width: 16px; height: 16px; min-width: 0; padding: 0; border: 2px solid #fff; border-radius: 2px; background: var(--primary); touch-action: none; user-select: none; z-index: 1; }
+.detalle-cotizacion .tirador-imagen[hidden] { display: none; }
+.detalle-cotizacion .tirador-imagen:focus-visible { outline: 2px solid #181818; outline-offset: 1px; }
+.detalle-cotizacion .tirador-imagen[data-esquina="superior-izquierda"] { top: 0; left: 0; cursor: nwse-resize; }
+.detalle-cotizacion .tirador-imagen[data-esquina="superior-derecha"] { top: 0; right: 0; cursor: nesw-resize; }
+.detalle-cotizacion .tirador-imagen[data-esquina="inferior-izquierda"] { bottom: 0; left: 0; cursor: nesw-resize; }
+.detalle-cotizacion .tirador-imagen[data-esquina="inferior-derecha"] { bottom: 0; right: 0; cursor: nwse-resize; }
+/* Un cambio dinámico a sólo lectura tampoco debe dejar controles visibles. */
+.detalle-cotizacion[contenteditable="false"] .tirador-imagen { display: none; }
+.detalle-cotizacion[contenteditable="false"] .imagen-seleccionada { outline: none; }
+
+/* El cuerpo mueve la imagen; los tiradores conservan su cursor de tamaño. */
+.detalle-cotizacion[contenteditable="true"] .imagen-cotizacion img { cursor: grab; }
+.detalle-cotizacion[contenteditable="true"] .imagen-cotizacion img:active { cursor: grabbing; }

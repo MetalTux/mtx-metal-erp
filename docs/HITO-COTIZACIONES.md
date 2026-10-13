@@ -1,6 +1,6 @@
 # Hito: Cotizaciones
 
-Fecha: 07-10-2026. **Estado: inicio autorizado; esquema y checkpoints revisados; cálculo del PDF, descuento global y estados aprobados; alcance comercial ampliado a materia prima, catálogo de productos terminados y trabajos a medida; flujo de Orden de Compra Cliente, producción y vencimiento definido; quedan precisiones de implementación/configuración. Dependencias implementadas: CRUD de Condiciones de Pago y Clientes con sucursales; Numeración y cuentas bancarias de Empresa implementadas como dependencias; Cotizaciones, catálogo de productos y procesos comerciales siguen pendientes.**
+Fecha inicial: 07-10-2026. **Estado vigente: Cotizaciones implementado y validado técnicamente en `/ventas/cotizaciones`. Listado/filtros/paginación, registro/consulta/edición de Pendientes, aprobación/rechazo, eliminación lógica y corrección vinculada con nuevo folio. Detalle técnico general enriquecido con imágenes locales; líneas breves. IVA por períodos, descuento global, copias históricas y numeración integrados. Migración aplicada y datos previos conservados. Pendiente revisión funcional del usuario; PDF, conversión a Orden de Compra Cliente y producción son entregas posteriores. Checkpoint detallado: C1–C5 al final.**
 
 Referencias: `AGENTS.md`, [guía de interfaz](GUIA-INTERFAZ.md), [Inventario](HITO-INVENTARIO.md), [Compras](HITO-COMPRAS.md), [propuestas de dominio](PROPUESTAS-DOMINIO.md) y `prisma/schema.prisma`.
 
@@ -32,7 +32,8 @@ La aprobación del resto de Compras está documentada. Inventario conserva pendi
 - [x] PDF y conversión a venta quedan para etapas posteriores, conforme a aprobación del punto 3. El adjunto es referencia funcional, no autorización para emitir documentos automáticamente.
 - [x] Numeración de cotizaciones y documentos generados configurable en un módulo de configuración inicial, solicitado por el usuario.
 - [x] Configuración por documento de prefijo, siguiente número y ceros, sin reinicio anual inicial ni duplicados.
-- [ ] Configurar número inicial antes de emitir: todavía no definido por el usuario; no asignarlo por defecto. Fechas permitidas de cotización pendientes.
+- [x] Auditar configuración local de Cotización: configurada al 11-10-2026. El módulo usará el valor elegido, sin inventar inicio ni consumir folio al abrir.
+- [x] Recuperar aprobación ya registrada de fecha actual/pasada sin futuro; falta implementar su validación.
 - [ ] Resolver catálogo de productos terminados y representación/unidad de trabajos/servicios a medida, sin confundirlos con materias primas.
 
 ## Etapa 1 — estructura y protección de datos
@@ -530,6 +531,299 @@ Ver [HITO-PRODUCTOS.md](HITO-PRODUCTOS.md). Fabricación y salidas de terminado 
 
 - [x] Aplicar a Sucursales el patrón de grilla/modal de la receta de Productos; Crear/Editar/Sucursales/Ver conservan su alcance.
 - [x] Validar borrador, Enter, descarte/foco, persistencia conjunta, referencias protegidas y escritorio/móvil; sin cambios en la estructura ni servicios.
-- [ ] Revisión del usuario de la nueva presentación.
+- [x] Revisión del usuario de Clientes/Sucursales responsivos: confirma funcionamiento el 11-10-2026.
 
 Checklist y respaldo en [MANTENEDORES-DATOS.md](MANTENEDORES-DATOS.md). Cotizaciones siguen pendientes; esta reorganización no emite documentos ni altera sus copias históricas.
+
+
+## C1 — inicio estructurado de Cotizaciones, 11-10-2026
+
+Esta sección contiene el checkpoint vigente. Las secciones anteriores conservan decisiones/entregas históricas; no interpretar sus pendientes ya resueltos como requisitos nuevos.
+
+### Auditoría y preparación completadas
+
+- [x] Revisar Git y conservar todos los avances anteriores; no hacer push.
+- [x] Contrastar Quote/QuoteDetail y sus dependencias con los checkpoints; `/ventas/cotizaciones` sigue siendo provisional.
+- [x] Confirmar que ya hay FK/snapshots preparados para sucursal, condición de pago, cuenta bancaria y producto; su integración en el documento no está implementada.
+- [x] Recuperar fechas aprobadas: cotización actual/pasada, sin futuras; unidad del mantenedor para trabajos/productos, sin forzar cantidades enteras.
+- [x] Auditoría PostgreSQL local en transacción READ ONLY: 0 Quote, 0 QuoteDetail y 0 SalesOrder. Numeración COTIZACION configurada; no se cambió su contador ni se asignó folio.
+- [x] Respaldar documentos antes de actualizar este checkpoint. Respaldo indicado en CAMBIOS.
+- [x] Solicitar precisiones pendientes al usuario, sin decidir por silencio ni timeout.
+
+### Preguntas abiertas — requieren respuesta
+
+- [ ] ¿Esta primera entrega usa sólo IVA 19%, sin exenciones ni otras tasas? El cálculo aprobado al 19% se conserva; las otras condiciones no están definidas.
+- [ ] ¿Porcentaje de descuento hasta dos decimales y descuento calculado redondeado al peso con empates hacia arriba? Alternativa consultada: porcentaje entero. Descuento en pesos entero, sin acumular modos ni exceder subtotal.
+- [ ] ¿Eliminación lógica de Pendientes y corrección por duplicación vinculada de Aprobadas/Rechazadas, con nueva Pendiente/nuevo folio? Alternativa: sólo eliminación lógica y duplicación para después.
+
+### C1.1 — estructura implementada tras respuestas
+
+- [x] Respaldar código/esquema y PostgreSQL antes de editar; preparar copia descartable y manifiesto.
+- [x] Añadir vínculo único al folio de Cotización e identidad estable de creación; versionado y registro propio de operaciones/reintentos.
+- [x] Conservar copia histórica del cliente/emisor y datos seleccionados de sucursal, condición de pago y cuenta; no usar datos actuales para reescribir documentos terminales. Perfil Empresa continúa gradual: no fabricar datos faltantes; requisitos de emisión se abordarán con PDF.
+- [x] Diferenciar líneas de materia prima, catálogo terminado y trabajo/servicio libre; unidad/código/descripción históricos y orden estable. Conservar relación Producto/Materia prima exclusiva.
+- [x] Incorporar descripción técnica general opcional extensa, separada de descripciones de línea.
+- [x] Modelar subtotal, modo/valor/importe de descuento, tasa/desglose de IVA y total; restricciones de pesos enteros, cantidades Decimal(14,3), importes finitos/no negativos y equivalencias según respuestas.
+- [x] Definir fechas de calendario, vigencia opcional y validaciones coherentes; aprobación de vencidas bloqueada.
+- [x] Implementar bloqueo de contenido al aprobar/rechazar y reglas de eliminación/corrección una vez confirmadas.
+- [x] Versionar migración, revisar SQL y probar en copia. Revalidar los datos del destino antes de aplicar: si aparecen registros previos, revisar transición sin borrarlos ni inventar copias históricas.
+- [x] Prisma validate/generate, integridad/concurrencia/rollback y conservación de datos; aplicar sólo tras validar en copia y actualizar checks.
+
+### C1.2 — servicio y cálculos
+
+- [x] Folio al primer guardado en la misma transacción del documento, reutilizando asignarFolio; ninguna reserva al abrir.
+- [x] Precios finales enteros, cantidades positivas de hasta tres decimales; línea al peso con empate hacia arriba, suma del subtotal y descuento global confirmado, después neto/IVA/total. Calcular en servidor con Prisma.Decimal.
+- [x] UUID/huella antes de evaluar versiones, bloqueos consistentes y consultas secuenciales dentro de pg. No aceptar totales del navegador.
+- [x] Crear/editar cabecera y líneas atómicamente; aprobar/rechazar/eliminar bajo reglas confirmadas y referencias protegidas.
+- [x] Comprobar que cotizar no modifica stock/Kardex, reserva inventario, fabrica, genera deuda ni registra abonos.
+
+### C2–C5 — siguientes entregas
+
+- [x] Listado paginado/filtrado en servidor con cliente, estado y fechas.
+- [x] Formularios sobre listado, selectores buscables, líneas en grilla/modal y ayudas; escritorio/móvil sin scroll horizontal en el formulario, incluyendo textos largos.
+- [x] Acciones de estados y eliminación confirmadas, consulta histórica readonly y errores/descarte reutilizables.
+- [x] Pruebas de ejemplo PDF, descuento, fracciones/redondeos, versiones/UUID, vigencia, estados, referencias y rollback; lint/build y navegador.
+- [ ] Revisión funcional del usuario. PDF, conversión a Orden de Compra Cliente y producción siguen como hitos posteriores.
+
+Mientras las tres respuestas sigan pendientes no se modifican esquema, migraciones ni servicios financieros. No se fija IVA alternativo, precisión de descuento o procedimiento de corrección por defecto.
+
+
+## Respuestas C1 — IVA por períodos y protección histórica
+
+- [x] IVA configurable mediante tabla con tasa, fecha desde obligatoria y fecha hasta nullable. Hasta null representa período abierto; no imponer 19% fijo.
+- [x] Cada Cotización/documento conserva la tasa utilizada; editar configuración no recalcula documentos anteriores.
+- [x] Descuento global porcentual con hasta dos decimales; importe redondeado al peso con empate hacia arriba. Alternativa en pesos enteros sin acumular ambos modos ni superar subtotal.
+- [x] Eliminación lógica de Pendientes; corrección de Aprobadas/Rechazadas mediante nueva Pendiente con nuevo folio y vínculo al original.
+
+### Precisiones temporales pendientes
+
+- [x] Elegir IVA por fecha del documento, confirmado.
+- [x] Hasta inclusiva, sin solapamientos, exactamente un período abierto, bloqueo si no hay tasa aplicable y programación futura, confirmados.
+- [x] Fecha inicial indicada por el usuario: 01-10-2003, Ley 19.888. Tasa 19% verificada en BCN; período inicial abierto. No insertar tasas anteriores por inferencia.
+- [x] Proteger tasa/desde utilizados y fecha hasta que siga cubriendo todos sus documentos, confirmado explícitamente.
+
+### Ampliación de C1
+
+- [ ] Diseñar catálogo temporal de IVA, sus CHECK/índices y protección concurrente de intervalos según respuestas; no reemplazarlo por una constante ni modificar tasas históricas copiadas.
+- [ ] Implementar configuración de IVA con listado, consulta/formulario y ayudas, incluyendo futuros períodos si se confirman.
+- [ ] Integrar selección temporal y copia de tasa/referencia en la misma transacción de cada documento; cálculos con Prisma.Decimal.
+- [ ] Probar límites de fechas, períodos abiertos, solapamientos, faltantes, concurrencia y conservación histórica.
+
+Las respuestas anteriores resuelven las preguntas de IVA fijo, precisión del descuento y corrección. Las nuevas preguntas precisan exclusivamente la temporalidad, configuración inicial y protección de períodos. Las reglas temporales quedaron confirmadas y la migración de IVA se implementó en la entrega registrada a continuación.
+
+
+## C1-IVA — entrega 12-10-2026
+
+Ruta **Configuración → IVA**, `/configuracion/iva`. Tabla con filtro y Crear/Ver/Editar/Eliminar sobre listado, ayudas/confirmaciones/descarte reutilizables. Tasa inicial 19%, desde 01-10-2003 y hasta null, conforme a [Ley 19.888, BCN](https://www.bcn.cl/leychile/Navegar?idNorma=213493&idParte=8914023). Es configuración explícita inicial, no una constante del cálculo ni una importación automática de legislación.
+
+- [x] Respaldar archivos y PostgreSQL antes de cambios: `backups/20261011_235653_iva_periodos`.
+- [x] VatRatePeriod: Decimal(7,4), porcentaje 0–100 y hasta cuatro decimales; desde/hasta fechas calendario, versión, CHECK, exclusión GiST de rangos inclusivos y exactamente un período abierto.
+- [x] Quote prepara vatRatePeriodId/vatRate nullable y FK Restrict con CHECK de copia completa; registros anteriores conservan null, sin impuestos inventados.
+- [x] SQL bloquea tasa/desde de períodos usados, cierres que excluyan documentos y borrado de períodos referenciados; cotizaciones con IVA no se borran físicamente ni retiran su IVA. IVA/fecha/estado terminal no se reabren para modificar historia.
+- [x] Migración `20261012001000_iva_por_periodos`: validada en copia y aplicada a PostgreSQL local; Prisma format/validate/generate y estado al día.
+- [x] Servicio ivaParaDocumento(tx,fecha): bloqueo compartido del catálogo, selección por fecha y error si falta tasa; devuelve referencia y Decimal para copiarlos en la tx del documento, sin crear período/folio.
+- [x] Configuración exclusiva/versión; alta de un nuevo abierto cierra el anterior el día previo en la misma tx. Edición preserva cobertura de documentos; eliminación sólo cerrados sin referencias. Los huecos son posibles y bloquean documentos sin tasa.
+- [x] Diferenciar período abierto de tasa aplicable hoy: un abierto futuro se muestra Programado; no usar null como sinónimo de vigente hoy.
+- [x] Integración en copia: límites de fechas, inclusividad, solapamientos/huecos, período abierto único, referencias/snapshots, estados terminales, versiones/concurrencia y rollback provocado del cierre/alta.
+- [x] Chromium escritorio/móvil 320 px: readonly/Enter, tasa/desde usados bloqueados, error de cierre, precisión, confirmación revisable, creación/eliminación cerrada y programación/cierre atómico.
+- [x] Lint, tipos/build, diff y conservación de datos: 41 tablas anteriores intactas; sólo nuevas columnas de Quote excluidas de huellas. Base real sólo contiene la tasa inicial y ningún fixture de pruebas. Ruta real HTTP 200.
+- [x] Copia y servidor propios retirados, 3031 libre y servidor previo 3030 conservado.
+- [ ] Revisión funcional del usuario de Configuración de IVA.
+- [ ] Integrar ivaParaDocumento en el futuro guardado real de Cotizaciones y otros documentos que usen IVA; hoy Cotizaciones sigue siendo provisional.
+
+El cálculo aprobado desde un precio final usa divisor 1 + tasa/100; 1,19 es únicamente el ejemplo con tasa 19%, no una constante futura. En el siguiente bloque C1 se implementarán folio/versión/operaciones de Cotización, copias de cliente/emisor, líneas diferenciadas, subtotal/descuento/neto/IVA/total, descripción técnica y eliminación lógica/duplicación vinculada. Este módulo no emite PDF, genera deuda, produce ni altera stock.
+
+
+## C1 — importes y texto enriquecido, 12-10-2026
+
+Este es el checkpoint más reciente. El usuario solicita continuar Cotizaciones y poder registrar títulos, negritas, listas, imágenes y otros formatos. No reducir el detalle técnico a texto plano. La ruta todavía es provisional: los siguientes avances preparan su implementación, no un formulario operativo.
+
+### Avances implementados y validados
+
+- [x] Respaldar documentos, esquema, instrucciones y package/lock antes de editar: `backups/20261012_113043_cotizaciones_c1`. Conservar todos los cambios previos de IVA; sin push.
+- [x] Incorporar validación de cantidades positivas Decimal(14,3), precios finales en pesos enteros, descuento global excluyente en pesos o porcentaje de hasta dos decimales y tasa de hasta cuatro decimales. Rechazar NaN, notación científica, negativos, importes fraccionarios y valores fuera de precisión.
+- [x] Implementar `calcularImportesCotizacion` como función pura en servidor: redondear cada línea al peso con empate hacia arriba, sumar subtotal, calcular/redondear descuento y desglosar neto/IVA desde total final. Decimal con precisión local de 40 dígitos; sin modificar la configuración global ni usar number para calcular.
+- [x] Validar el ejemplo PDF: total 4.800.000, neto 4.033.613, IVA 766.387 al 19%; fracciones, empates, descuento 100%, IVA variable/cero, límites y conservación neto + IVA = total.
+- [x] Ejecutar `node --import tsx tests/importes-cotizacion.ts`, `pnpm lint` y `pnpm build`, todos correctos. Prueba pura sin conexión ni fixtures PostgreSQL.
+- [x] Comprobar puertos: ningún servidor propio iniciado; 3031 libre y servidor previo del usuario en 3030/PID 43873 conservado.
+
+La tasa que recibe el cálculo debe provenir de `ivaParaDocumento(tx,fecha)` en el futuro servicio de guardado; no aceptar la tasa ni los totales del navegador como autoridad. El helper todavía no guarda documentos ni asigna folios. No se modificaron Prisma/PostgreSQL ni dependencias en este bloque.
+
+### Decisiones consultadas — esperar respuesta explícita
+
+- [x] **Ubicación del editor:** confirmado por el usuario el 12-10-2026: detalle técnico general enriquecido y descripciones breves por línea.
+- [x] **Imágenes:** confirmado por el usuario el 12-10-2026: almacenamiento local con contrato reemplazable por S3 y conservación histórica.
+
+Ambas respuestas fueron explícitas; no se eligieron por silencio ni por tiempo transcurrido. La entrega vigente se registra al final de este documento.
+
+### Siguientes pasos
+
+- [x] Registrar respuestas y concretar alcance del editor.
+- [x] Implementar estructura comercial C1.1 y migración en copia descartable antes del destino, con respaldo PostgreSQL y conservación de datos. Integrar importes, IVA temporal, folio y operaciones en guardado atómico.
+- [x] Añadir contenido enriquecido estructurado/validado según el alcance aprobado; conservar formato e imágenes en consultas históricas. Validar nodos/atributos y referencias a imágenes en servidor, sin aceptar HTML arbitrario ni imágenes base64 dentro de la BD.
+- [x] Incorporar editor reutilizable compatible con Next/React, barra de herramientas accesible y adaptación a escritorio/móvil. Se revisó documentación oficial de [Tiptap con Next.js](https://tiptap.dev/docs/editor/getting-started/install/nextjs), [imágenes](https://tiptap.dev/docs/editor/extensions/nodes/image) y [renderizado estático](https://tiptap.dev/docs/editor/api/utilities/static-renderer); selección e instalación completadas en la entrega C1–C5: Tiptap 3.31.4.
+- [x] Implementar listado/formulario/estados/corrección y las pruebas de integración/navegador previstas en C1–C5.
+- [ ] Revisión funcional del usuario. PDF, conversión a Orden de Compra Cliente, producción y cobranza permanecen como entregas posteriores.
+
+
+## C1–C5 — Cotizaciones operativas, entrega 12-10-2026
+
+Este es el checkpoint vigente. Las decisiones pendientes y rutas provisionales anteriores corresponden a etapas históricas; ambas preguntas sobre texto enriquecido quedaron aprobadas explícitamente.
+
+### Estructura y servicios
+
+- [x] Respaldo de fuentes y PostgreSQL antes de cambios; segundo dump actualizado justo antes de aplicar. Carpeta `backups/20261012_114810_cotizaciones_estructura`, manifiesto y evidencia de conservación.
+- [x] Prisma/migración `20261012120000_cotizaciones_documento`: folio/UUID únicos, versión, operaciones propias, origen de corrección, baja lógica, copias de cliente/contacto/emisor, importes/descuento, fechas calendario, tipos/unidad/código/importe/orden de líneas y archivos/vínculos de imágenes. FK nuevas cubiertas por índices.
+- [x] Migración exige Quote/QuoteDetail vacíos antes de convertir fechas; comprobado en copia y destino. Si otra base contiene documentos, revisar su transición sin borrarlos ni inventar snapshots. Nuevos campos nullable mantienen compatibilidad de modelos previos; documentos con folio exigen estructura comercial completa mediante CHECK/servicio.
+- [x] CHECK y triggers protegen identidad, folio, versiones, estados terminales, líneas/imágenes históricas, importes, suma de líneas y confirmación conjunta con operación; archivos y operaciones inmutables. Se conservan restricciones/triggers previos de IVA, Productos, numeración y demás módulos.
+- [x] Guardar asigna folio por UUID dentro de la misma tx del documento; calcula con Decimal y tasa seleccionada por fecha, conserva copias y valida pertenencia de cada imagen. Consultar/calcular/abrir no reserva folios ni escribe stock.
+- [x] Reintentos UUID/huella se reconocen antes de versiones; edición y estados controlan versión/referencias. IVA compartido antes de filas; materiales ascendentes y productos ascendentes con FOR UPDATE para coincidir con trigger histórico y evitar ascensos concurrentes SHARE→UPDATE. Consultas secuenciales en la tx.
+- [x] Aprobar/Rechazar bloquean contenido; vencidas no se aprueban. Sólo Pendientes sin orden permiten edición/baja lógica. Corrección crea nueva Pendiente/nuevo folio vinculados al original terminal, que no se modifica.
+
+### Interfaz y contenido técnico
+
+- [x] Tabla con búsqueda por folio/cliente/RUT, estado, fechas desde/hasta inclusivas, orden y paginación en PostgreSQL; Actualizar/Crear/Ver/Editar/Aprobar/Rechazar/Corregir/Eliminar con ayudas.
+- [x] Formularios sobre listado y selectores relacionados con búsqueda interna. Líneas en grilla responsiva y diálogo independiente; Enter del detalle no guarda la cabecera. Vista readonly usa copias históricas, incluidas unidades/códigos, contactos y cuenta.
+- [x] Detalle técnico **general** enriquecido mediante Tiptap 3.31.4: títulos 1–3, negrita, cursiva, subrayado, tachado, listas simples/numeradas, citas, separadores, deshacer/rehacer e imágenes. Descripciones de línea breves, hasta 1.000 caracteres.
+- [x] JSON estructurado con lista explícita de nodos/atributos, validado en cliente/servidor. Límite técnico: 200.000 caracteres de JSON, 4.000 nodos, 16 niveles y diez imágenes. Sin HTML arbitrario, enlaces/imágenes externas ni base64; texto literal con etiquetas se muestra escapado. Formato inválido impide guardar, pero permite cancelar/descartar.
+- [x] Vista previa y confirmación con importes calculados en servidor; cambiar fecha/líneas/descuento invalida la vista previa. Formato/imágenes no la borran, porque no alteran los importes.
+- [x] Confirmaciones/errores/descarte reutilizables, sin diálogos nativos. Búsqueda compartida con nombre accesible correcto; ayudas de botones y su contenedor de posicionamiento no interceptan clics al recuperar foco.
+- [x] Formularios sin scroll horizontal 320–1440 px, incluyendo imágenes de 1.600 px y palabras largas; filas apiladas en móvil, grilla en escritorio.
+
+### Archivos y futuras migraciones de almacenamiento
+
+- [x] `AlmacenImagenesCotizacion` y fábrica reemplazable: local en `var/cotizaciones/imagenes/` o `COTIZACION_IMAGEN_DIR`. Claves UUID PNG y URLs propias `/api/cotizaciones/imagenes/[archivo]`; la API exige referencia registrada. Carpeta ignorada por Git.
+- [x] PNG/JPG/WebP de hasta 2 MB por archivo de entrada, máximo 16 MP; reprocesado PNG/1.600 px elimina metadatos y contenido activo. Subida idempotente con UUID/huella y borrador estable. No genera cotización ni folio.
+- [x] Conservar imágenes de documentos editados, terminales y ocultados. Un borrador cancelado puede dejar archivos/filas de subida sin vínculo; **no hay limpieza automática** en esta entrega. Así se evita borrar archivos que un documento histórico necesita. Revisar una política explícita antes de purgar borradores.
+- [x] Fallo conocido de transacción: limpiar archivo nuevo sólo cuando una lectura confirma ausencia de referencia. Si la confirmación es incierta por conexión, conservar hasta poder verificar.
+- [ ] Futuro S3 o equivalente: implementar adaptador y transferir archivos existentes conservando claves, referencias y URLs del ERP. **Respaldar esta carpeta junto con PostgreSQL**, igual que logos e imágenes de Productos.
+
+### Validaciones y cierre
+
+- [x] Prisma format/validate/generate; migración validada en copias y aplicada a PostgreSQL local. 17 migraciones al día, 42 tablas previas intactas respecto de huellas inmediatamente anteriores a aplicar; destino sin fixtures.
+- [x] `tests/importes-cotizacion.ts`: ejemplo PDF, fracciones/redondeos, descuento y tasas/límites/conservación; prueba pura sin BD.
+- [x] `tests/cotizaciones.integration.ts` sólo copia `mtx_validacion_cotizaciones_*` y `COTIZACION_IMAGEN_DIR` aislado: mezcla de líneas/snapshots, filtros inclusivos, UUID/concurrencia/versiones, fotos falsas, rollback/limpieza de archivo, estados/vigencia, historial, baja/corrección, rollback de folio/contador y ningún cambio en inventario/cobranza.
+- [x] Regresión `tests/iva.integration.ts` en segunda copia descartable: compatibilidad con estructura nueva y protecciones de períodos/documentos.
+- [x] Chromium: búsquedas accesibles, alta/Enter, título/negrita/lista/imagen persistidos, readonly, texto escapado, revisión/confirmación/descarte, aprobación/corrección/baja y anchos 320–1440 con datos largos/imagen grande. Capturas y logs en respaldo.
+- [x] Lint/build/tipos y diff; ruta local HTTP 200. Servidores propios y copias retirados; 3031 libre, servidor previo del usuario en 3030 conservado.
+- [ ] Revisión funcional del usuario: crear una oferta mixta, editar pendiente, calcular descuento, añadir formato/imágenes, consultar, aprobar/rechazar y corregir/ocultar.
+- [x] Emisión PDF Carta con detalle técnico, condiciones y archivo de revisiones históricas; ver HITO-PDF-COTIZACIONES para entrega y revisión funcional pendiente.
+- [ ] Conversión a Orden de Compra Cliente, producción/consumo y cobranza según etapas comerciales posteriores.
+
+No se hizo push. Cotizar/aprobar no altera inventario, fabrica, reserva materiales ni crea cuentas/abonos. La nueva cotización de corrección comienza con un borrador copiado: revisar fecha/vigencia, precios e IVA antes de confirmar.
+
+
+## C6 — revisión del pegado y disposición de imágenes
+
+El usuario informa pérdida de formato al pegar texto y necesita posicionar imágenes a izquierda/derecha del texto. Ampliación implementada y validada técnicamente; revisión funcional del usuario pendiente.
+
+- [x] Auditar editor y validador actuales: estilos de color/tamaño/alineación/tablas no están definidos; Image sólo admite src/alt/title, sin posición/ancho.
+- [x] Consultar comportamiento de imágenes: texto fluyendo al lado con tamaño ajustable, o alineación de bloque con texto arriba/abajo.
+- [x] Consultar alcance del pegado: colores/tamaños/alineación/tablas además del formato básico, o sólo títulos/negritas/cursivas/subrayados/listas.
+- [x] Consultar origen del texto copiado: Word/Google Docs, web/correo o PDF. Si el origen sólo entrega texto plano, no puede recuperarse un formato ausente del portapapeles.
+- [x] Usuario confirma imágenes con texto al lado/tamaño ajustable, formato ampliado y pegado desde cualquier origen; sin respuestas asumidas por tiempo.
+- [x] Respaldar archivos de editor/validación/dependencias/estilos afectados antes de implementar. Respaldo documental de esta auditoría registrado en CAMBIOS.
+- [x] Ampliar editor y validación de JSON conjuntamente según el alcance aprobado; conservar compatibilidad con documentos ya guardados, sin reescribir cotizaciones terminales.
+- [x] Incorporar controles de disposición/tamaño de imágenes según respuesta y adaptación móvil.
+- [x] Probar pegado HTML representativo del origen, formato/posición persistidos y consulta readonly, incluyendo textos e imágenes grandes en 320–1440 px.
+- [x] Lint/build y regresión de contenido/guardado en copia, detener servidores propios y comprobar puertos.
+- [x] Documentar entrega.
+- [ ] Revisión funcional del usuario.
+
+El contenido técnico ya se guarda como JSON: no se identifica por ahora la necesidad de cambiar Prisma/PostgreSQL para añadir atributos o formatos; confirmar esto al concretar el diseño. La futura emisión PDF deberá respetar los atributos que se aprueben.
+
+
+### C6 — entrega de editor ampliado
+
+- [x] TextStyleKit/TextAlign/Table de Tiptap 3.31.4: colores (incluidos CSS modernos), fondo de texto, fuentes/tamaños/interlineado copiados, alineación y tablas con celdas combinadas. Formato básico y títulos 1–6 conservados al pegar.
+- [x] Preparar HTML del portapapeles: aplicar estilos de clase entregados por Word/web y estilos heredados, normalizar etiquetas font antiguas y alineación heredada. El HTML pasa por el esquema; no se inserta directamente.
+- [x] Controles de fuente/tamaño/color/alineación, limpiar formato e insertar/editar tablas. Superficie de documento blanca dentro de la interfaz oscura para mostrar colores de documentos copiados.
+- [x] Seleccionar una imagen permite En bloque/Izquierda/Derecha/Centro, ancho porcentual (25/33/50/66/75/100 u original) y mover antes/después. Se conserva la proporción. En móvil menor de 640 px el texto pasa debajo; el atributo original se conserva para escritorio.
+- [x] Editor y validador ampliados juntos; estilos/tabla/disposición se guardan en technicalDescription JSON. Documentos anteriores aceptados sin reescribirlos. Sin cambios a Prisma, migraciones ni escrituras en la base real.
+- [x] Prueba pura tests/texto-cotizacion.ts, integración de Cotizaciones ampliada en copia (incluye estilos, tabla y posición), lint/build/tipos y Chromium: pegado, formato persistido/readonly, posiciones/ancho/orden y ausencia de desbordamiento 320–1440. Copia/servidor propios retirados, 3031 libre; 3030 previo conservado.
+- [x] Respaldo previo de cada archivo afectado, dependencias y lock: `backups/20261012_133300_editor_c6`. Evidencias/capturas en esa carpeta. Sin push.
+- [ ] Revisión funcional del usuario: pegar contenido habitual y seleccionar una imagen para probar posición/ancho/orden.
+
+**Límites del origen:** se conserva el formato compatible que efectivamente proporciona el portapapeles. Si PDF u otra fuente entrega sólo texto plano, el formato original no está disponible. No se importan automáticamente imágenes externas, fuentes descargables, objetos ni estilos de maquetación arbitrarios; las imágenes se agregan con el control de carga existente. PNG/JPG/WebP y sus límites anteriores se mantienen. Los nuevos atributos deberán usarse también al implementar el PDF futuro.
+
+Referencias técnicas: [TextStyleKit](https://tiptap.dev/docs/resources/changelog/extension-text-style), [Table](https://tiptap.dev/docs/editor/extensions/nodes/table).
+
+
+### C6.1 — listas junto a imágenes flotantes
+
+- [x] Reproducir salto: el clearfix de cada li obligaba al siguiente ítem a comenzar debajo de la imagen (466 px en la prueba).
+- [x] Retirar el cierre por ítem y conservarlo sólo al final del editor. Las listas continúan junto a la imagen, conservando viñetas/numeración, orden y anidamiento. Sin cambios al JSON ni a cotizaciones guardadas.
+- [x] Chromium: listas simples/numeradas/anidadas con imagen derecha/izquierda; segundo ítem pasa a separación normal de 28 px en el caso medido. Conservar cuatro ítems y estilos disc/decimal. Formulario sin desbordamiento 320–1440; en móvil se mantiene imagen en bloque.
+- [x] Lint/build, tipos incluidos y diff correctos. Validación únicamente visual en borrador, imagen simulada en navegador; no guardar, subir archivos ni escribir en PostgreSQL.
+- [x] Respaldo previo/evidencias: `backups/20261012_170208_listas_imagenes`. Servidor propio retirado, 3031 libre y servidor previo del usuario3030 conservado. Sin push.
+- [x] Revisión funcional del usuario de listas/imágenes: confirma que quedó bien.
+
+No añadir clearfix, clear:both o un nuevo contexto de flujo a cada li para contener imágenes: vuelve a separar los ítems por la altura de la imagen. El cierre del contenedor completo mantiene su altura sin interrumpir la lista.
+
+
+### C6.2 — redimensionar imágenes con el cursor
+
+- [x] Usuario solicita tiradores para cambiar el tamaño como en Word; alcance: tamaño visual con proporción original, sin recortar ni alterar el archivo.
+- [x] Respaldar todos los archivos existentes afectados antes de editar: `backups/20261012_171954_imagenes_cursor`. La vista de imagen redimensionable es un archivo nuevo.
+- [x] Seleccionar una imagen muestra cuatro tiradores con cursor diagonal. Arrastrar una esquina ajusta el ancho entre 10% y 100%, conservando la proporción; admite puntero táctil.
+- [x] Soltar registra una sola modificación; Deshacer/Rehacer conserva tamaños anteriores. Escape cancela sólo el arrastre, sin cerrar el formulario; cancelar el gesto también restaura el tamaño anterior.
+- [x] Mantener menú de posición/ancho y movimientos antes/después; mostrar también porcentajes personalizados generados por arrastre. Tiradores accesibles por teclado: flechas ajustan 1 punto porcentual, Shift + flecha ajusta 10.
+- [x] Guardar el mismo atributo width porcentual del JSON actual, sin altura/píxeles fijos ni nuevas migraciones. Los tiradores sólo existen en la vista del editor; no forman parte del contenido guardado. Modo de sólo lectura sin controles de tamaño.
+- [x] Chromium: cuatro posiciones, arrastre desde esquinas opuestas, proporción, tamaño personalizado en JSON, límites, Escape, Deshacer/Rehacer, teclado, serialización/reapertura en memoria y sólo lectura. Arrastre táctil a 375 px y formulario sin desbordamiento entre 320 y 1440 px.
+- [x] Regresión de listas simples/numeradas/anidadas en ambos lados: viñetas y numeración intactas, sin salto por altura de imagen. Conservar cierre de flotantes únicamente al final del editor.
+- [x] Validador de servidor acepta sin cambios el JSON generado por los arrastres; prueba pura de contenido, lint y build correctos. Validación de borradores con imagen simulada, sin subir archivos ni guardar documentos en PostgreSQL.
+- [x] Servidor propio de validación retirado; 3031 libre. Servidor previo del usuario en 3030 conservado. Sin push.
+- [ ] Revisión funcional del usuario: seleccionar imagen, arrastrar esquinas, guardar y volver a consultar su tamaño.
+
+Fuentes originales, scripts de comprobación, JSON y capturas en el respaldo indicado. La futura emisión PDF deberá usar el ancho porcentual conservado en el documento, igual que la disposición y el formato anteriores.
+
+
+### C6.3 — montaje de documentos que ya contienen imágenes
+
+- [x] Reproducir error al construir el editor con una imagen en el contenido inicial: editor.view todavía no está asignada durante la creación de sus vistas de nodo. La prueba anterior insertaba imágenes después del montaje y no cubría este caso.
+- [x] Respaldar archivos afectados antes de editar: `backups/20261012_180142_montaje_imagen_cotizacion`.
+- [x] Usar el parámetro view que ProseMirror entrega a addNodeView, en lugar de consultar editor.view durante su construcción. Conservar atributos, formato y comportamiento de redimensionado; sin cambios de Prisma/BD.
+- [x] Chromium: ocho montajes iniciales con imágenes, cuatro disposiciones en edición y sólo lectura. Texto y atributos de imagen intactos; cuatro tiradores al seleccionar en edición y ninguno visible en sólo lectura.
+- [x] Regresión del arrastre: proporción, porcentajes, límites, Escape, teclado, Deshacer/Rehacer, serialización/reapertura y adaptación 320–1440. Prueba pura de contenido, lint y build correctos.
+- [x] Validación sin guardar documentos ni subir imágenes. Servidor propio retirado, 3031 libre; servidor previo del usuario en 3030 conservado. Scripts/evidencias en respaldo; sin push.
+- [ ] Usuario vuelve a abrir la cotización con imágenes que produjo el error y confirma el funcionamiento.
+
+
+### C6.4 — mover imágenes con cursor y teclado
+
+- [x] Usuario autoriza arrastre entre elementos del documento y Alt + ↑/↓ para mover antes/después; conservar disposición y tamaño. No incluye posicionamiento libre por coordenadas.
+- [x] Respaldar todos los archivos afectados antes de editar: `backups/20261012_181614_mover_imagenes`.
+- [x] Habilitar arrastre nativo desde el cuerpo de la imagen con cursor de agarre; ProseMirror mueve el nodo conservando sus atributos. Los tiradores siguen redimensionando, sin iniciar traslado.
+- [x] Alt + ↑/↓ reordena la imagen seleccionada entre hermanos del contenedor; misma lógica compartida con botones Mover antes/después. Desde un tirador, Alt mueve y las flechas sin Alt conservan el ajuste de tamaño.
+- [x] Respetar los límites del contenedor y el párrafo inicial obligatorio de cada elemento de lista; validar contenido antes de reordenar. Sólo lectura impide cambios y bloquea inicio de arrastre.
+- [x] Separar cada movimiento del historial anterior para que Deshacer revierta sólo el traslado. No recargar el mismo archivo al seleccionar la imagen.
+- [x] Conservar imagen única, texto, atributos y selección después de arrastrar; menú informa cómo mover/redimensionar. Se conserva JSON y almacenamiento actuales, sin modificaciones Prisma/BD.
+- [x] Chromium: arrastre real entre párrafos sin duplicación, Alt desde imagen/tirador, texto/atributos intactos, Deshacer/Rehacer, límites/listas, readonly y formulario sin desbordamiento 320–1440.
+- [x] Regresión de ocho montajes iniciales (cuatro posiciones, edición/readonly), redimensionado, proporción, límites, Escape, teclado, JSON y adaptación móvil. Prueba pura de contenido, lint/build y diff correctos.
+- [x] Pruebas sólo en borradores con archivo simulado, sin guardados ni subidas. Servidor propio retirado, 3031 libre y servidor previo del usuario en 3030 conservado. Sin push; scripts/JSON/capturas en respaldo.
+- [ ] Revisión funcional del usuario: mover una imagen con cursor y Alt + ↑/↓, guardar y volver a consultar el orden.
+
+El arrastre de movimiento se valida con ratón en Chromium de escritorio. En móvil se mantienen los botones Mover antes/después; la disponibilidad del arrastre nativo depende del navegador. El teclado reordena dentro del contenedor actual (por ejemplo, dentro de un elemento de lista), sin cambiar automáticamente la jerarquía de listas/tablas. La posición izquierda/derecha/centro/bloque sigue definiendo el flujo del texto y la futura emisión PDF deberá respetar el orden guardado.
+
+
+### P0 — preparación del PDF y sus versiones
+
+- [x] Usuario define tamaño Carta, emisión en cualquier estado y conservación de versiones junto con la revisión completa de cotización.
+- [x] Revisar modelo/consulta/snapshot y PDF real: el contador version actual no conserva por sí solo todas las líneas/contenido de revisiones anteriores.
+- [x] Preparar etapas y checklist en [HITO-PDF-COTIZACIONES.md](HITO-PDF-COTIZACIONES.md).
+- [x] Confirmar datos mínimos del emisor; se bloquean emisiones de históricos incompletos. Actualización expresa de Pendientes antiguas aprobada; crea revisión y conserva emisiones previas.
+- [x] Confirmar e implementar Condiciones comerciales opcionales, separadas del plazo de pago.
+- [x] Implementar y validar técnicamente P1–P5 de PDF; generación validada expresamente por el usuario.
+
+
+### P1–P5 — PDF y revisiones emitidas
+
+- [x] Carta, todos los estados, Condiciones comerciales y datos obligatorios del emisor implementados.
+- [x] Copia completa inmutable de cada revisión emitida y PDF local con huella; reintentos/concurrencia, archivos anteriores y folio conservados.
+- [x] Listado/Ver con acción PDF, historial, visor y descarga; texto enriquecido/imágenes/tablas y paginación.
+- [x] Migración aplicada, cliente generado, pruebas en copia y navegador, lint/build y huellas originales preservadas; recursos propios de validación retirados.
+- [x] Usuario aprueba actualización explícita de emisor desde Empresa en Pendientes antiguas; implementación en `docs/HITO-PDF-COTIZACIONES.md`.
+- [x] Validación funcional de PDF por el usuario; generación aprobada expresamente.
+- [ ] P6: envío por correo del contacto de Sucursal, consultado desde el mantenedor; solicitar destinatario si falta. En espera de SMTP y contraseña de aplicación del usuario final. Ver `HITO-PDF-COTIZACIONES.md`.
+
+Checkpoint vigente y uso/requisitos: [HITO-PDF-COTIZACIONES.md](HITO-PDF-COTIZACIONES.md), entrega técnica. No se completan automáticamente snapshots antiguos ni se reconstruyen revisiones previas no emitidas.

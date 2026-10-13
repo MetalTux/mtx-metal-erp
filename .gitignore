@@ -46,3 +46,9 @@ next-env.d.ts
 
 # Imágenes de productos: datos locales persistentes, respaldar junto con PostgreSQL.
 /var/productos/imagenes/
+
+# Detalle técnico de Cotizaciones: archivos históricos y borradores, respaldar con BD.
+/var/cotizaciones/imagenes/
+
+# Emisiones PDF históricas: respaldar junto con PostgreSQL.
+/var/cotizaciones/pdfs/

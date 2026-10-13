@@ -48,6 +48,7 @@ model UnitMeasure {
   id                   Int                          @id @default(autoincrement())
   name                 String                       @unique // Ej: "Kilos", "Unidades", "Metros"
   abbreviation         String // Ej: "kg", "un", "m"
+  quoteDetails         QuoteDetail[]
   materials            RawMaterial[]
   products             Product[]
   productInitialStocks ProductInitialStock[]
@@ -489,9 +490,39 @@ model PaymentCondition {
 }
 
 model Quote {
+  // Nullable sólo para compatibilidad con documentos previos; el nuevo servicio
+  // exige folio, identidad, copias e importes completos en el primer guardado.
+  folioId              Int?                @unique
+  folio                DocumentFolio?      @relation(fields: [folioId], references: [id], onDelete: Restrict)
+  creationKey          String?             @unique @db.Uuid
+  version              Int                 @default(1)
+  clientName           String?
+  clientRut            String?
+  clientContact        String?
+  clientPhone          String?
+  clientEmail          String?
+  companySnapshot      Json?
+  commercialTerms      String?
+  pdfEmissions         QuotePdfEmission[]
+  technicalDescription Json?
+  subtotal             Decimal?            @db.Decimal(14, 2)
+  discountMode         QuoteDiscountMode   @default(SIN_DESCUENTO)
+  discountValue        Decimal?            @db.Decimal(14, 2)
+  discountAmount       Decimal?            @db.Decimal(14, 2)
+  netAmount            Decimal?            @db.Decimal(14, 2)
+  vatAmount            Decimal?            @db.Decimal(14, 2)
+  deletedAt            DateTime?
+  correctedQuoteId     Int?
+  correctedQuote       Quote?              @relation("QuoteCorrections", fields: [correctedQuoteId], references: [id], onDelete: Restrict)
+  corrections          Quote[]             @relation("QuoteCorrections")
+  operations           QuoteOperation[]
+  imageLinks           QuoteImageLink[]
+  vatRatePeriodId      Int?
+  vatRatePeriod        VatRatePeriod?      @relation(fields: [vatRatePeriodId], references: [id], onDelete: Restrict)
+  vatRate              Decimal?            @db.Decimal(7, 4)
   id                   Int                 @id @default(autoincrement())
-  date                 DateTime            @default(now())
-  validUntil           DateTime? // Fecha hasta la que se mantiene la oferta
+  date                 DateTime            @default(now()) @db.Date
+  validUntil           DateTime?           @db.Date // Fecha hasta la que se mantiene la oferta
   status               QuoteStatus         @default(PENDIENTE)
   totalAmount          Decimal             @db.Decimal(14, 2)
   clientId             Int
@@ -524,6 +555,10 @@ model Quote {
 
   @@index([clientId])
   @@index([paymentConditionId])
+  @@index([correctedQuoteId])
+  @@index([deletedAt, date, id])
+  @@index([status, date, id])
+  @@index([vatRatePeriodId])
   @@index([clientBranchId, clientId])
   @@index([bankAccountId])
 }
@@ -531,23 +566,33 @@ model Quote {
 // Línea de una cotización. Puede ser un material del catálogo (rawMaterialId)
 // o un ítem libre como mano de obra, flete o instalación (rawMaterialId nulo).
 model QuoteDetail {
-  id                      Int          @id @default(autoincrement())
+  rawMaterialCode         String?
+  position                Int?
+  kind                    QuoteLineType?
+  unitMeasureId           Int?
+  unitMeasure             UnitMeasure?   @relation(fields: [unitMeasureId], references: [id], onDelete: Restrict)
+  unitName                String?
+  unitAbbreviation        String?
+  lineAmount              Decimal?       @db.Decimal(14, 2)
+  id                      Int            @id @default(autoincrement())
   description             String
-  quantity                Decimal      @db.Decimal(14, 3)
-  unitPrice               Decimal      @db.Decimal(14, 2)
+  quantity                Decimal        @db.Decimal(14, 3)
+  unitPrice               Decimal        @db.Decimal(14, 2)
   quoteId                 Int
   rawMaterialId           Int?
   productId               Int?
-  product                 Product?     @relation(fields: [productId], references: [id], onDelete: Restrict)
-  productCode             String?      @db.Uuid
+  product                 Product?       @relation(fields: [productId], references: [id], onDelete: Restrict)
+  productCode             String?        @db.Uuid
   productUnitName         String?
   productUnitAbbreviation String?
-  quote                   Quote        @relation(fields: [quoteId], references: [id])
-  rawMaterial             RawMaterial? @relation(fields: [rawMaterialId], references: [id])
+  quote                   Quote          @relation(fields: [quoteId], references: [id])
+  rawMaterial             RawMaterial?   @relation(fields: [rawMaterialId], references: [id])
 
   createdAt DateTime @default(now()) // Fecha de registro (no se modifica)
   updatedAt DateTime @updatedAt // Última modificación (automática)
 
+  @@unique([quoteId, position])
+  @@index([unitMeasureId])
   @@index([quoteId])
   @@index([rawMaterialId])
   @@index([productId])
@@ -739,6 +784,7 @@ model DocumentNumbering {
 
 // Registro permanente: ni anular ni eliminar un documento libera su folio.
 model DocumentFolio {
+  quote          Quote?
   id             Int               @id @default(autoincrement())
   numberingId    Int
   numbering      DocumentNumbering @relation(fields: [numberingId], references: [id], onDelete: Restrict)
@@ -942,4 +988,115 @@ model ProductInventoryAdjustment {
   @@index([correctedInitialStockId, productId, warehouseId])
   @@index([correctedAdjustmentId, productId, warehouseId])
   @@index([date, id])
+}
+
+// Porcentaje configurable por fecha de documento, no por fecha de registro.
+// La copia de tasa en documentos y las reglas de edición de períodos usados se integran en Cotizaciones.
+model VatRatePeriod {
+  quotes    Quote[]
+  id        Int       @id @default(autoincrement())
+  rate      Decimal   @db.Decimal(7, 4)
+  validFrom DateTime  @db.Date
+  validTo   DateTime? @db.Date
+  version   Int       @default(1)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([validFrom])
+}
+
+// Las operaciones son propias de Cotizaciones; no compartir UUID con Compras.
+enum QuoteDiscountMode {
+  SIN_DESCUENTO
+  PORCENTAJE
+  MONTO
+}
+
+enum QuoteLineType {
+  MATERIA_PRIMA
+  PRODUCTO
+  SERVICIO
+}
+
+enum QuoteOperationType {
+  CREAR
+  EDITAR
+  APROBAR
+  RECHAZAR
+  ELIMINAR
+  CORREGIR
+}
+
+model QuoteOperation {
+  idempotencyKey String             @id @db.Uuid
+  fingerprint    String             @db.Char(64)
+  type           QuoteOperationType
+  quoteId        Int
+  quote          Quote              @relation(fields: [quoteId], references: [id], onDelete: Restrict)
+  version        Int
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  @@unique([quoteId, version])
+}
+
+// Archivos de borrador y documentos: conservar versiones, nunca borrar al editar.
+model QuoteImageFile {
+  id          String           @id @default(uuid()) @db.Uuid
+  uploadKey   String           @unique @db.Uuid
+  draftKey    String           @db.Uuid
+  fileKey     String           @unique
+  fingerprint String           @db.Char(64)
+  links       QuoteImageLink[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@index([draftKey])
+}
+
+model QuoteImageLink {
+  id        Int            @id @default(autoincrement())
+  quoteId   Int
+  quote     Quote          @relation(fields: [quoteId], references: [id], onDelete: Restrict)
+  imageId   String         @db.Uuid
+  image     QuoteImageFile @relation(fields: [imageId], references: [id], onDelete: Restrict)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  @@unique([quoteId, imageId])
+  @@index([imageId])
+}
+
+// Cada emisión conserva revisión completa y PDF; descargar no regenera históricos.
+model QuotePdfEmission {
+  id              String            @id @db.Uuid
+  quoteId         Int
+  quote           Quote             @relation(fields: [quoteId], references: [id], onDelete: Restrict)
+  quoteVersion    Int
+  templateVersion Int
+  snapshotVersion Int
+  status          QuoteStatus
+  folio           String
+  snapshot        Json
+  fileKey         String            @unique
+  fileSize        Int
+  fileHash        String
+  requests        QuotePdfRequest[]
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@unique([quoteId, quoteVersion, templateVersion])
+  @@index([quoteId, createdAt])
+}
+
+// Distintas solicitudes de una misma revisión apuntan a una única emisión.
+model QuotePdfRequest {
+  idempotencyKey String           @id @db.Uuid
+  fingerprint    String
+  emissionId     String           @db.Uuid
+  emission       QuotePdfEmission @relation(fields: [emissionId], references: [id], onDelete: Restrict)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  @@index([emissionId])
 }

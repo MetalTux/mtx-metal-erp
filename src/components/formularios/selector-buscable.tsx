@@ -25,7 +25,7 @@ export function SelectorBuscable({ id, opciones, valor, onChange, onBlur, nombre
       </Button>
     </PopoverTrigger>
     <PopoverContent align="start" className="w-[var(--radix-popover-trigger-width)] p-0">
-      <Command filter={(valorItem, filtro, keywords) => normalizar(`${valorItem} ${(keywords ?? []).join(" ")}`).includes(normalizar(filtro.trim())) ? 1 : 0}>
+      <Command label={`Buscar ${nombre}`} filter={(valorItem, filtro, keywords) => normalizar(`${valorItem} ${(keywords ?? []).join(" ")}`).includes(normalizar(filtro.trim())) ? 1 : 0}>
         <CommandInput aria-label={`Buscar ${nombre}`} placeholder={`Buscar ${nombre}…`} />
         <CommandList id={listaId} aria-label={`Opciones de ${nombre}`}>
           <CommandEmpty>{opciones.length ? "No hay coincidencias." : "No hay opciones disponibles."}</CommandEmpty>

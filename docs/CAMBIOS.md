@@ -871,3 +871,126 @@ Los mínimos de ancho de las columnas superaban el ancho del diálogo de Cliente
 - [ ] Revisión visual del usuario.
 
 Sólo se mantiene desplazamiento vertical en formularios largos. El ajuste no se limita a ocultar una barra horizontal: los elementos y textos caben en el espacio disponible. Checklist en [MANTENEDORES-DATOS.md](MANTENEDORES-DATOS.md).
+
+
+## 11-10-2026 — inicio técnico C1 de Cotizaciones
+
+- [x] Revisar modelos/dependencias y actualizar el estado del hito, que conservaba pendientes históricos ya resueltos.
+- [x] Auditar PostgreSQL en READ ONLY: sin cotizaciones/detalles/órdenes de cliente y numeración de Cotización configurada. No se modificó BD ni contador.
+- [x] Respaldar documentos antes de editarlos: `backups/20261011_231809_inicio_cotizaciones`.
+- [x] Preparar etapas de estructura/servicios/listado/formularios/estados/validación y recuperar fecha actual/pasada ya aprobada.
+- [ ] Esperar respuestas de IVA, precisión del descuento y eliminación/corrección antes de preparar la migración financiera.
+
+No se cambió Prisma, código, dependencias ni la base; no se ejecutaron build/migraciones/seed ni se iniciaron servidores. Revisión documental y diff realizados. El primer SELECT de numeración usó el nombre incorrecto digits; la sesión de sólo lectura se cerró y la consulta se corrigió a padding, sin escrituras. Ver [HITO-COTIZACIONES.md](HITO-COTIZACIONES.md), sección C1.
+
+
+## Cotizaciones C1 — IVA configurable por períodos
+
+Respuestas registradas: IVA con desde obligatorio/hasta nullable y tasa copiada en documentos; descuento con dos decimales/redondeo al peso; eliminación lógica y corrección por nueva cotización vinculada. Se consulta fecha aplicable, límites/solapamientos, configuración inicial y protección de períodos utilizados antes de diseñar la migración. Respaldo documental: `backups/20261011_234127_decisiones_iva_cotizaciones`. Sin cambios de código, Prisma ni PostgreSQL.
+
+
+## 12-10-2026 — IVA configurable por períodos
+
+- [x] Modelo VatRatePeriod y migración 20261012001000_iva_por_periodos con tasa inicial 19% desde 01-10-2003 (dato indicado por el usuario, verificado en BCN). Sin tasas anteriores inferidas.
+- [x] Rangos inclusivos sin solapamiento, exactamente uno abierto, validación porcentual/fechas/versiones y referencia/copia de tasa opcionales preparadas en Quote.
+- [x] Protección de períodos utilizados y copias de IVA mediante CHECK/FK/triggers y bloqueos compartidos/exclusivos; cierres y altas juntos, rollback completo. Cotizaciones tributadas se conservan y sus datos tributarios terminales no se reabren.
+- [x] Configuración → IVA, listado/filtro y formularios/confirmaciones; helper transaccional de selección para futuros documentos, sin reservas ni ajustes de stock.
+- [x] Pruebas en copia, lint/tipos/build y Chromium escritorio/móvil; migración aplicada localmente, 41 tablas previas intactas, sólo período inicial en la base real.
+- [x] Respaldos/evidencias: backups/20261011_235653_iva_periodos; copia/servidor propios retirados, 3031 libre y servidor del usuario en 3030 conservado.
+- [ ] Revisión funcional del usuario e integración en registro de Cotizaciones pendiente.
+
+Ver [HITO-COTIZACIONES.md](HITO-COTIZACIONES.md), C1-IVA. No se hizo push ni se implementó emisión tributaria/PDF.
+
+
+## 12-10-2026 — Cotizaciones: motor de importes y preparación de texto enriquecido
+
+- Validación y cálculo puro de líneas/subtotal/descuento/neto/IVA/total usando Prisma.Decimal, con redondeo al peso por línea y precisión local de 40 dígitos. Precios finales incluyen IVA; tasa configurable suministrada por el servidor. No guarda cotizaciones ni toca stock/folios/BD.
+- Prueba `tests/importes-cotizacion.ts`: ejemplo PDF, fracciones/empates, descuentos excluyentes, tasas variables, valores inválidos/límites y conservación. Prueba pura, lint y build correctos. No hubo cambios de esquema/dependencias ni migraciones en este bloque.
+- Solicitud de texto enriquecido registrada con etapas en HITO-COTIZACIONES; alcance por campo y almacenamiento de imágenes consultados, sin asumir respuesta. Editor aún pendiente de esas definiciones.
+- Respaldo previo: `backups/20261012_113043_cotizaciones_c1`; conserva avances existentes de IVA. No se inició servidor ni se hizo push; 3031 libre y 3030 previo del usuario conservado.
+
+
+## 12-10-2026 — Cotizaciones operativas y detalle enriquecido
+
+- Modelo comercial Quote/QuoteDetail con folio, UUID, versión/operaciones, importes/descuento/desglose, fechas calendario, copias históricas, líneas mixtas, baja y corrección vinculada. QuoteImageFile/QuoteImageLink separan archivos y documentos. Migración 20261012120000_cotizaciones_documento probada en copia/aplicada localmente; 42 tablas previas intactas, 17 migraciones al día.
+- `/ventas/cotizaciones`: listado/filtros/orden/paginación en servidor, formularios sobre listado, detalle en grilla/modal, vista previa/confirmaciones y estados. Cálculo Decimal y selección temporal de IVA, folio en guardado atómico; cotizar no cambia inventario ni cobranza.
+- Editor general Tiptap 3.31.4 con JSON validado, títulos/listas/formato/imágenes; almacenamiento local reemplazable por S3 y versiones históricas conservadas. Respaldar `var/cotizaciones/imagenes/` o COTIZACION_IMAGEN_DIR junto con BD. Borradores cancelados no se purgan automáticamente; una limpieza futura requerirá política explícita.
+- Mejora compartida de nombre accesible en SelectorBuscable y tooltips informativos que dejan pasar clics, incluido su contenedor; foco/selección del editor conservados.
+- Pruebas de importes e integración en copia, regresión IVA, lint/build/tipos y Chromium 320–1440 con texto largo/imagen de 1600 px. Copias y servidores propios retirados; 3030 previo conservado y 3031 libre.
+- Respaldo/evidencias: `backups/20261012_114810_cotizaciones_estructura`; dumps inicial y preaplicación, fuentes originales, huellas, logs/capturas. Ver checklist vigente al final de HITO-COTIZACIONES. Pendientes: revisión funcional, PDF, conversión y producción/cobranza. Sin push.
+
+
+## Editor de Cotizaciones — auditoría de pegado/disposición
+
+Limitaciones comprobadas en código: sin colores/tamaños/alineación/tablas y sin atributos de posición/ancho de imágenes. Alcance y origen del pegado consultados; se espera respuesta explícita. Plan C6 en HITO-COTIZACIONES. Respaldo documental: `backups/20261012_130845_editor_pegado_disposicion`. Sin cambios al editor, dependencias, Prisma o PostgreSQL en esta auditoría.
+
+
+## C6 — pegado enriquecido y disposición de imágenes
+
+Editor/JSON ampliados para estilos de texto, tablas y posición/ancho de imágenes; normalización de estilos de clase/heredados del portapapeles. Controles nuevos, superficie blanca de documento y adaptación móvil con texto debajo de imágenes. Compatible con JSON previo, sin cambios Prisma/BD real; fuentes sólo se muestran si están disponibles en el dispositivo.
+
+Respaldo: `backups/20261012_133300_editor_c6`. Prueba pura, integración en copia, lint/build y Chromium 320–1440 correctos; copia/servidor propios retirados. Ver entrega C6 al final de HITO-COTIZACIONES; revisión funcional pendiente. Sin push.
+
+
+## C6.1 — continuidad de listas e imágenes
+
+Corregir globals.css: eliminar clearfix por li y conservarlo al final del editor, para que la imagen flotante permita continuar viñetas/numeración y sublistas sin salto artificial. Compatible con JSON existente; no modifica datos/esquema. Lint/build y Chromium (dos lados, listas simples/numeradas/anidadas, 320–1440) correctos. Respaldo/evidencias: `backups/20261012_170208_listas_imagenes`; validación en borrador con imagen simulada, sin escrituras ni servidores propios al terminar. Revisión funcional pendiente en HITO-COTIZACIONES.
+
+
+## C6.2 — imágenes redimensionables con el cursor
+
+Se incorpora una vista de imagen de ProseMirror en `imagen-cotizacion-redimensionable.ts`: tiradores en las cuatro esquinas, Pointer Events para ratón/táctil, proporción conservada y ancho porcentual 10–100. Una transacción al soltar permite Deshacer/Rehacer; Escape cancela el gesto antes de que el diálogo procese esa tecla. Flechas/Shift permiten ajuste por teclado. Las vistas de sólo lectura ocultan los tiradores.
+
+El contenedor flota según la disposición guardada, sin interrumpir listas. Se conserva el atributo JSON width existente y el menú admite porcentajes personalizados; no hay cambios Prisma/PostgreSQL ni al archivo de imagen. Los controles visuales no se serializan.
+
+Respaldo previo: `backups/20261012_171954_imagenes_cursor`. Lint/build, prueba pura de contenido, aceptación del JSON por el validador de servidor y Chromium (cursor/táctil, proporción, Escape, historial, readonly, listas y 320–1440) correctos. Pruebas sólo en borradores con imágenes simuladas; sin guardados/subidas. Servidor propio retirado, 3031 libre y 3030 previo conservado. Revisión funcional y guardado/reconsulta del usuario pendientes en C6.2 de HITO-COTIZACIONES. Sin push.
+
+
+## C6.3 — corregir acceso prematuro a la vista del editor
+
+El constructor de imágenes consultaba editor.view antes de que Tiptap terminara de asignarla, provocando un Runtime Error al abrir contenido con imágenes existentes. addNodeView ahora pasa a crearVistaImagen la vista real recibida de ProseMirror, disponible durante la construcción del nodo. El comentario explica la dependencia de montaje. No se alteran contenido/archivos, esquema ni datos PostgreSQL.
+
+Respaldo previo: `backups/20261012_180142_montaje_imagen_cotizacion`. Error reproducido antes del cambio; ocho montajes con imágenes iniciales (cuatro disposiciones, edición/readonly) pasan después. Regresión de arrastre, historial, cancelación, teclado, JSON y adaptación 320–1440 correcta; lint/build y prueba pura de contenido correctos. Pruebas sin guardados/subidas; 3031 propio libre, 3030 previo conservado. Revisión funcional pendiente en C6.3 de HITO-COTIZACIONES. Sin push.
+
+
+## C6.4 — arrastre y atajos para mover imágenes
+
+Se habilita arrastre nativo sobre el cuerpo de la imagen con cursor de agarre. ProseMirror reubica el nodo en el documento conservando src/width/placement y formato. Alt + ↑/↓ y los botones de movimiento comparten moverImagenSeleccionada; la función verifica edición, selección de imagen, límites y contenido válido del contenedor. No coloca imágenes delante del párrafo obligatorio de una lista. Los atajos también funcionan desde tiradores, sin cambiar el ancho.
+
+closeHistory separa movimientos de operaciones anteriores para Deshacer/Rehacer. Evitar asignar nuevamente el mismo src impide recargas al seleccionar. Modo readonly bloquea movimiento e inicio de arrastre. Se conservan modelo JSON, archivos y esquema PostgreSQL, sin nuevas dependencias.
+
+Respaldo previo: `backups/20261012_181614_mover_imagenes`. Lint/build, prueba pura de contenido y Chromium correctos: arrastre real sin duplicación, atajos, atributos/texto, historial, listas/límites, readonly, montaje con imágenes iniciales, redimensionado y 320–1440. Validación en borradores sin escrituras/subidas. Servidor propio retirado (3031 libre); 3030 del usuario conservado. Revisión funcional pendiente en C6.4 de HITO-COTIZACIONES. Sin push.
+
+
+## PDF de Cotizaciones — planificación y decisiones
+
+Aprobados Carta, PDF para Pendientes/Aprobadas/Rechazadas y archivo de versiones con copia completa de los datos que originan cada emisión. Quote.version sigue siendo contador de concurrencia, no historial completo; el plan incorpora snapshot inmutable por revisión emitida y PDF conservado, sin renumerar folios ni reescribir emisiones históricas.
+
+Revisados modelo, servicios/snapshots y PDF de referencia. Consultados datos mínimos del emisor y texto de Condiciones comerciales (por ejemplo anticipo/entrega), distinto del plazo de PaymentCondition. Se esperan respuestas explícitas antes de implementar estas reglas. Etapas P1–P5 en HITO-PDF-COTIZACIONES; no se modificaron código, dependencias, Prisma ni PostgreSQL.
+
+Respaldo documental previo: `backups/20261012_191935_plan_pdf_cotizaciones`. Validación documental de rutas/contenido/diff; no es necesario build ni levantar servidores para esta entrega. Sin push.
+
+
+## PDF de Cotizaciones — implementación y archivo de revisiones
+
+Aprobados datos obligatorios del emisor (razón social/RUT/dirección/ciudad), logo/banco opcionales y Condiciones comerciales por cotización. Se añade Quote.commercialTerms y modelos QuotePdfEmission/QuotePdfRequest: snapshot completo de origen/documento/recursos, revisión/estado/folio, versiones técnicas y archivo/huella. FK/índices, CHECK y triggers conservan inmutabilidad, identidad y confirmación conjunta. Migración `20261012224528_pdf_cotizaciones_versionadas` aplicada tras validar en copia; cliente generado, 18 migraciones al día, 45 tablas originales intactas respecto de huellas inmediatamente previas y cero emisiones de prueba reales.
+
+Servicio en pdfs-cotizacion.ts captura de forma coherente, renderiza fuera de tx y verifica revisión/huella al confirmar. UUID estable, una emisión equivalente y reconocimiento del reintento antes de versión. Archivo nuevo/rollback/perdedor se elimina sólo al confirmar ausencia de referencia; commit incierto conserva y permite recuperar resultado. Versiones archivadas se descargan como bytes originales con comprobación SHA-256, sin recalcular ni consultar catálogos actuales.
+
+Playwright/Chromium genera Carta desde HTML controlado/JSON validado: formato, listas, tablas, imágenes y paginación. Recursos PNG embebidos, scripts deshabilitados y solicitudes remotas bloqueadas. Almacenamiento local var/cotizaciones/pdfs o COTIZACION_PDF_DIR, contrato reemplazable por S3. Los datos originales de Quote/QuoteDetail/DocumentFolio se serializan incluyendo Decimal/BigInt como texto. Huellas de solicitudes antiguas sin términos comerciales conservadas. Plazos históricos desconocidos no se inventan; validar RUT de campos impresos y bloquear emisor incompleto. La actualización explícita de emisor en Pendientes antiguas continúa esperando decisión; ninguna copia histórica se completó automáticamente.
+
+Interfaz: acción PDF en listado/Ver, historial, visor/descarga, confirmación sólo al emitir y alertas reutilizables; consulta archivada directa. Validación: integración PDF y regresión Cotizaciones en copia, puras texto/importes, Chromium 320–1440, foco, descarga/hash, seis páginas Carta, rollback/concurrencia/commit incierto y preservación de inventario/cobranza; lint/build correctos. Respaldo/dumps/evidencias: `backups/20261012_194112_pdf_cotizaciones`. Copia/servidor propios retirados, 3031 libre y 3030 previo conservado; sin push. Revisión funcional pendiente en HITO-PDF-COTIZACIONES.
+
+## 12-10-2026 — Renovación explícita del emisor de Cotizaciones
+
+Usuario aprueba recuperar Pendientes antiguas con emisor incompleto. Se agrega «Actualizar emisor desde Empresa» en PDF y versiones. Tras confirmación, copia sólo el perfil actual del emisor en una nueva revisión; conserva folio, otras copias históricas, detalle e importes. Empresa debe tener razón social, RUT válido, dirección y ciudad. Documentos terminales, eliminados, versiones obsoletas y referencias a Orden de Compra Cliente quedan protegidos.
+
+El servicio reutiliza QuoteOperation EDITAR con huella específica y UUID estable. Emisor/versión/operación se guardan en una transacción y los reintentos recuperan la operación antes de revisar Empresa. No requiere migración ni cambio de esquema. Los PDF archivados conservan bytes y snapshots; la siguiente emisión corresponde a la nueva revisión.
+
+Respaldo previo: `backups/20261012_213623_emisor_cotizaciones/`, con archivos afectados y dump PostgreSQL. Validaciones y cierre: ver `docs/HITO-PDF-COTIZACIONES.md`.
+
+## 12-10-2026 — Validación funcional del PDF y envío por correo pendiente
+
+El usuario aprueba expresamente la generación de PDF y se cierran los checks funcionales de P1–P5. Se documenta P6 en HITO-PDF-COTIZACIONES: envío al correo actual del contacto de la sucursal indicada, leído desde el mantenedor; si falta, solicitarlo al realizar el envío. Por instrucción del usuario, esta etapa espera los datos SMTP y contraseña de aplicación válidas del usuario final. No se implementa envío ni se almacenan credenciales; tampoco se modifica código/Prisma/BD en esta entrega documental.
+
+Antes de desarrollar se definirá si el correo ingresado se conserva en Sucursal o sólo en el envío, además de revisión PDF/asunto/cuerpo e historial/reintentos. No se asumen respuestas a esos puntos. Respaldos documentales: `backups/20261012_223110_cierre_pdf_plan_correo/`. Validación: contenido, rutas, checks y diff; no corresponde levantar servicios ni ejecutar build para este cambio.

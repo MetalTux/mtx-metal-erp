@@ -1,0 +1,12 @@
+import assert from "node:assert/strict";
+import { validarTextoCotizacion, clavesImagenesCotizacion, URL_IMAGEN_COTIZACION } from "../src/lib/validaciones/texto-cotizacion";
+const key = "12345678-1234-1234-1234-123456789abc.png";
+const viejo = { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Documento anterior", marks: [{ type: "bold" }] }] }, { type: "image", attrs: { src: URL_IMAGEN_COTIZACION + key } }] };
+const antiguo = validarTextoCotizacion(viejo); assert.deepEqual(clavesImagenesCotizacion(antiguo), [key]); assert.equal(antiguo.content![1].attrs!.placement, "bloque");
+const crear = (attrs: Record<string, unknown>) => ({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Estilo", marks: [{ type: "textStyle", attrs }] }] }] });
+for (const color of ["#cc0000", "rgb(204, 0, 0)", "rgba(10, 20, 30, 0.5)", "oklch(0.6 0.2 30)", "color(display-p3 1 0 0)"]) assert.doesNotThrow(() => validarTextoCotizacion(crear({ color, fontFamily: '"Times New Roman", serif', fontSize: "18pt", lineHeight: "1.5" })));
+for (const attrs of [{ color: "url(https://externo)" }, { fontSize: "expression(1)" }, { fontFamily: "Arial; background:url(x)" }, { onclick: "algo" }]) assert.throws(() => validarTextoCotizacion(crear(attrs)));
+for (const attrs of [{ placement: "libre" }, { placement: "izquierda", width: -1 }, { placement: "derecha", width: 101 }]) assert.throws(() => validarTextoCotizacion({ type: "doc", content: [{ type: "image", attrs: { src: URL_IMAGEN_COTIZACION + key, ...attrs } }] }));
+for (const placement of ["bloque", "izquierda", "derecha", "centro"]) assert.doesNotThrow(() => validarTextoCotizacion({ type: "doc", content: [{ type: "image", attrs: { src: URL_IMAGEN_COTIZACION + key, placement, width: 33 } }] }));
+assert.throws(() => validarTextoCotizacion({ type: "doc", content: [{ type: "table", content: [{ type: "tableRow", content: [{ type: "tableCell", attrs: { colspan: -1 }, content: [{ type: "paragraph" }] }] }] }] }));
+console.log("OK: JSON anterior compatible, estilos/colores modernos, imagen/posición/ancho y rechazo de atributos inválidos; sin BD.");
