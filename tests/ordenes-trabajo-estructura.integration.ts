@@ -22,7 +22,7 @@ async function snapshot(tx: Prisma.TransactionClient, id: number) {
 async function operacion(tx: Prisma.TransactionClient, id: number, key: string, version: number,
   type: "CREAR" | "EDITAR_PLAN" | "ANULAR", beforeSnapshot?: Prisma.InputJsonValue, afterSnapshot?: Prisma.InputJsonValue) {
   await tx.workOrderOperation.create({ data: { workOrderId: id, idempotencyKey: key, fingerprint: "b".repeat(64), version,
-    type, beforeSnapshot, afterSnapshot: afterSnapshot ?? await snapshot(tx, id) } });
+    type, planConfirmed: type === "ANULAR" ? null : false, reason: type === "EDITAR_PLAN" ? "Revisión de prueba M1" : null, beforeSnapshot, afterSnapshot: afterSnapshot ?? await snapshot(tx, id) } });
 }
 
 async function main() {

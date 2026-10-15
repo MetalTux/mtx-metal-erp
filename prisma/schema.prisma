@@ -45,6 +45,7 @@ model User {
 // 2. CONFIGURACIÓN DE MATERIALES
 // ==========================================
 model UnitMeasure {
+  reservations         StockReservationAllocation[]
   id                   Int                          @id @default(autoincrement())
   name                 String                       @unique // Ej: "Kilos", "Unidades", "Metros"
   abbreviation         String // Ej: "kg", "un", "m"
@@ -64,12 +65,13 @@ model UnitMeasure {
 // Cada material se maneja siempre en UNA sola unidad (la de unitMeasure).
 // Stock, movimientos y consumos usan esa unidad; las compras conservan además su presentación comercial.
 model RawMaterial {
-  id            Int         @id @default(autoincrement())
-  code          String      @unique
+  reservations  StockReservationAllocation[]
+  id            Int                          @id @default(autoincrement())
+  code          String                       @unique
   name          String
   description   String?
   unitMeasureId Int
-  unitMeasure   UnitMeasure @relation(fields: [unitMeasureId], references: [id])
+  unitMeasure   UnitMeasure                  @relation(fields: [unitMeasureId], references: [id])
 
   inventoryTransfers   InventoryTransfer[]
   inventoryAdjustments InventoryAdjustment[]
@@ -99,6 +101,7 @@ enum WarehouseClassification {
 }
 
 model Warehouse {
+  reservations         StockReservationAllocation[]
   // Sin default: conservar bodegas anteriores sin asignarles una clasificación ficticia.
   classification       WarehouseClassification?
   productStocks        ProductWarehouseStock[]
@@ -745,30 +748,31 @@ model SalesOrderOperation {
 // Orden de trabajo. Si salesOrderId es nulo, es una OBRA PROPIA
 // (fabricación sin cliente: stock propio, uso interno, proyecto personal).
 model WorkOrder {
+  reservations         StockReservationAllocation[]
   // Campos nuevos opcionales sólo para conservar trabajos legados sin inventar historia.
   schemaVersion        Int?
-  folioId              Int?                 @unique
-  folio                DocumentFolio?       @relation(fields: [folioId], references: [id], onDelete: Restrict)
-  creationKey          String?              @unique @db.Uuid
-  version              Int                  @default(1)
-  date                 DateTime?            @db.Date
+  folioId              Int?                         @unique
+  folio                DocumentFolio?               @relation(fields: [folioId], references: [id], onDelete: Restrict)
+  creationKey          String?                      @unique @db.Uuid
+  version              Int                          @default(1)
+  date                 DateTime?                    @db.Date
   salesOrderVersion    Int?
   sourceSnapshot       Json?
   technicalDescription Json?
-  internalInstructions String?              @db.VarChar(5000)
-  ownPurpose           String?              @db.VarChar(1000)
-  targetDate           DateTime?            @db.Date
-  startedDate          DateTime?            @db.Date
+  internalInstructions String?                      @db.VarChar(5000)
+  ownPurpose           String?                      @db.VarChar(1000)
+  targetDate           DateTime?                    @db.Date
+  startedDate          DateTime?                    @db.Date
   voidedAt             DateTime?
   voidReason           String?
   lines                WorkOrderLine[]
   operations           WorkOrderOperation[]
-  id                   Int                  @id @default(autoincrement())
+  id                   Int                          @id @default(autoincrement())
   productName          String
   description          String?
-  status               WorkOrderStatus      @default(PENDIENTE)
-  salesOrderId         Int?                 @unique
-  salesOrder           SalesOrder?          @relation(fields: [salesOrderId], references: [id], onDelete: Restrict)
+  status               WorkOrderStatus              @default(PENDIENTE)
+  salesOrderId         Int?                         @unique
+  salesOrder           SalesOrder?                  @relation(fields: [salesOrderId], references: [id], onDelete: Restrict)
   materialsUsed        WorkOrderDetail[]
   deliveryNotes        DeliveryNote[]
 
@@ -796,6 +800,8 @@ enum WorkOrderExecutionMode {
 
 // Tipos iniciales; Producción/Reservas amplían el historial en sus migraciones.
 enum WorkOrderOperationType {
+  RESERVAR_STOCK
+  LIBERAR_RESERVA
   CREAR
   EDITAR_PLAN
   INICIAR
@@ -803,37 +809,39 @@ enum WorkOrderOperationType {
 }
 
 model WorkOrderLine {
-  id                 Int                       @id @default(autoincrement())
+  roundingReview     Json? // Revisión expresa cuando una necesidad positiva redondea a cero.
+  reservations       StockReservationAllocation[]
+  id                 Int                          @id @default(autoincrement())
   workOrderId        Int
-  workOrder          WorkOrder                 @relation(fields: [workOrderId], references: [id], onDelete: Restrict)
+  workOrder          WorkOrder                    @relation(fields: [workOrderId], references: [id], onDelete: Restrict)
   salesOrderId       Int?
-  salesOrderDetailId Int?                      @unique
-  salesOrderDetail   SalesOrderDetail?         @relation(fields: [salesOrderDetailId, salesOrderId], references: [id, salesOrderId], onDelete: Restrict)
+  salesOrderDetailId Int?                         @unique
+  salesOrderDetail   SalesOrderDetail?            @relation(fields: [salesOrderDetailId, salesOrderId], references: [id, salesOrderId], onDelete: Restrict)
   position           Int
   kind               QuoteLineType
   executionMode      WorkOrderExecutionMode
   description        String
   code               String?
   unitMeasureId      Int
-  unitMeasure        UnitMeasure               @relation(fields: [unitMeasureId], references: [id], onDelete: Restrict)
+  unitMeasure        UnitMeasure                  @relation(fields: [unitMeasureId], references: [id], onDelete: Restrict)
   unitName           String
   unitAbbreviation   String
   productId          Int?
-  product            Product?                  @relation(fields: [productId], references: [id], onDelete: Restrict)
+  product            Product?                     @relation(fields: [productId], references: [id], onDelete: Restrict)
   rawMaterialId      Int?
-  rawMaterial        RawMaterial?              @relation(fields: [rawMaterialId], references: [id], onDelete: Restrict)
-  quantity           Decimal                   @db.Decimal(14, 3)
-  quantityToProduce  Decimal?                  @db.Decimal(14, 3)
-  quantityFromStock  Decimal?                  @db.Decimal(14, 3)
+  rawMaterial        RawMaterial?                 @relation(fields: [rawMaterialId], references: [id], onDelete: Restrict)
+  quantity           Decimal                      @db.Decimal(14, 3)
+  quantityToProduce  Decimal?                     @db.Decimal(14, 3)
+  quantityFromStock  Decimal?                     @db.Decimal(14, 3)
   productVersion     Int?
   recipeCapturedAt   DateTime?
-  recipeFingerprint  String?                   @db.VarChar(64)
-  version            Int                       @default(1)
+  recipeFingerprint  String?                      @db.VarChar(64)
+  version            Int                          @default(1)
   recipeMaterials    WorkOrderRecipeMaterial[]
   materials          WorkOrderDetail[]
   supplies           WorkOrderSupplyPlan[]
-  createdAt          DateTime                  @default(now())
-  updatedAt          DateTime                  @updatedAt
+  createdAt          DateTime                     @default(now())
+  updatedAt          DateTime                     @updatedAt
 
   @@unique([id, workOrderId])
   @@unique([workOrderId, position])
@@ -844,6 +852,7 @@ model WorkOrderLine {
 }
 
 model WorkOrderRecipeMaterial {
+  retiredAt        DateTime? // Revisión anterior conservada fuera del plan vigente.
   id               Int               @id @default(autoincrement())
   workOrderLineId  Int
   workOrderLine    WorkOrderLine     @relation(fields: [workOrderLineId], references: [id], onDelete: Restrict)
@@ -867,19 +876,21 @@ model WorkOrderRecipeMaterial {
 }
 
 model WorkOrderSupplyPlan {
-  id              Int           @id @default(autoincrement())
+  retiredAt       DateTime? // Revisión anterior conservada fuera del plan vigente.
+  reservations    StockReservationAllocation[]
+  id              Int                          @id @default(autoincrement())
   workOrderId     Int
   workOrderLineId Int
-  workOrderLine   WorkOrderLine @relation(fields: [workOrderLineId, workOrderId], references: [id, workOrderId], onDelete: Restrict)
+  workOrderLine   WorkOrderLine                @relation(fields: [workOrderLineId, workOrderId], references: [id, workOrderId], onDelete: Restrict)
   warehouseId     Int
-  warehouse       Warehouse     @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  warehouse       Warehouse                    @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
   productId       Int?
-  product         Product?      @relation(fields: [productId], references: [id], onDelete: Restrict)
+  product         Product?                     @relation(fields: [productId], references: [id], onDelete: Restrict)
   rawMaterialId   Int?
-  rawMaterial     RawMaterial?  @relation(fields: [rawMaterialId], references: [id], onDelete: Restrict)
-  quantity        Decimal       @db.Decimal(14, 3)
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  rawMaterial     RawMaterial?                 @relation(fields: [rawMaterialId], references: [id], onDelete: Restrict)
+  quantity        Decimal                      @db.Decimal(14, 3)
+  createdAt       DateTime                     @default(now())
+  updatedAt       DateTime                     @updatedAt
 
   @@unique([workOrderLineId, warehouseId])
   @@index([workOrderLineId, workOrderId])
@@ -889,40 +900,47 @@ model WorkOrderSupplyPlan {
 }
 
 model WorkOrderOperation {
-  idempotencyKey String                 @id @db.Uuid
-  fingerprint    String                 @db.VarChar(64)
-  workOrderId    Int
-  workOrder      WorkOrder              @relation(fields: [workOrderId], references: [id], onDelete: Restrict)
-  type           WorkOrderOperationType
-  version        Int
-  beforeSnapshot Json?
-  afterSnapshot  Json
-  createdAt      DateTime               @default(now())
-  updatedAt      DateTime               @updatedAt
+  planConfirmed       Boolean? // Sólo CREAR/EDITAR_PLAN; null en historia anterior.
+  reason              String?                      @db.VarChar(1000)
+  reservationSnapshot Json?
+  reservations        StockReservationAllocation[]
+  reservationEvents   StockReservationEvent[]
+  idempotencyKey      String                       @id @db.Uuid
+  fingerprint         String                       @db.VarChar(64)
+  workOrderId         Int
+  workOrder           WorkOrder                    @relation(fields: [workOrderId], references: [id], onDelete: Restrict)
+  type                WorkOrderOperationType
+  version             Int
+  beforeSnapshot      Json?
+  afterSnapshot       Json
+  createdAt           DateTime                     @default(now())
+  updatedAt           DateTime                     @updatedAt
 
   @@unique([workOrderId, version])
 }
 
 model WorkOrderDetail {
+  retiredAt        DateTime? // Revisión anterior conservada fuera del plan vigente.
+  reservations     StockReservationAllocation[]
   // Requerimiento previsto; el consumo real se registrará en Producción.
   workOrderLineId  Int?
-  workOrderLine    WorkOrderLine?           @relation(fields: [workOrderLineId, workOrderId], references: [id, workOrderId], onDelete: Restrict)
+  workOrderLine    WorkOrderLine?               @relation(fields: [workOrderLineId, workOrderId], references: [id, workOrderId], onDelete: Restrict)
   recipeMaterialId Int?
-  recipeMaterial   WorkOrderRecipeMaterial? @relation(fields: [recipeMaterialId, workOrderLineId, rawMaterialId], references: [id, workOrderLineId, rawMaterialId], onDelete: Restrict)
+  recipeMaterial   WorkOrderRecipeMaterial?     @relation(fields: [recipeMaterialId, workOrderLineId, rawMaterialId], references: [id, workOrderLineId, rawMaterialId], onDelete: Restrict)
   unitMeasureId    Int?
-  unitMeasure      UnitMeasure?             @relation(fields: [unitMeasureId], references: [id], onDelete: Restrict)
+  unitMeasure      UnitMeasure?                 @relation(fields: [unitMeasureId], references: [id], onDelete: Restrict)
   materialCode     String?
   materialName     String?
   unitName         String?
   unitAbbreviation String?
-  id               Int                      @id @default(autoincrement())
-  quantityNeeded   Decimal                  @db.Decimal(14, 3) // Cantidad prevista; no representa un consumo confirmado
+  id               Int                          @id @default(autoincrement())
+  quantityNeeded   Decimal                      @db.Decimal(14, 3) // Cantidad prevista; no representa un consumo confirmado
   workOrderId      Int
   rawMaterialId    Int
   warehouseId      Int // Bodega de la que se descuenta el material
-  workOrder        WorkOrder                @relation(fields: [workOrderId], references: [id])
-  rawMaterial      RawMaterial              @relation(fields: [rawMaterialId], references: [id])
-  warehouse        Warehouse                @relation(fields: [warehouseId], references: [id])
+  workOrder        WorkOrder                    @relation(fields: [workOrderId], references: [id])
+  rawMaterial      RawMaterial                  @relation(fields: [rawMaterialId], references: [id])
+  warehouse        Warehouse                    @relation(fields: [warehouseId], references: [id])
   stockMovements   StockMovement[]
 
   createdAt DateTime @default(now()) // Fecha de registro (no se modifica)
@@ -1096,6 +1114,7 @@ model CompanyBankAccount {
 }
 
 model Product {
+  reservations        StockReservationAllocation[]
   workOrderLines      WorkOrderLine[]
   workOrderSupplies   WorkOrderSupplyPlan[]
   id                  Int                          @id @default(autoincrement())
@@ -1376,4 +1395,73 @@ model QuotePdfRequest {
   updatedAt      DateTime         @updatedAt
 
   @@index([emissionId])
+}
+
+// Historial de reservas separado de existencias y Kardex. Nunca actualizar cantidades.
+enum StockReservationPurpose {
+  CONSUMO_PRODUCCION
+  ENTREGA_DIRECTA_MP
+  ENTREGA_PRODUCTO
+}
+
+enum StockReservationEventType {
+  LIBERAR
+  CONSUMIR
+}
+
+model StockReservationAllocation {
+  id               Int                     @id @default(autoincrement())
+  workOrderId      Int
+  workOrder        WorkOrder               @relation(fields: [workOrderId], references: [id], onDelete: Restrict)
+  workOrderLineId  Int
+  workOrderLine    WorkOrderLine           @relation(fields: [workOrderLineId], references: [id], onDelete: Restrict)
+  purpose          StockReservationPurpose
+  warehouseId      Int
+  warehouse        Warehouse               @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  rawMaterialId    Int?
+  rawMaterial      RawMaterial?            @relation(fields: [rawMaterialId], references: [id], onDelete: Restrict)
+  productId        Int?
+  product          Product?                @relation(fields: [productId], references: [id], onDelete: Restrict)
+  unitMeasureId    Int
+  unitMeasure      UnitMeasure             @relation(fields: [unitMeasureId], references: [id], onDelete: Restrict)
+  resourceCode     String
+  resourceName     String
+  unitName         String
+  unitAbbreviation String
+  quantity         Decimal                 @db.Decimal(14, 3)
+  plannedDetailId  Int?
+  plannedDetail    WorkOrderDetail?        @relation(fields: [plannedDetailId], references: [id], onDelete: Restrict)
+  supplyPlanId     Int?
+  supplyPlan       WorkOrderSupplyPlan?    @relation(fields: [supplyPlanId], references: [id], onDelete: Restrict)
+  operationId      String                  @db.Uuid
+  operation        WorkOrderOperation      @relation(fields: [operationId], references: [idempotencyKey], onDelete: Restrict)
+  events           StockReservationEvent[]
+  createdAt        DateTime                @default(now())
+  updatedAt        DateTime                @updatedAt
+
+  @@index([workOrderId, workOrderLineId, purpose])
+  @@index([workOrderLineId])
+  @@index([rawMaterialId, warehouseId])
+  @@index([productId, warehouseId])
+  @@index([warehouseId])
+  @@index([unitMeasureId])
+  @@index([plannedDetailId])
+  @@index([supplyPlanId])
+  @@index([operationId])
+}
+
+model StockReservationEvent {
+  id           Int                        @id @default(autoincrement())
+  allocationId Int
+  allocation   StockReservationAllocation @relation(fields: [allocationId], references: [id], onDelete: Restrict)
+  type         StockReservationEventType
+  quantity     Decimal                    @db.Decimal(14, 3)
+  reason       String                     @db.VarChar(1000)
+  operationId  String                     @db.Uuid
+  operation    WorkOrderOperation         @relation(fields: [operationId], references: [idempotencyKey], onDelete: Restrict)
+  createdAt    DateTime                   @default(now())
+  updatedAt    DateTime                   @updatedAt
+
+  @@index([allocationId])
+  @@index([operationId])
 }

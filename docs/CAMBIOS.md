@@ -1059,3 +1059,40 @@ Cierre de verificación M1: lint y compilación final de producción correctos d
 ## 13-10-2026 — Acuerdos de factura externa de OT
 
 El usuario aprueba D14/D15/D16: finalizar OT antes de registrar factura, manteniendo vencimiento nulo; folio literal único por RUT emisor sin reinicio anual; corrección histórica con motivo aun con abonos, recalculando sólo vencimiento y conservando importe/pagos. El plan exige identidad del emisor histórica, revisión inmutable y actualización transaccional de referencia vigente y cuenta. Estas respuestas actualizan la planificación; todavía no implementan registro de factura ni cierre en la aplicación. D11/D18 se consultan de forma específica y siguen pendientes.
+
+
+## 14-10-2026 — Reservas de planificación de OT
+
+D11 aprobada: ejecución completa y preparación respaldada por reservas completas antes de finalizar, sin despacho implícito. D18: PDF propio al final del desarrollo del módulo.
+
+Migración 20261014183729_reservas_stock: asignaciones y eventos inmutables de reserva MP/PT con finalidad/titular/recurso/bodega/unidad/origen/UUID; tipos RESERVAR_STOCK/LIBERAR_RESERVA y snapshot de reservas en operación. Cantidad activa derivada, sin caducidad ni Kardex ficticio; FK diferidas para documento/operación juntos, índices, CHECK y triggers de origen/remanente/demanda/cobertura. Snapshot JSON exacto evita aceptar copias adulteradas que se redondeen a la misma escala. Mantiene compatibilidad de operaciones M1 sin reservas, sin inventar historia.
+
+Nuevo backend reservas-stock.ts: completar parcialmente stock libre en orden determinista, liberar con motivo, idempotencia antes de versión y locks OT/materiales/productos/bodegas/saldos. Helper transaccional para futuro registro/confirmación pública del plan. Ajustes MP/PT, Traslados y anulación de Compra consultan cobertura activa; triggers de stock impiden retiradas comprometidas también por SQL. Guard de UPSERT distingue intento provisional de INSERT del UPDATE real, preservando recepciones positivas. Se conserva historia de Compra, mínimos, versiones y saldos/Kardex.
+
+Pruebas de competencia por stock, UUID, versiones, liberaciones parciales/ajenas/excesivas, rollback inducido, inmutabilidad, snapshots adulterados y anulación de propia, interacción con ajustes/traslados/Compras y reserva parcial de terminado comercial. Regresiones M1, OCC, stock inicial/ajustes de terminado, cierre/anulación de Compras y Traslados correctas en copias separadas. Contrato de errores de línea de previsualización OCC explicitado para resolver la comprobación TypeScript sin cambiar comportamiento comercial.
+
+Prisma validate/generate/status, lint, TypeScript y build correctos. Migración local aplicada: 25 al día, 53 tablas previas con huellas/conteos conservados, sin trabajos ni reservas de prueba en base real. Respaldo restaurado y evidencias en backups/20261014_reservas_stock. Backend del plan implementado; UI/confirmación pública, consumo/reserva del resultado fabricado/reversión, cierre/factura y PDF continúan pendientes. No se afirma que el módulo esté cerrado funcionalmente.
+
+Cierre de validación MR: seis copias descartables retiradas, ausencia verificada y puertos 3030/3031 libres. No se inició servidor de aplicación ni se hizo push.
+
+
+## 15-10-2026 — Creación y planificación pública de Orden de Trabajo
+
+Migración 20261014191938_revisiones_plan_trabajo aplicada después de pruebas en copia: archivo lógico de receta/requerimiento/abastecimiento mediante retiredAt, revisión explícita del redondeo a cero y decisión/motivo de plan en operación. Triggers exigen distribución completa al confirmar, reservas cero en borrador y conservación de orígenes históricos. Compatibilidad nullable de documentos anteriores sin inventar historia; M1/MR aplicadas no se modifican.
+
+Nuevo guardarPlanTrabajo: OT comercial desde compromiso aceptado completo o propia sin cliente/cuenta ficticios; folio, plan, conciliación de reservas y operación atómicos, versiones e idempotencia con UUID/huella. Receta histórica salvo actualización explícita, necesidades HALF_UP y distribución por bodegas; confirmar reserva stock libre parcialmente, guardar borrador libera con motivo. Bloqueos de origen, materiales/productos/bodegas/saldos y relectura de composición para detectar recursos nuevos antes de escribir. Sin cambio de stock físico/Kardex/importes/cuentas.
+
+/trabajos/ordenes sustituye ruta provisional por listado en servidor, Crear/Ver/Editar sobre listado, buscadores, fuente comercial readonly, planificación de catálogo/a medida/directa/servicio, consulta de cobertura e historial, completar y liberar reservas. OCC enlaza Crear/Ver trabajo. Solicitud incierta conserva datos/UUID; fechas calendario sin desplazamiento horario y cantidades con coma/punto. Líneas guardadas se mantienen en esta primera interfaz.
+
+Integración de plan nueva y regresiones M1/MR/OCC correctas, incluida distribución/decisión inválida por SQL, revisión de cero, recetas/componentes reemplazados, carreras y rollback; copia con legado conserva datos. Chromium creación/edición/reservas/descarte/enlace OCC y liberación parcial con coma, consulta/formulario 320/768/1440 sin desbordamiento ni errores JavaScript. Prisma validate/generate y diff copia/local correctos; lint/build correctos. 26 migraciones al día y 55 tablas anteriores con conteos/huellas conservados antes/después de migrar. Respaldo restaurado, dump actualizado y evidencias en backups/20261014_planificacion_trabajo/.
+
+Numeración OT sigue sin inicio/dígitos en la base local; requiere configuración, sin valores inventados. Inicio, fabricación/avance, consumo/reserva del resultado, reversión/anulación pública, cierre/factura y PDF final pendientes. Revisión funcional del usuario pendiente; no se cierra el módulo.
+
+Cierre: consultas locales de OT/catálogos correctas; checksums de las 26 migraciones coinciden y base real sin OT/reservas/eventos de prueba. Cinco copias descartables retiradas, servidor propio detenido y 3031 libre; servidor previo del usuario en 3030 conservado. Sin push.
+
+
+## 15-10-2026 — Habilitación de Completar reservas
+
+La consulta de OT habilita «Completar reservas» sólo con plan confirmado y cantidades pendientes, además del estado pendiente y ausencia de operación en curso ya exigidos. Calcula con Decimal por requerimiento/abastecimiento activo y sus reservas propias, sin compensaciones entre orígenes. Muestra texto explícito con/sin cantidades pendientes; sin requisitos de stock la acción queda deshabilitada. Cambio de interfaz sin esquema ni escrituras de base. La prueba funcional del usuario final sigue pendiente.
+
+Validación del ajuste de habilitación: `pnpm lint` y `pnpm build` correctos, con comprobación TypeScript incluida; diff sin errores de espacios. La primera compilación restringida se canceló al quedar en Turbopack; la ejecución posterior fuera de ese entorno terminó correctamente. No se realizaron migraciones, escrituras de base ni se iniciaron servidores para este ajuste.

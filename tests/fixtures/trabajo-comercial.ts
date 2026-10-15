@@ -36,7 +36,7 @@ export async function crearTrabajoComercialDePrueba(salesOrderId: number, produc
     }
     const [snapshot] = await tx.$queryRaw<{ snapshot: Prisma.InputJsonValue }[]>`SELECT public.snapshot_plan_trabajo(${work.id}) AS snapshot`;
     await tx.workOrderOperation.create({ data: { idempotencyKey: key, fingerprint: "a".repeat(64), workOrderId: work.id,
-      type: "CREAR", version: 1, afterSnapshot: snapshot.snapshot } });
+      type: "CREAR", version: 1, planConfirmed: false, afterSnapshot: snapshot.snapshot } });
     return work;
   }, { timeout: 30000 });
 }

@@ -35,7 +35,7 @@ export function FormularioOrden({ oferta: o, hoy, onCambio, onBloqueo, onCerrar,
       lines: lineas(), technicalDescription: alcance, scopeReviewed: revisado });
     if (confirmar && !datos.success) { setError(datos.error.issues[0].message); return; }
     enCurso.current = true; bloqueando(true); setError(undefined);
-    try { const p = await previsualizar(o.id, o.version, lineas()); if (!p.ok) { setError(p.mensaje); if ("erroresLineas" in p) setErroresLineas(Object.fromEntries(p.erroresLineas.map(l => [l.id, l.mensaje]))); } else { setPreview(p); if (confirmar && datos.success) { confirmando.current = true; setConfirmacion(datos.data); } } }
+    try { const p = await previsualizar(o.id, o.version, lineas()); if (!p.ok) { setError(p.mensaje); if (p.erroresLineas) setErroresLineas(Object.fromEntries(p.erroresLineas.map(l => [l.id, l.mensaje]))); } else { setPreview(p); if (confirmar && datos.success) { confirmando.current = true; setConfirmacion(datos.data); } } }
     catch { setError("No se pudo revisar el importe. Vuelve a intentarlo."); }
     finally { enCurso.current = false; bloqueando(false); }
   }

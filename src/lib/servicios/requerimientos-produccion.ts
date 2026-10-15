@@ -1,4 +1,4 @@
-import { Prisma } from "@/generated/prisma/client";
+import { Prisma } from "@/generated/prisma/browser";
 
 // Dos cantidades Decimal(14,3) pueden producir 28 dígitos significativos.
 // Conservar el cálculo intermedio sin cambiar la precisión global del ERP.

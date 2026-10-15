@@ -1,3 +1,4 @@
+import { cantidadReservadaRecurso } from "./reservas-stock";
 import { createHash } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
@@ -1146,6 +1147,8 @@ async function finalizarCompra(
               saldo!.quantity.eq(kardex._sum.quantity ?? 0),
               "El saldo no coincide con el Kardex. Revisa el inventario antes de anular.",
             );
+            const reservada = await cantidadReservadaRecurso(tx, material, null, compra!.warehouseId);
+            exigir(saldo!.quantity.minus(total).gte(reservada), "La anulación retiraría existencias reservadas. Libera o replanifica esas reservas con motivo antes de anular.");
             await tx.warehouseStock.update({
               where: { id: saldo!.id },
               data: { quantity: { decrement: total } },

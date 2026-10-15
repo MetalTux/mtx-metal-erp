@@ -352,3 +352,20 @@ Estado y configuración en [HITO-PDF-COTIZACIONES.md](HITO-PDF-COTIZACIONES.md).
 - [x] Cotizaciones: acción explícita «Actualizar emisor desde Empresa» en PDF y versiones, confirmación reutilizable, nueva revisión y conservación de PDF históricos; funcionamiento confirmado por el usuario.
 
 - [ ] Cotizaciones: envío de PDF por correo al contacto de Sucursal; solicitar correo si falta. Pendiente de SMTP y contraseña de aplicación válidas del usuario final; sin implementación ni envíos por ahora.
+
+
+## 15-10-2026 — Orden de Trabajo: creación y planificación
+
+- [x] Listado con filtros/paginación/orden en servidor; Crear/Ver/Editar sobre listado y enlaces desde OCC.
+- [x] Obra propia y compromiso comercial readonly, receta histórica/actualización explícita, distribución por bodegas buscables y revisión del redondeo a cero.
+- [x] Guardar borrador/confirmar plan con confirmación; cobertura física/propia/ajena/libre y faltantes, historial y completar/liberar parcialmente con motivo.
+- [x] Descarte de formulario sin documentos/folios; versiones, UUID estable y bloqueo de edición ante respuesta incierta.
+- [x] Chromium 320/768/1440, creación/edición/reservas, enlace OCC y liberación con coma decimal sin alterar físico/Kardex; lint/build correctos.
+- [ ] Revisión funcional del usuario y auditoría formal de accesibilidad del módulo completo.
+- [ ] Inicio, producción/avance, reversión/anulación pública, cierre/factura y PDF final.
+
+Requiere configurar numeración OT antes de crear el primer documento. Contrato, pasos de revisión y límites en [HITO-ORDEN-TRABAJO-PRODUCCION.md](HITO-ORDEN-TRABAJO-PRODUCCION.md), entrega OT3/OT4 del 15-10-2026. No se presenta planificación como fabricación.
+
+- [x] OT: «Completar reservas» deshabilitado sin faltantes activos o sin confirmación; mensaje de cobertura explícito. La comparación contempla requerimientos MP y abastecimiento MP/PT por origen, sin mezclar coberturas ni contar filas archivadas.
+
+Validación del ajuste de «Completar reservas»: lint/build correctos. No se iniciaron servidores ni se modificó la base de datos.

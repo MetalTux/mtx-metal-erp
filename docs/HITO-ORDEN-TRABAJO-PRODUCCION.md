@@ -1,6 +1,6 @@
 # Hito Orden de Trabajo y Producción
 
-**Estado: M1 de estructura OT/plan implementada y migrada con validación técnica; reservas MR, servicios/interfaz y producción pendientes. Base pura de OT4 validada. Decisiones financieras y de alcance pendientes antes de sus bloques dependientes.** Fecha: 13-10-2026.
+**Estado: estructura M1, reservas MR y creación/consulta/edición/confirmación pública del plan implementadas y migradas, con validación técnica. OT3 pendiente de revisión funcional del usuario. OT4 incorpora receta histórica, distribución y reservas; inicio todavía pendiente. Producción/reversión, consumo de reservas, reserva del resultado fabricado, cierre/factura y PDF final aún pendientes. Último cierre técnico: 15-10-2026.**
 
 Este documento define estructura, reglas, cambios, secuencia, pruebas y criterios de cierre. La entrega inicial fue exclusivamente documental. Posteriormente el usuario autorizó proceder con los cambios del plan; esa autorización permite avanzar en decisiones técnicas e implementación. Las decisiones comerciales señaladas como pendientes deben resolverse expresamente antes de sus bloques dependientes.
 
@@ -204,13 +204,13 @@ El usuario confirma expresamente «D10: Si», «D17: Si» y «D13: Redonder al v
 | D17 | Aprobada | Obra propia admite productos de catálogo y trabajo interno a medida; título, finalidad y fecha obligatorios, objetivo opcional y sin responsable autenticado obligatorio en esta entrega |
 | D13 | Aprobada | Requerimiento al más cercano con HALF_UP a tres decimales, diferencia visible y revisión obligatoria si una necesidad positiva redondea a cero |
 
-En ese checkpoint se consultaron tres grupos: D09/D12, D11/D14/D18 y D19/D20. Las respuestas posteriores están en 5.4 y 5.5; sólo D11/D18 conservan precisiones pendientes. El cierre de estos acuerdos no sustituye pruebas de migración ni validación funcional.
+En ese checkpoint se consultaron tres grupos: D09/D12, D11/D14/D18 y D19/D20. Las respuestas posteriores están en 5.4 y 5.5; D11/D18 se resuelven en el checkpoint del 14-10-2026. El cierre de estos acuerdos no sustituye pruebas de migración ni validación funcional.
 
 ### 5.4 Respuestas posteriores — corrección, fechas y factura externa
 
 El usuario aprueba el grupo D09/D12 («Me parece bien tu propuesta»): reversión completa vinculada y registro nuevo sólo antes del cierre y sin salidas/dependencias posteriores; daño físico mediante ajustes; primera entrega sin reapertura ni cierre incompleto. Confirma D19/D20 («Si»): clasificación compatible explícita y hechos no futuros/no anteriores al inicio/OT, admitiendo registro tardío con aviso y conservando orden histórico por ID.
 
-Sobre el grupo de finalización explica que al finalizar se emite la Factura de Venta fuera del ERP y se guardan Folio/Fecha en OT, iniciando el plazo de pago. Se ratifica ese flujo: la aplicación referencia la factura externa, no la emite, y el vencimiento usa su fecha y el plazo histórico. Las respuestas específicas posteriores resuelven D14/D15/D16 en la sección 5.5. D11/D18 conservan las precisiones de preparación/alcance pendientes que no fueron respondidas individualmente.
+Sobre el grupo de finalización explica que al finalizar se emite la Factura de Venta fuera del ERP y se guardan Folio/Fecha en OT, iniciando el plazo de pago. Se ratifica ese flujo: la aplicación referencia la factura externa, no la emite, y el vencimiento usa su fecha y el plazo histórico. Las respuestas específicas posteriores resuelven D14/D15/D16 en la sección 5.5. D11/D18 se precisan en la respuesta del 14-10-2026 registrada abajo.
 
 ### 5.5 Respuestas específicas de factura externa — 13-10-2026
 
@@ -218,7 +218,7 @@ Sobre el grupo de finalización explica que al finalizar se emite la Factura de 
 - **D15 aprobada:** «Único por RUT de empresa emisora, sin reinicio anual». Identidad por RUT emisor canónico y folio externo literal, sin año ni serie. Guardar el RUT histórico; no refrescarlo al editar Empresa. No se aprueban relaciones temporales adicionales con la fecha de finalización.
 - **D16 aprobada:** «Sí, permitir corrección histórica con esas condiciones». Nueva revisión inmutable con motivo y vínculo a la vigente, incluso con abonos. Recalcular sólo vencimiento; conservar importe, pagos y promesa de pago.
 
-D11 se consulta sobre ejecución completa y preparación con reservas completas; D18 sobre diferir PDF propio, nuevos adjuntos y firma. Ambas siguen pendientes. Esto no impide avanzar en reservas y producción independientes del cierre.
+D11 y D18 respondidas el 14-10-2026: «D11: Si» y «D18: Dejaremos este PDF para el final». D11 exige fabricación/servicios completos y preparación de las líneas para entregar respaldada por reservas completas. Finalizar no despacha ni descuenta stock. PDF propio de OT se realizará al final del desarrollo del módulo, después del flujo operativo; no se considera eliminado del alcance por esta respuesta. No habilitar nuevos uploads/firma sin su contrato de almacenamiento. El primer bloque de interfaz usa alcance heredado e instrucciones internas.
 
 ## 6. Casos de uso y comportamiento esperado
 
@@ -830,7 +830,7 @@ Selectores con búsqueda/teclado/vacío, foco inicial y retorno, Escape/descarte
 | MR — Reservas e integración | Asignaciones/eventos, locks/invariantes, reserva parcial de planes y adaptación de escritores existentes | D08/R01–R03 aprobadas; validar antes de habilitar reservas en cualquier OT |
 | M2 — Registros productivos | ProductionRecord/Consumption/Output, nuevos orígenes Kardex, restricciones y protecciones de mantenedores | D02–D04/D07/D08/D13/D19/D20 resueltas |
 | M3 — Correcciones | Reversión y detalles tipados, exclusión de duplicados, completitud y movimientos | D09/D12 resueltas; producción ya validada |
-| M4 — Finalización/factura | Completion, identidad emisor/folio, referencias históricas, puntero, condiciones de dueDate y eventos | D14–D16 resueltas; falta D11 |
+| M4 — Finalización/factura | Completion, identidad emisor/folio, referencias históricas, puntero, condiciones de dueDate y eventos | D11 y D14–D16 resueltas |
 
 Los nombres y timestamps exactos se asignan al implementar. Si dependencias SQL requieren agrupar M1/M2, documentar por qué; no desplegar interfaz de producción antes de todos sus CHECK/triggers. Nuevos valores enum utilizados por SQL posterior pueden necesitar migraciones separadas según PostgreSQL; verificar en copia, no asumir que son utilizables dentro de la misma transacción de creación.
 
@@ -875,41 +875,48 @@ Pruebas de una misma copia se ejecutan secuencialmente. Paralelizar sólo con co
 ### OT2 — estructura y protecciones
 
 - [x] Preparar, probar y aplicar M1 de estructura/plan; sin modificar migraciones históricas.
-- [ ] Preparar M2 de registros y MR de reservas, sin modificar M1 ya aplicada.
+- [x] Preparar y aplicar la base MR de reservas de planificación, sin modificar M1 aplicada.
+- [ ] Preparar M2 de registros y ampliar MR con consumo/reserva del resultado/reversión física.
 - [x] Incorporar OT/folio/UUID/versiones/líneas/receta/plan y FK compuestas.
-- [ ] Incorporar asignaciones/eventos de reserva de MP/PT y protegerlas en todos los escritores existentes antes de habilitarlas.
+- [x] Incorporar asignaciones y liberaciones históricas de reserva MP/PT del plan; proteger cobertura en los escritores existentes.
+- [x] Integrar reservas al registro público de plan, conciliando liberaciones con motivo e historial.
+- [ ] Integrar consumo y reserva del resultado fabricado con documentos físicos tipados.
 - [ ] Incorporar registros productivos/orígenes de stock y operaciones propias.
 - [x] Proteger completitud de OT/plan, origen comercial, operaciones/snapshots, pertenencia y conservación histórica de M1.
-- [ ] Proteger completitud de reservas/producción/reversión al implementar sus documentos.
+- [x] Proteger operación, snapshot exacto, origen/remanente y cobertura física de reservas de planificación.
+- [ ] Proteger completitud de consumos/producción/reversión al implementar sus documentos.
 - [x] Actualizar restricciones/conteos y validaciones de materiales, productos, unidades y bodegas para referencias de planificación actual e histórica.
 - [x] Probar migración M1, rollback y legados en copias descartables.
-- [ ] Probar precondiciones y legados de MR/M2 al implementarlas.
+- [x] Probar precondiciones MR y migración de revisiones del plan, incluido trabajo/detalle legado sin inferencias.
+- [ ] Probar precondiciones y legados de M2 al implementarla.
 - [x] Validar Prisma, generar cliente y comprobar estado/índices de M1.
-- [ ] Repetir validación de Prisma/drift para MR/M2.
+- [x] Validar Prisma/drift de MR y revisiones del plan.
+- [ ] Repetir validación de Prisma/drift para M2.
 - [x] Aplicar M1 a entorno local verificado y comprobar conservación de las 49 tablas previas.
-- [ ] Aplicar MR/M2 sólo después de sus pruebas y repetir huellas.
+- [x] Aplicar MR y revisiones del plan después de sus pruebas; comprobar huellas de tablas previas.
+- [ ] Aplicar M2 sólo después de sus pruebas y repetir huellas.
 
 **Salida:** esquema apto para operaciones sin debilitar Compras/Inventario/OCC; todavía no declarar producción utilizable.
 
 ### OT3 — crear, consultar y planificar trabajo
 
-- [ ] Crear OT comercial con fuente aceptada, folio e idempotencia sin cuenta nueva.
-- [ ] Crear obra propia sin cliente/orden ficticios.
-- [ ] Listar/consultar históricamente, filtrar/paginar/ordenar en servidor.
-- [ ] Editar plan pendiente con versión e historial; conservar alcance y cantidades comerciales.
-- [ ] Integrar Crear/Ver trabajo desde OCC y menú/ruta existente.
-- [ ] Probar carreras de creación, cancelación de formulario, numeración ausente y rollback.
+- [x] Crear OT comercial con fuente aceptada, folio e idempotencia sin cuenta nueva.
+- [x] Crear obra propia sin cliente/orden ficticios.
+- [x] Listar/consultar históricamente, filtrar/paginar/ordenar en servidor.
+- [x] Editar plan pendiente con versión e historial; conservar alcance y cantidades comerciales.
+- [x] Integrar Crear/Ver trabajo desde OCC y menú/ruta existente.
+- [x] Probar carreras de creación, cancelación de formulario, numeración ausente y rollback.
 - [ ] Usuario valida creación comercial, parcial aceptada y obra propia.
 
-**Salida:** OT documental operativa, sin movimientos ni reservas implícitas.
+**Salida:** OT documental operativa; guardar borrador no reserva. Confirmar plan reserva explícitamente lo disponible, sin movimientos físicos.
 
 ### OT4 — recetas, requerimientos y preparación
 
-- [x] Implementar cálculo puro Decimal desde receta histórica con HALF_UP a tres decimales y revisión de necesidad positiva que queda en cero; pruebas puras correctas. Integración con plan/registro productivo pendiente.
-- [ ] Capturar/consultar receta histórica, impedir cambios automáticos por catálogo.
-- [ ] Distribuir requerimientos entre bodegas y mostrar disponibilidad/faltantes.
-- [ ] Reservar parcialmente al confirmar plan, completar reservas explícitamente y consultar cobertura propia/ajena/libre sin vencimiento automático.
-- [ ] Diferenciar producción, stock, materia prima directa, servicio y a medida.
+- [x] Implementar cálculo puro Decimal desde receta histórica con HALF_UP a tres decimales y revisión de necesidad positiva que queda en cero; pruebas puras correctas. Integración con plan validada; registro productivo pendiente.
+- [x] Capturar/consultar receta histórica, impedir cambios automáticos por catálogo.
+- [x] Distribuir requerimientos entre bodegas y mostrar disponibilidad/faltantes.
+- [x] Reservar parcialmente al confirmar plan, completar reservas explícitamente y consultar cobertura propia/ajena/libre sin vencimiento automático.
+- [x] Diferenciar producción, stock, materia prima directa, servicio y a medida.
 - [ ] Revisar plan/iniciar con fecha, estado y versión; no consumir al iniciar.
 - [ ] Probar cambio concurrente de receta/unidad/clasificación y conjunto de locks.
 - [ ] Usuario valida cantidades, unidades, faltantes, reservas propias/ajenas y disponibilidad libre.
@@ -958,7 +965,8 @@ Pruebas de una misma copia se ejecutan secuencialmente. Paralelizar sólo con co
 
 - [ ] Validar flujo completo desde OCC a OT y producción/corrección/cierre.
 - [ ] Revisar accesibilidad, teclado, readonly, búsquedas, errores, confirmaciones y pantallas pequeñas.
-- [ ] Resolver D18 e implementar sólo su alcance aprobado, o dejar exclusión explícita.
+- [x] Registrar D18: PDF propio de OT al final del desarrollo, después del flujo operativo.
+- [ ] Implementar PDF propio en ese bloque final y validar su almacenamiento/historia.
 - [ ] Regresiones de Compras, inventarios, catálogo, numeración, Cotizaciones/OCC/PDF.
 - [ ] Ejecutar `pnpm lint`, `pnpm build` y comprobaciones específicas de dominio.
 - [ ] Revisar diff, migraciones, tipos serializados, datos preservados y recursos locales.
@@ -1138,3 +1146,79 @@ Pruebas M1 en copia limpia: fuente aceptada y única, obra propia, copia complet
 Regresiones completas de OCC comercial e integridad, carga inicial y ajustes de terminado correctas en copias separadas y secuenciales por copia. Prisma validate/generate/migrate status correctos; 24 migraciones aplicadas. Huellas/conteos de las 49 tablas previas iguales en copia y base real, comparando columnas originales; cuatro tablas nuevas sin fixtures en la base real. No se configura inicio de numeración ni se crean documentos por migrar.
 
 Respaldo de archivos/dump/almacenes locales y configurados, huellas, logs de restauración/pruebas y dump corregido en `backups/20261013_153522_estructura_orden_trabajo/`. Las seis copias descartables de esta validación se retiraron y se verificó su ausencia. `pnpm lint` y la compilación final `pnpm build` pasaron después de migrar; consultas de mantenedores verificadas. No se inició servidor de aplicación propio; el servidor previo del usuario en 3030 se conservó y 3031 quedó libre. No hay push. Reservas MR y M2–M4 siguen pendientes; los checks de OT2 reflejan sólo M1 cuando así lo indican.
+
+
+### MR — reservas de planificación y protección del stock (14-10-2026)
+
+D11 aprobada: finalizar sólo con fabricación/servicios completos y preparación de líneas para entrega respaldada por reservas completas; cierre sin salida de stock. D18 precisa PDF propio al final del desarrollo del módulo, después del flujo operativo. Estas decisiones no se marcan como funcionalidad ejecutada.
+
+Migración `20261014183729_reservas_stock` aplicada tras probar copias: `StockReservationAllocation` y `StockReservationEvent`, finalidades MP productiva/MP directa/entrega PT, tipos RESERVAR_STOCK/LIBERAR_RESERVA y `WorkOrderOperation.reservationSnapshot` nullable sólo para historia M1 previa. FK Restrict e índices cubren titular, recurso/bodega, unidad, origen y UUID. FK a operación diferidas permiten escribir filas y capturar snapshot antes de insertar la operación inmutable; el commit exige el conjunto completo.
+
+La cantidad activa deriva de asignaciones menos eventos; no se guarda saldo reservado mutable. Asignaciones/ampliaciones y liberaciones son inmutables, positivas, sin NaN y con motivo de liberación no vacío. El snapshot canónico SQL conserva cantidades como texto y se compara con igualdad JSON exacta: ni una variación inferior a 0,001 puede quedar encubierta por la conversión a Decimal(14,3). No existe vencimiento automático.
+
+`completarReservasTrabajo` usa UUID/huella/versiones, reconoce reintentos antes de verificar versión, bloquea OT → materiales ascendentes → productos ascendentes → bodegas → saldos y asigna libre parcialmente por posición/recurso/bodega de forma determinista. Verifica saldo contra Kardex y resta la cobertura propia del origen concreto. Sin libre no crea asignación cero ni fila de stock. `liberarReservaTrabajo` registra débito parcial con motivo, sin modificar físico/Kardex. `reservarPlanTrabajoEnTransaccion` permite integrar CREAR/EDITAR_PLAN en su misma transacción; el futuro servicio público debe validar idempotencia, revisar liberaciones por cambio de plan y registrar operación/snapshots coordinados. Las funciones de completar/liberar admiten planes pendientes en esta etapa; estados productivos se ampliarán con sus documentos.
+
+La OT propia reserva insumos, sin obligación de entrega a cliente ficticio. Las referencias a requerimiento/abastecimiento no se borran tras liberar; pueden revisarse conservando identidad/historia. Una revisión que reduzca demanda por debajo de cobertura activa se rechaza hasta liberar/replanificar con motivo. Anular propia exige liberar todas sus reservas en la misma transacción. Operaciones sólo de reserva no pueden alterar el plan.
+
+Ajustes/conteos MP y PT, Traslados y anulación de Compra verifican cobertura activa bajo los locks ya usados, con errores de dominio visibles. Triggers de ambas tablas de existencias también protegen SQL directo. El guard contempla INSERT provisional de UPSERT sobre combinación existente: el saldo efectivo se valida en el UPDATE posterior, para permitir recepciones positivas sin validar como físico una cantidad candidata descartada. No se debilitan controles históricos de Compra ni mínimos/versiones de stock.
+
+**Límite de esta etapa:** CONSUMIR permanece rechazado hasta contar con documento físico tipado. Las asignaciones actuales refieren requerimiento o abastecimiento; M2 añadirá origen `ProductionOutput`, consumo tipado y reserva del resultado comercial atómicos con stock/Kardex. MR de planificación no acredita esas operaciones. `/trabajos/ordenes` sigue provisional: creación/edición/confirmación pública del plan, lectura físico/reservado/libre y botones de reserva requieren su bloque de interfaz. No se cerró OT2/OT4 ni revisión funcional global.
+
+Pruebas `tests/reservas-stock.integration.ts` sólo sobre `mtx_validacion_reservas_*`: competencia de OT por mismo saldo, parcial/faltante/cero libre, reintentos y UUID con contenido distinto, versiones antiguas, liberación parcial/ajena/excesiva/concurrente, inmutabilidad, snapshots adulterados, reducción de plan incompatible, anulación con/sin liberación, rollback inducido después de crear asignaciones y conservación de físico/Kardex. Se comprobaron ajustes MP/PT, Traslados, recepción positiva de compra con stock reservado, bloqueo de anulación y anulación válida después de liberar. Terminado comercial desde stock se reserva parcialmente sin consumir receta.
+
+Regresiones en copias separadas, secuenciales por copia: estructura M1, OCC comercial/integridad, stock inicial/ajustes de terminado, cierre/anulación de Compras y Traslados. Se corrigió también el contrato TypeScript de previsualización OCC: errores de línea opcionales explícitos y comprobados antes de usarlos, sin cambiar importes ni operación comercial. Prisma validate/generate/status, lint, TypeScript y build correctos; 25 migraciones al día. Las 53 tablas previas conservan conteos/huellas de sus datos originales antes/después de migrar la base local. Ninguna OT, reserva o evento de prueba se creó en la base real.
+
+Respaldo restaurado, huellas y logs en `backups/20261014_reservas_stock/`. Las seis copias descartables se retiraron y se comprobó su ausencia; no se inició servidor de aplicación y los puertos 3030/3031 quedaron libres. Sin push.
+
+
+### OT3 y planificación de OT4 — entrega técnica del 15-10-2026
+
+**Alcance entregado:** creación comercial y propia, consulta/listado y edición del plan pendiente, captura histórica de receta, distribución de materiales/abastecimiento, confirmación con reserva parcial, ampliación y liberación parcial con motivo. Todas estas operaciones conservan existencias físicas, Kardex, importe comercial y cuentas existentes. No habilita todavía inicio, fabricación, avances, reversión, anulación pública de OT, cierre, factura ni PDF.
+
+#### Estructura y garantías
+
+Migración `20261014191938_revisiones_plan_trabajo` aplicada en PostgreSQL local, después de validar copias y legado. Añade `retiredAt` nullable a receta/requerimiento/abastecimiento, `roundingReview` a línea y decisión explícita `planConfirmed`/motivo a operación. No crea tablas, reescribe documentos anteriores ni completa datos legados. Se conservaron las migraciones M1/MR ya aplicadas.
+
+Los orígenes reemplazados se archivan, conservando sus referencias y cantidades mientras estén retirados; reusar una combinación permite reactivarla con nueva revisión y snapshots históricos intactos. Una receta retirada no habilita nuevos requerimientos. Los triggers diferidos verifican al confirmar la distribución completa, las necesidades HALF_UP y la revisión justificada de un positivo que redondea a cero. CREAR/EDITAR_PLAN nuevos requieren decisión explícita y la edición exige motivo; las operaciones anteriores sin este campo conservan su historia. Guardar borrador exige cero reservas activas y libera las anteriores dentro de la misma transacción.
+
+`guardarPlanTrabajo` valida contrato, fuente aceptada completa y versiones bajo bloqueo; asigna folio y escribe documento/plan/reservas/operación juntos. Reconoce UUID/huella antes de comprobar versión y rechaza reutilizar una clave con contenido distinto. Las líneas comerciales mantienen origen, cantidades, unidades y alcance; no crea otra cuenta. Obras propias admiten catálogo o a medida, título/finalidad/fecha y objetivo opcional; catálogo propio fabrica toda su cantidad. En esta primera interfaz las líneas de un documento guardado se conservan: se revisan sus cantidades propias y distribución, sin añadir/eliminar líneas después del primer guardado.
+
+Orden de locks: origen comercial Quote → SalesOrder → WorkOrder; recursos de receta se descubren antes de bloquear materiales ascendentes → productos ascendentes → bodegas → saldos. Se relee composición después de bloquear y se aborta si aparece un material no bloqueado. La receta histórica no cambia por editar catálogo; su actualización exige acción explícita y revisión de producto. Reducciones/cambios de bodega liberan sólo exceso u orígenes retirados con motivo, preservando cobertura válida y reservando luego el faltante disponible. Sin stock, confirma el plan completo y deja cobertura pendiente; no crea asignaciones cero.
+
+#### Uso y revisión funcional pendiente
+
+1. Configurar **Orden de Trabajo** en Configuración → Numeración antes de crear la primera OT. En la base local revisada aún faltan inicio y dígitos; no se inventaron ni se trasladaron los valores de prueba.
+2. En OCC usar **Crear trabajo**, o en Trabajos → Órdenes de Trabajo → **Crear OT** seleccionar orden confirmada sin trabajo. Alternativamente elegir **Crear obra propia** y añadir productos/trabajos a medida.
+3. Revisar título, fecha, finalidad propia, instrucciones y objetivo opcional. La fecha comercial no puede preceder la aceptación. El alcance comercial se consulta en modo de sólo lectura.
+4. Para productos comerciales, repartir cantidad entre fabricar y stock. Para materia prima directa distribuir abastecimiento; servicio puro no admite materiales; a medida permite requerimientos sin fabricar un producto ficticio.
+5. Distribuir necesidades por bodegas compatibles usando selectores buscables. Revisar exacto de seis decimales, redondeo/diferencia y, cuando corresponda, cantidad positiva y motivo del caso cero. Los valores de disponibilidad del formulario son orientativos y se vuelven a validar bajo bloqueo al guardar.
+6. **Guardar borrador** admite distribución incompleta sin reservas. **Confirmar y reservar plan** exige distribución completa e intenta cubrir parcialmente con stock libre; requiere confirmación visible. Ninguno consume ni fabrica.
+7. En **Ver OT** revisar receta, previsto, reserva propia, faltante, físico, reserva ajena y libre, obtenidos con instantánea coherente. Consultar historial de operaciones, reservas/liberaciones y requerimientos archivados.
+8. Usar **Completar reservas** explícitamente después de reponer, o **Liberar reserva** indicando cantidad y motivo. Liberar no reduce la obligación ni modifica físico. Editar plan pendiente exige motivo y nueva versión; si se vuelve a borrador se liberan reservas.
+9. Ante respuesta incierta, reintentar la misma solicitud/UUID sin editar datos. No cerrar y crear otra OT suponiendo que falló. La interfaz bloquea cambios mientras intenta reconocer el resultado.
+10. Validar funcionalmente creación comercial (incluida aceptación parcial), propia, distribución, confirmación, faltantes, liberación y receta histórica. Esta revisión del usuario sigue pendiente y no se marca por las pruebas técnicas.
+
+Los legados permanecen en consulta y no se completan ficticiamente. La lista filtra/pagina/ordena en PostgreSQL; abrir una OT o preparar una orden para creación no escribe documentos ni folios. Consulta/edición se muestran sobre el listado, con descarte confirmado, control de teclado y selectores buscables. No se han incorporado nuevos componentes mediante CLI ni dependencias.
+
+#### Verificación y evidencia
+
+- `tests/ordenes-trabajo-plan.integration.ts` exige copia local `mtx_validacion_plan_*`: borrador/confirmación, fuente completa y aceptación parcial, obra propia, UUID repetido/concurrente, versiones, receta histórica/actualizada, cambio de componentes/bodegas, archivo de orígenes, cobertura parcial, revisión de cero, distribución incompleta y decisión nula rechazadas por SQL, rollback inducido de documento/folio/contador/reservas y consultas sin escrituras. Ejecución final correcta.
+- Regresiones de estructura M1, reservas MR y OCC comercial/integridad correctas, secuenciales por copia. Fixtures adaptados a decisión explícita/motivo; no se cargaron fixtures reales. La prueba pura de requerimientos/cobertura también pasó tras compartir su cálculo con el navegador.
+- Copia con trabajo/detalle legado: migración conserva las columnas y datos previos sin folio, receta o reservas inventadas; huellas anteriores/posteriores iguales. El respaldo PostgreSQL se restauró en las copias antes de las pruebas.
+- Chromium: creación, edición, confirmación, completar reservas, descarte sin documentos/folios y enlace desde OCC verificados; liberación parcial con coma decimal y motivo también comprobada. Stock/Kardex anteriores y posteriores a la liberación idénticos. Formularios y consulta comprobados a 320/768/1440 sin desbordamiento de página ni errores JavaScript. No sustituye una auditoría formal de accesibilidad ni aprobación funcional.
+- Prisma validate/generate correctos; comparación de esquema en copia y base local sin diferencias. `pnpm lint` y `pnpm build` correctos, con comprobación TypeScript incluida. 26 migraciones aplicadas; las 55 tablas previas conservan conteos y huellas de sus columnas originales comparadas inmediatamente antes/después de esta migración. Sin OT/reservas de prueba en base real.
+- Respaldo actualizado, huellas, logs y capturas en `backups/20261014_planificacion_trabajo/`; el dump de retoma del 15-10 queda separado del respaldo original del 14-10. Evidencia de liberación en `ui-liberacion.json`. El servidor de desarrollo del usuario en 3030 se preserva.
+
+**Siguiente bloque:** inicio controlado de OT y M2 de registros parciales de fabricación/ejecución, con consumo MP + entrada PT + débito de reserva + reserva del resultado comercial atómicos. Luego reversión, cierre/factura y PDF al final, respetando las decisiones aprobadas. No marcar OT2, OT4 ni el módulo completo como cerrados por esta entrega.
+
+
+Cierre de esta validación: las cinco copias descartables de planificación se retiraron y se comprobó su ausencia. Se detuvo el servidor propio de 3031 y se verificó el puerto libre; el proceso previo del usuario en 3030 se conservó. Las consultas OT/catálogos de sólo lectura en la base local migrada funcionan. Los checksums de las 26 migraciones coinciden con sus archivos; base real con cero OT, asignaciones y eventos de reserva de prueba. Diff sin errores de espacios. Sin push.
+
+
+### Ajuste de claridad de reservas — 15-10-2026
+
+El usuario comprobó creación/guardado de borrador y posterior confirmación con reservas, sin incidencias observadas; deja la validación funcional completa al usuario final. Se mantiene pendiente ese checklist.
+
+Por su aprobación posterior, «Completar reservas» sólo se habilita en una OT pendiente con plan confirmado y cantidades todavía sin reservar. La cobertura se compara con Decimal por cada origen activo de material o abastecimiento, sumando sus reservas activas; no se compensan faltantes de una línea/bodega con reservas de otra y se ignoran orígenes archivados. Un plan sin requerimientos de stock tampoco habilita la acción. La consulta indica si hay cantidades pendientes o si no queda ninguna. Al liberar reservas y volver a consultar, se recalcula la condición con los datos recibidos. No exige que haya stock libre: con faltantes puede intentarse completar, conservando los controles del servidor.
+
+Validación del ajuste de habilitación: `pnpm lint` y `pnpm build` correctos, con comprobación TypeScript incluida; diff sin errores de espacios. La primera compilación restringida se canceló al quedar en Turbopack; la ejecución posterior fuera de ese entorno terminó correctamente. No se realizaron migraciones, escrituras de base ni se iniciaron servidores para este ajuste.

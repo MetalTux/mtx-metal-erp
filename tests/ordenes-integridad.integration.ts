@@ -24,7 +24,7 @@ async function main() {
   const contrato = await prisma.$transaction(tx => leerCompromisoParaTrabajo(tx, { id: correcta.id, version: correcta.version }));
   assert.equal(contrato.totalAmount, "100"); assert.equal(contrato.lines.length, 1); assert.equal(await prisma.workOrder.count({ where: { salesOrderId: correcta.id } }), 0);
   const paraCantidad = await nueva(), exceso = await previsualizarOrdenCompraCliente(paraCantidad.quoteId, paraCantidad.quoteVersion, [{ ...paraCantidad.lines[0], quantity: "2" }]);
-  assert(!exceso.ok && "erroresLineas" in exceso); assert.equal(exceso.erroresLineas[0].id, paraCantidad.lines[0].quoteDetailId);
+  assert(!exceso.ok && exceso.erroresLineas); assert.equal(exceso.erroresLineas[0].id, paraCantidad.lines[0].quoteDetailId);
   const referencia = { ...await nueva(), customerOrderNumber: `  oc\u00a0\u2007\u202f ${randomUUID()}  ` };
   const textoOriginal = referencia.customerOrderNumber;
   const literal = await registrarOrdenCompraCliente(referencia, randomUUID()); assert(literal.ok);

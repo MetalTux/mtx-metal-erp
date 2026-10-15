@@ -1,3 +1,4 @@
+import { cantidadReservadaRecurso } from "./reservas-stock";
 import { createHash } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
@@ -108,6 +109,8 @@ export async function registrarAjusteTerminado(entrada: unknown): Promise<Result
         "El saldo cambió desde la revisión. Consulta nuevamente antes de confirmar.");
       const suma = await tx.productStockMovement.aggregate({ where: { productId: d.productId, warehouseId: d.warehouseId }, _sum: { quantity: true } });
       exigir(s.stock.quantity.equals(suma._sum.quantity ?? 0), "El saldo no coincide con sus movimientos. Revisa la incidencia antes de ajustar.");
+      const reservada = await cantidadReservadaRecurso(tx, null, d.productId, d.warehouseId);
+      exigir(final.gte(reservada), "El conteo deja stock inferior a las reservas. Libera o replanifica con motivo antes de confirmar el conteo real.");
       const diferencia = final.minus(s.stock.quantity);
       if (d.correctedInitialStockId !== null) {
         const origen = await tx.productInitialStock.findUnique({ where: { id: d.correctedInitialStockId } });

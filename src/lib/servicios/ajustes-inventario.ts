@@ -1,3 +1,4 @@
+import { cantidadReservadaRecurso } from "./reservas-stock";
 import { createHash } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
@@ -175,6 +176,8 @@ export async function registrarAjusteInventario(entrada: unknown) {
           anterior.eq(suma._sum.quantity ?? "0"),
           "El saldo no coincide con el Kardex. Revisa la incidencia antes de ajustar.",
         );
+        const reservada = await cantidadReservadaRecurso(tx, d.rawMaterialId, null, d.warehouseId);
+        exigir(final.gte(reservada), "El conteo deja stock inferior a las reservas. Libera o replanifica con motivo antes de confirmar el conteo real.");
         const diferencia = final.minus(anterior);
         exigir(
           diferencia.abs().lte("99999999999.999"),

@@ -1,3 +1,4 @@
+import { cantidadReservadaRecurso } from "./reservas-stock";
 import { createHash } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
@@ -211,6 +212,8 @@ export async function registrarTrasladoInventario(entrada: unknown) {
             "El saldo no coincide con el Kardex. Revisa la incidencia antes de trasladar.",
           );
         }
+        const reservada = await cantidadReservadaRecurso(tx, d.rawMaterialId, null, d.sourceWarehouseId);
+        exigir(anteriorOrigen.minus(q).gte(reservada), "El traslado sólo puede usar stock libre; no puede retirar reservas de otras OT.");
         const finalOrigen = anteriorOrigen.minus(q),
           finalDestino = anteriorDestino.plus(q);
         exigir(

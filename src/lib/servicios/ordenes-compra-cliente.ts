@@ -123,7 +123,10 @@ export async function registrarOrdenCompraCliente(entrada: unknown, claveEntrada
     }, { timeout: 30_000 });
   } catch (error) { return fallo(error); }
 }
-export async function previsualizarOrdenCompraCliente(quoteId: number, quoteVersion: number, seleccion: unknown) {
+type ResultadoPrevisualizacionOrden =
+  | { ok: false; mensaje: string; erroresLineas?: { id: number; mensaje: string }[] }
+  | { ok: true; completa: boolean; subtotal: string; discountAmount: string; netAmount: string; vatAmount: string; totalAmount: string; lineAmounts: { id: number; amount: string }[] };
+export async function previsualizarOrdenCompraCliente(quoteId: number, quoteVersion: number, seleccion: unknown): Promise<ResultadoPrevisualizacionOrden> {
   const ids = z.object({ quoteId: z.number().int().positive(), quoteVersion: z.number().int().positive() }).safeParse({ quoteId, quoteVersion });
   const s = seleccionOrdenSchema.safeParse(seleccion);
   if (!ids.success || !s.success) return { ok: false as const, mensaje: "Revisa la referencia y selecciona al menos una cantidad positiva." };
