@@ -48,6 +48,8 @@ const seleccionMovimiento = {
   inventoryAdjustmentId: true,
   purchaseDetailId: true,
   workOrderDetailId: true,
+  productionConsumptionId: true,
+  productionReversalConsumptionId: true,
 } satisfies Prisma.StockMovementSelect;
 const convertirMaterial = (
   dato: Prisma.RawMaterialGetPayload<{ select: typeof material }>,
@@ -277,6 +279,9 @@ export async function consultarMovimientos(
         },
         select: { id: true, reason: true },
       });
+      const devoluciones=await tx.productionReversalConsumption.findMany({where:{id:{in:filas.flatMap(f=>f.productionReversalConsumptionId?[f.productionReversalConsumptionId]:[])}}});
+      const reversions=await tx.productionReversal.findMany({where:{id:{in:devoluciones.map(d=>d.productionReversalId)}}});
+      const consumos=await tx.productionConsumption.findMany({where:{id:{in:filas.flatMap(f=>f.productionConsumptionId?[f.productionConsumptionId]:[])}}});
       const mapaAjustes = new Map(ajustes.map((a) => [a.id, a.reason]));
       const mapaCompras = new Map(
         compras.map((item) => [
@@ -314,6 +319,7 @@ export async function consultarMovimientos(
               fila.purchaseDetailId === null
                 ? null
                 : (mapaCompras.get(fila.purchaseDetailId) ?? null),
+            produccion: fila.productionReversalConsumptionId?(()=>{const d=devoluciones.find(d=>d.id===fila.productionReversalConsumptionId),v=reversions.find(v=>v.id===d?.productionReversalId);return d&&v?{workOrderId:v.workOrderId,recordId:v.productionRecordId,consumptionId:d.productionConsumptionId,reversalId:v.id}:null;})():fila.productionConsumptionId?(()=>{const c=consumos.find(c=>c.id===fila.productionConsumptionId);return c?{workOrderId:c.workOrderId,recordId:c.productionRecordId,consumptionId:c.id}:null;})():null,
             trabajo:
               fila.workOrderDetailId === null
                 ? null

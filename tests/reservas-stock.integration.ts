@@ -80,7 +80,7 @@ async function main() {
   assert.equal(await fisico(),antes); assert.equal(await prisma.stockReservationEvent.count({ where: { allocationId: allocA.id } }),1);
   const evento = await prisma.stockReservationEvent.findFirstOrThrow({ where: { allocationId: allocA.id } });
   await assert.rejects(prisma.stockReservationEvent.delete({ where: { id: evento.id } }), /inmutables/);
-  await assert.rejects(prisma.stockReservationEvent.create({ data: { allocationId: allocA.id, type: "CONSUMIR", quantity: "0.1", reason: "Sin documento físico", operationId: key() } }), /documento físico/);
+  await assert.rejects(prisma.stockReservationEvent.create({ data: { allocationId: allocA.id, type: "CONSUMIR", quantity: "0.1", reason: "Sin documento físico", operationId: key() } }), /reserva propia del mismo insumo|documento físico/);
 
   // Incluso una diferencia menor que la escala del dominio invalida la copia de auditoría.
   await assert.rejects(prisma.$transaction(async tx => {
@@ -123,7 +123,7 @@ async function main() {
       const k=key(); await tx.workOrder.update({where:{id:c.id},data:{version:4,status:"ANULADO",voidedAt:new Date(),voidReason:"Obra interna cancelada"}});
       if(liberar) await tx.stockReservationEvent.create({data:{allocationId:ac.id,type:"LIBERAR",quantity:"0.5",reason:"Anulación de obra propia",operationId:k}});
       const s=await snapshots(tx,c.id);
-      await tx.workOrderOperation.create({data:{workOrderId:c.id,version:4,type:"ANULAR",idempotencyKey:k,fingerprint:"a".repeat(64),beforeSnapshot:prev.afterSnapshot as Prisma.InputJsonValue,afterSnapshot:s.plan,reservationSnapshot:s.reservations}});
+      await tx.workOrderOperation.create({data:{workOrderId:c.id,version:4,type:"ANULAR",reason:"Obra interna cancelada",idempotencyKey:k,fingerprint:"a".repeat(64),beforeSnapshot:prev.afterSnapshot as Prisma.InputJsonValue,afterSnapshot:s.plan,reservationSnapshot:s.reservations}});
     });
   }
   await assert.rejects(anular(false),/liberar todas/); await anular(true);

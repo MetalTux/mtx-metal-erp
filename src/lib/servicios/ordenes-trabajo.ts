@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { z } from "zod";
 import { Prisma, type WorkOrderLine } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
-import { planTrabajoSchema, type PlanTrabajo, type LineaPlanTrabajo } from "@/lib/validaciones/orden-trabajo";
+import { inicioTrabajoSchema, planTrabajoSchema, type PlanTrabajo, type LineaPlanTrabajo } from "@/lib/validaciones/orden-trabajo";
 import { asignarFolio } from "./numeracion";
 import { leerCompromisoParaTrabajo, jsonHistoricoOrden, hoyOrden } from "./ordenes-compra-cliente";
 import { calcularRequerimientosProduccion } from "./requerimientos-produccion";
@@ -13,6 +13,41 @@ const decimal = (v: string) => new Prisma.Decimal(v);
 const hash = (v: unknown) => createHash("sha256").update(JSON.stringify(v)).digest("hex");
 const fecha = (v: string) => new Date(`${v}T00:00:00Z`);
 export type ResultadoTrabajo = { ok: true; id: number; version: number; mensaje: string } | { ok: false; mensaje: string; incierto?: boolean };
+
+/** Cambia únicamente estado/fecha y registra su revisión, sin consumir ni ampliar reservas. */
+export async function iniciarTrabajo(input: unknown, clave: unknown): Promise<ResultadoTrabajo> {
+  const parsed = inicioTrabajoSchema.safeParse(input), k = z.uuid().safeParse(clave);
+  if (!parsed.success || !k.success) return { ok: false, mensaje: !parsed.success ? parsed.error.issues[0].message : "UUID inválido." };
+  const d = parsed.data, key = k.data.toLowerCase(), fingerprint = hash({ type: "INICIAR", ...d });
+  try {
+    return await prisma.$transaction(async tx => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${key},91357))`;
+      const previa = await tx.workOrderOperation.findUnique({ where: { idempotencyKey: key } });
+      if (previa) {
+        exigir(previa.type === "INICIAR" && previa.workOrderId === d.workOrderId && previa.fingerprint === fingerprint, "El UUID ya pertenece a otra solicitud.");
+        return { ok: true as const, id: previa.workOrderId, version: previa.version, mensaje: "El inicio ya se confirmó." };
+      }
+      exigir(!await tx.documentFolio.findUnique({ where: { idempotencyKey: key } }), "La clave ya pertenece a otro documento.");
+      await tx.$queryRaw`SELECT id FROM "WorkOrder" WHERE id=${d.workOrderId} FOR UPDATE`;
+      const work = await tx.workOrder.findUnique({ where: { id: d.workOrderId } });
+      exigir(work?.schemaVersion === 1 && work.status === "PENDIENTE", "Sólo se puede iniciar una OT pendiente con estructura vigente.");
+      exigir(work.version === d.version, "La OT cambió. Actualiza la consulta antes de iniciar.");
+      const decision = await tx.workOrderOperation.findFirst({ where: { workOrderId: work.id, type: { in: ["CREAR", "EDITAR_PLAN"] } }, orderBy: { version: "desc" } });
+      exigir(decision?.planConfirmed === true, "Confirma primero el plan y su distribución antes de iniciar.");
+      exigir(d.startedDate >= work.date!.toISOString().slice(0, 10) && d.startedDate <= hoyOrden(), "La fecha de inicio debe estar entre la fecha de OT y hoy en Santiago.");
+      const anterior = await tx.workOrderOperation.findUniqueOrThrow({ where: { workOrderId_version: { workOrderId: work.id, version: work.version } } });
+      await tx.workOrder.update({ where: { id: work.id }, data: { status: "EN_PROCESO", startedDate: fecha(d.startedDate), version: { increment: 1 } } });
+      const [snap] = await tx.$queryRaw<{ plan: Prisma.InputJsonValue; reservations: Prisma.InputJsonValue }[]>`SELECT public.snapshot_plan_trabajo(${work.id}) AS plan,public.snapshot_reservas_trabajo(${work.id}) AS reservations`;
+      await tx.workOrderOperation.create({ data: { workOrderId: work.id, idempotencyKey: key, fingerprint, type: "INICIAR", version: work.version + 1,
+        beforeSnapshot: anterior.afterSnapshot as Prisma.InputJsonValue, afterSnapshot: snap.plan, reservationSnapshot: snap.reservations } });
+      return { ok: true as const, id: work.id, version: work.version + 1, mensaje: "OT iniciada sin modificar existencias ni reservas." };
+    }, { maxWait: 10000, timeout: 30000 });
+  } catch (e) {
+    if (e instanceof ReglaTrabajo) return { ok: false, mensaje: e.message };
+    console.error("Error al iniciar OT:", e);
+    return { ok: false, mensaje: "No se pudo comprobar el inicio. Reintenta sin cambiar la solicitud.", incierto: true };
+  }
+}
 
 async function bloquearRecursos(tx: Prisma.TransactionClient, d: PlanTrabajo) {
   const productos = [...new Set(d.lines.flatMap(l => l.productId ? [l.productId] : []))].sort((a,b)=>a-b);

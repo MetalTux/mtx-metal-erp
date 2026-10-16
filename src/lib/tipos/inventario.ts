@@ -40,6 +40,7 @@ export type MovimientoInventario = IdentificacionInventario & {
   ajusteId: number | null;
   ajusteMotivo: string | null;
   compra: { id: number; detalleId: number } | null;
+  produccion?: {workOrderId:number;recordId:number;consumptionId:number;reversalId?:number}|null;
   trabajo: { id: number; detalleId: number } | null;
 };
 export type PaginaConsulta<T> = {

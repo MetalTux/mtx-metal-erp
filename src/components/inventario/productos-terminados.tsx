@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useRef, useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ingresarInicialTerminado, ajustarTerminado } from "@/app/(app)/inventario/productos-terminados/actions";
@@ -73,13 +74,13 @@ export function InventarioTerminado({ consulta, catalogos }: { consulta: Consult
       { id: "anterior", titulo: "Saldo anterior", contenido: (r: FilaTerminado) => `${formatearCantidad(r.anterior ?? "0")} ${r.unidad}` },
       { id: "final", titulo: "Saldo final", contenido: (r: FilaTerminado) => `${formatearCantidad(r.final ?? "0")} ${r.unidad}` },
     ] : []),
-    ...(vista === "movimientos" ? [{ id: "tipo", titulo: "Tipo", contenido: (r: FilaTerminado) => r.documentoTipo === "ajuste" ? "Ajuste" : "Entrada inicial" }] : []),
+    ...(vista === "movimientos" ? [{ id: "tipo", titulo: "Tipo", contenido: (r: FilaTerminado) => r.produccion?r.produccion.reversalId?"Reversión de fabricación":"Fabricación":r.documentoTipo === "ajuste" ? "Ajuste" : "Entrada inicial" }] : []),
     ...(vista !== "stock" ? [{ id: "fecha", titulo: "Fecha", contenido: (r: FilaTerminado) => r.fecha ? fechaCalendario(r.fecha) : "—" }] : []),
     { id: "acciones", titulo: "Acciones", contenido: r => <div className="flex gap-2">
       {vista === "stock" ? <>
         <BotonConAyuda variant="outline" size="sm" disabled={ocupado} ayuda="Consulta los movimientos de este producto en esta bodega." onClick={() => { setProducto(String(r.productId)); setBodega(String(r.warehouseId)); navegar({ vista: "movimientos", productId: String(r.productId), warehouseId: String(r.warehouseId), pagina: "1" }); }}>Movimientos</BotonConAyuda>
         <BotonConAyuda variant="outline" size="sm" disabled={ocupado} ayuda="Registra el conteo físico final sin borrar el historial." onClick={e => abrirAjuste(e.currentTarget, r)}>Ajustar</BotonConAyuda>
-      </> : <>
+      </> : r.produccion ? <Button asChild variant="outline"><Link href={`/trabajos/ordenes?ver=${r.produccion.workOrderId}`}>Ver OT · {r.produccion.reversalId?`Reversión #${r.produccion.reversalId}`:`Registro #${r.produccion.recordId}`}</Link></Button> : <>
         <BotonConAyuda variant="outline" size="sm" disabled={ocupado} ayuda="Consulta el documento histórico y su origen." aria-label={`Ver ${vista === "ingresos" ? "ingreso" : vista === "ajustes" ? "ajuste" : "movimiento"} ${r.id}`} onClick={e => { retorno.current = e.currentTarget; setDetalle(r); }}>Ver</BotonConAyuda>
         <BotonConAyuda variant="outline" size="sm" disabled={ocupado} ayuda="Corrige mediante un nuevo conteo del saldo actual, vinculado a este documento." aria-label={`Corregir ${r.documentoTipo === "ajuste" ? "ajuste" : "ingreso"} ${r.documentoId}`} onClick={e => abrirAjuste(e.currentTarget, r)}>Corregir</BotonConAyuda>
       </>}

@@ -1,3 +1,4 @@
+import { formatearCantidad } from "@/lib/formato";
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import { Prisma, type SalesOrderOperationType } from "@/generated/prisma/client";
@@ -136,7 +137,7 @@ export async function previsualizarOrdenCompraCliente(quoteId: number, quoteVers
       const erroresLineas = s.data.flatMap(l => {
         const origen = oferta.lines.find(o => o.id === l.quoteDetailId);
         return origen && new Prisma.Decimal(l.quantity).gt(origen.quantity)
-          ? [{ id: l.quoteDetailId, mensaje: `La cantidad máxima cotizada es ${origen.quantity}.` }] : [];
+          ? [{ id: l.quoteDetailId, mensaje: `La cantidad máxima cotizada es ${formatearCantidad(origen.quantity.toString())}.` }] : [];
       });
       if (erroresLineas.length) return { ok: false as const, mensaje: "Revisa las cantidades aceptadas de las líneas indicadas.", erroresLineas };
       const i = calcular(oferta, s.data);

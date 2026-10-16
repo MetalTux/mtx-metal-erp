@@ -1,10 +1,11 @@
+import { formatearCantidad } from "@/lib/formato";
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import { Prisma, type StockReservationPurpose } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { calcularCoberturaReserva } from "./requerimientos-produccion";
 
-const referencia = z.object({ workOrderId: z.number().int().positive(), version: z.number().int().positive(), idempotencyKey: z.uuid() }).strict();
+const referencia = z.object({ workOrderId: z.number().int().positive(), version: z.number().int().positive(), idempotencyKey: z.uuid().transform(v => v.toLowerCase()) }).strict();
 const liberacion = referencia.extend({ allocationId: z.number().int().positive(), quantity: z.string().trim().transform(v => v.replace(",", ".")).refine(v => /^\d{1,11}(?:\.\d{1,3})?$/.test(v), "Indica una cantidad con hasta tres decimales, sin separadores de miles."), reason: z.string().trim().min(1).max(1000) }).strict();
 class ReglaReserva extends Error { name = "ReglaReserva"; }
 function exigir(valor: unknown, mensaje: string): asserts valor { if (!valor) throw new ReglaReserva(mensaje); }
@@ -17,7 +18,7 @@ export async function cantidadReservadaRecurso(tx: Prisma.TransactionClient, raw
 }
 export async function exigirCoberturaReservas(tx: Prisma.TransactionClient, rawMaterialId: number | null, productId: number | null, warehouseId: number, finalQuantity: Prisma.Decimal) {
   const reservada = await cantidadReservadaRecurso(tx, rawMaterialId, productId, warehouseId);
-  exigir(finalQuantity.gte(reservada), `Hay ${reservada.toFixed(3)} unidades reservadas. Libera o replanifica las reservas con motivo antes de retirar esas existencias.`);
+  exigir(finalQuantity.gte(reservada), `Hay ${formatearCantidad(reservada.toFixed(3))} unidades reservadas. Libera o replanifica las reservas con motivo antes de retirar esas existencias.`);
 }
 
 async function snapshots(tx: Prisma.TransactionClient, id: number) {
@@ -32,7 +33,7 @@ async function preparar(tx: Prisma.TransactionClient, d: z.infer<typeof referenc
     return { replay: previa };
   }
   const work = await tx.workOrder.findUniqueOrThrow({ where: { id: d.workOrderId } });
-  exigir(work.schemaVersion === 1 && work.status === "PENDIENTE", "Las reservas de planificación requieren una OT nueva pendiente.");
+  exigir(work.schemaVersion === 1 && ["PENDIENTE", "EN_PROCESO"].includes(work.status), "Las reservas requieren una OT vigente pendiente o en proceso.");
   exigir(work.version === d.version, "La OT cambió. Actualiza el plan antes de continuar.");
   if (type === "RESERVAR_STOCK") {
     const decision = await tx.workOrderOperation.findFirst({ where: { workOrderId: work.id, type: { in: ["CREAR", "EDITAR_PLAN"] } }, orderBy: { version: "desc" } });
@@ -50,7 +51,7 @@ async function registrar(tx: Prisma.TransactionClient, d: z.infer<typeof referen
 const resultado = (op: { workOrderId: number; version: number; reservationSnapshot: Prisma.JsonValue }, replayed: boolean) => ({ workOrderId: op.workOrderId, version: op.version, reservationSnapshot: op.reservationSnapshot, replayed });
 
 type Necesidad = { position: number; workOrderLineId: number; purpose: StockReservationPurpose; warehouseId: number; rawMaterialId: number | null; productId: number | null; unitMeasureId: number;
-  resourceCode: string; resourceName: string; unitName: string; unitAbbreviation: string; requestedQuantity: string; plannedDetailId: number | null; supplyPlanId: number | null };
+  resourceCode: string; resourceName: string; unitName: string; unitAbbreviation: string; requestedQuantity: string; plannedDetailId: number | null; supplyPlanId: number | null; productionOutputId: number | null };
 
 /** Integra reservas con CREAR/EDITAR_PLAN en su misma tx; exige OT y recursos bloqueados.
  * El llamador captura snapshot e inserta la operación después de esta función.
@@ -59,7 +60,7 @@ type Necesidad = { position: number; workOrderLineId: number; purpose: StockRese
 export async function reservarPlanTrabajoEnTransaccion(tx: Prisma.TransactionClient, workOrderId: number, operationId: string) {
   await tx.$queryRaw`SELECT id FROM "WorkOrder" WHERE id=${workOrderId} FOR UPDATE`;
   const work = await tx.workOrder.findUniqueOrThrow({ where: { id: workOrderId } });
-  exigir(work.schemaVersion === 1 && work.status === "PENDIENTE", "Sólo reservar un plan nuevo pendiente.");
+  exigir(work.schemaVersion === 1 && ["PENDIENTE", "EN_PROCESO"].includes(work.status), "Sólo reservar un plan vigente pendiente o en proceso.");
     const lines = await tx.workOrderLine.findMany({ where: { workOrderId: workOrderId }, orderBy: { position: "asc" } });
     const materiales = await tx.workOrderDetail.findMany({ where: { workOrderId: workOrderId, retiredAt: null } });
     const supplies = await tx.workOrderSupplyPlan.findMany({ where: { workOrderId: workOrderId, retiredAt: null } });
@@ -69,23 +70,28 @@ export async function reservarPlanTrabajoEnTransaccion(tx: Prisma.TransactionCli
         exigir(m.unitMeasureId && m.materialCode !== null && m.materialName !== null && m.unitName !== null && m.unitAbbreviation !== null, "El requerimiento no conserva sus datos históricos.");
         necesidades.push({ position: line.position, workOrderLineId: line.id, purpose: "CONSUMO_PRODUCCION", warehouseId: m.warehouseId, rawMaterialId: m.rawMaterialId, productId: null,
           unitMeasureId: m.unitMeasureId, resourceCode: m.materialCode, resourceName: m.materialName, unitName: m.unitName, unitAbbreviation: m.unitAbbreviation,
-          requestedQuantity: m.quantityNeeded.toFixed(3), plannedDetailId: m.id, supplyPlanId: null });
+          requestedQuantity: (await tx.$queryRaw<{quantity:string}[]>`SELECT public.demanda_pendiente_requerimiento(${m.id})::text AS quantity`)[0].quantity, plannedDetailId: m.id, supplyPlanId: null, productionOutputId: null });
       }
       if (work.salesOrderId !== null) for (const supply of supplies.filter(s => s.workOrderLineId === line.id)) {
         exigir(line.code !== null, "El abastecimiento no conserva el código del recurso.");
         necesidades.push({ position: line.position, workOrderLineId: line.id, purpose: supply.rawMaterialId === null ? "ENTREGA_PRODUCTO" : "ENTREGA_DIRECTA_MP",
           warehouseId: supply.warehouseId, rawMaterialId: supply.rawMaterialId, productId: supply.productId, unitMeasureId: line.unitMeasureId,
           resourceCode: line.code, resourceName: line.description, unitName: line.unitName, unitAbbreviation: line.unitAbbreviation,
-          requestedQuantity: supply.quantity.toFixed(3), plannedDetailId: null, supplyPlanId: supply.id });
+          requestedQuantity: supply.quantity.toFixed(3), plannedDetailId: null, supplyPlanId: supply.id, productionOutputId: null });
       }
+    }
+    if(work.salesOrderId!==null){
+      const outputs=await tx.productionOutput.findMany({where:{workOrderId,reversal:null},orderBy:{id:"asc"}});
+      for(const o of outputs){const line=lines.find(l=>l.id===o.workOrderLineId)!;necesidades.push({position:line.position,workOrderLineId:line.id,purpose:"ENTREGA_PRODUCTO",warehouseId:o.warehouseId,rawMaterialId:null,productId:o.productId,unitMeasureId:o.unitMeasureId,resourceCode:o.productCode,resourceName:o.productName,unitName:o.unitName,unitAbbreviation:o.unitAbbreviation,requestedQuantity:o.quantity.toFixed(3),plannedDetailId:null,supplyPlanId:null,productionOutputId:o.id});}
     }
     const ids = (familia: "rawMaterialId" | "productId" | "warehouseId") => [...new Set(necesidades.flatMap(n => n[familia] === null ? [] : [n[familia]!]))].sort((a,b) => a-b);
     for (const id of ids("rawMaterialId")) await tx.$queryRaw`SELECT id FROM "RawMaterial" WHERE id=${id} FOR UPDATE`;
     for (const id of ids("productId")) await tx.$queryRaw`SELECT id FROM "Product" WHERE id=${id} FOR UPDATE`;
     for (const id of ids("warehouseId")) await tx.$queryRaw`SELECT id FROM "Warehouse" WHERE id=${id} FOR SHARE`;
     // Padres de recurso serializan combinaciones inexistentes sin crearlas al consultar.
-    necesidades.sort((a,b) => a.position-b.position || (a.rawMaterialId ?? 0)-(b.rawMaterialId ?? 0) || (a.productId ?? 0)-(b.productId ?? 0) || a.warehouseId-b.warehouseId || (a.plannedDetailId ?? a.supplyPlanId!)-(b.plannedDetailId ?? b.supplyPlanId!));
+    necesidades.sort((a,b) => a.position-b.position || (a.rawMaterialId ?? 0)-(b.rawMaterialId ?? 0) || (a.productId ?? 0)-(b.productId ?? 0) || a.warehouseId-b.warehouseId || (a.plannedDetailId ?? a.supplyPlanId ?? a.productionOutputId!)-(b.plannedDetailId ?? b.supplyPlanId ?? b.productionOutputId!));
     for (const n of necesidades) {
+      if(new Prisma.Decimal(n.requestedQuantity).isZero())continue;
       let stock: Prisma.Decimal, kardex: Prisma.Decimal;
       if (n.rawMaterialId !== null) {
         await tx.$queryRaw`SELECT id FROM "WarehouseStock" WHERE "rawMaterialId"=${n.rawMaterialId} AND "warehouseId"=${n.warehouseId} FOR UPDATE`;
@@ -101,7 +107,7 @@ export async function reservarPlanTrabajoEnTransaccion(tx: Prisma.TransactionCli
       exigir(stock.eq(kardex), "El stock no coincide con Kardex; concilia la incidencia antes de reservar.");
       const total = await cantidadReservadaRecurso(tx, n.rawMaterialId, n.productId, n.warehouseId);
       const [own] = await tx.$queryRaw<{ quantity: string }[]>`SELECT coalesce(sum(public.reserva_activa_asignacion(a.id)),0)::text AS quantity FROM "StockReservationAllocation" a
-        WHERE a."workOrderId"=${workOrderId} AND a."plannedDetailId" IS NOT DISTINCT FROM ${n.plannedDetailId}::integer AND a."supplyPlanId" IS NOT DISTINCT FROM ${n.supplyPlanId}::integer`;
+        WHERE a."workOrderId"=${workOrderId} AND a."plannedDetailId" IS NOT DISTINCT FROM ${n.plannedDetailId}::integer AND a."supplyPlanId" IS NOT DISTINCT FROM ${n.supplyPlanId}::integer AND a."productionOutputId" IS NOT DISTINCT FROM ${n.productionOutputId}::integer`;
       const coverage = calcularCoberturaReserva({ requestedQuantity: n.requestedQuantity, stockQuantity: stock.toFixed(3), totalReservedQuantity: total.toFixed(3), ownReservedQuantity: own.quantity });
       if (new Prisma.Decimal(coverage.newReservationQuantity).isZero()) continue;
       const { position: _position, requestedQuantity: _requested, ...data } = n;
@@ -115,6 +121,7 @@ export async function completarReservasTrabajo(input: z.infer<typeof referencia>
   const d = referencia.parse(input);
   const fingerprint = createHash("sha256").update(JSON.stringify({ type: "RESERVAR_STOCK", workOrderId: d.workOrderId, version: d.version })).digest("hex");
   return prisma.$transaction(async tx => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${d.idempotencyKey},91357))`;
     const p = await preparar(tx, d, "RESERVAR_STOCK", fingerprint);
     if (p.replay) return resultado(p.replay, true);
     await reservarPlanTrabajoEnTransaccion(tx, d.workOrderId, d.idempotencyKey);
@@ -128,6 +135,7 @@ export async function liberarReservaTrabajo(input: z.infer<typeof liberacion>) {
   exigir(q.gt(0) && q.lte("99999999999.999"), "La cantidad a liberar debe ser positiva y válida.");
   const fingerprint = createHash("sha256").update(JSON.stringify({ type: "LIBERAR_RESERVA", workOrderId: d.workOrderId, version: d.version, allocationId: d.allocationId, quantity: q.toFixed(3), reason: d.reason })).digest("hex");
   return prisma.$transaction(async tx => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${d.idempotencyKey},91357))`;
     const p = await preparar(tx, d, "LIBERAR_RESERVA", fingerprint);
     if (p.replay) return resultado(p.replay, true);
     const a = await tx.stockReservationAllocation.findUniqueOrThrow({ where: { id: d.allocationId } });

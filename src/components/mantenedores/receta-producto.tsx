@@ -1,4 +1,5 @@
 "use client";
+import { formatearCantidad } from "@/lib/formato";
 
 import { useRef, useState } from "react";
 import { Eye, Pencil, Plus, Trash2 } from "lucide-react";
@@ -60,7 +61,7 @@ function DetalleMaterial({ editor, materiales, onAplicar, onCerrar, onCambio }: 
     <div className="space-y-2">
       <Label htmlFor="receta-detalle-cantidad">Cantidad por unidad de producto{!consulta && " *"}</Label>
       <AyudaCampo nombre="Cantidad de materia prima" texto="Cantidad positiva en la unidad de esta materia prima, con hasta tres decimales. Corresponde al material necesario para una unidad del producto terminado, sin consumo de stock al guardar." />
-      <Input id="receta-detalle-cantidad" inputMode="decimal" autoComplete="off" value={cantidad} readOnly={consulta} onChange={event => { setCantidad(event.target.value); setError(undefined); onCambio(); }} />
+      <Input id="receta-detalle-cantidad" inputMode="decimal" autoComplete="off" value={consulta ? formatearCantidad(cantidad) : cantidad} readOnly={consulta} onChange={event => { setCantidad(event.target.value); setError(undefined); onCambio(); }} />
       <p className="text-sm text-muted-foreground">Unidad: {material ? `${material.unitName} (${material.abbreviation})` : "Selecciona una materia prima"}</p>
     </div>
     <p className="text-xs text-muted-foreground">El detalle se incorpora al formulario. Para registrarlo en el sistema debes guardar el producto.</p>
@@ -120,7 +121,7 @@ export function RecetaProducto({ lineas, materiales, unidadProducto, consulta, p
               const nombre = material?.name ?? "Material no disponible";
               return <TableRow key={linea.uid}>
                 <TableCell className="min-w-40 whitespace-normal"><p className="font-medium">{nombre}</p><p className="break-all font-mono text-xs text-muted-foreground">{material?.code}</p></TableCell>
-                <TableCell className="text-right tabular-nums">{linea.quantity.replace(".", ",")}</TableCell>
+                <TableCell className="text-right tabular-nums">{formatearCantidad(linea.quantity)}</TableCell>
                 <TableCell>{material?.abbreviation ?? "—"}</TableCell>
                 <TableCell><div className="flex gap-1">
                   <BotonConAyuda type="button" variant="ghost" size="sm" aria-label={`Ver material ${nombre}`} ayuda="Consulta la cantidad y unidad de esta materia prima." disabled={pendiente} onClick={() => abrir("ver", linea)}><Eye /><span className="sr-only sm:not-sr-only">Ver</span></BotonConAyuda>

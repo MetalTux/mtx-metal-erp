@@ -506,7 +506,7 @@ function FormularioCompra({
                     key={r.id}
                     className="rounded border border-border p-3 text-sm"
                   >
-                    Pendiente cerrado: {r.material} · {r.cantidad}{" "}
+                    Pendiente cerrado: {r.material} · {formatearCantidad(r.cantidad)}{" "}
                     presentaciones · {formatearFecha(r.fecha)}
                     <p>Motivo: {r.motivo}</p>
                   </div>
@@ -520,8 +520,8 @@ function FormularioCompra({
                     Recepción #{r.id} · {formatearFecha(r.fecha)}
                     {r.lineas.map((l, i) => (
                       <p key={i}>
-                        {l.material}: {l.cantidad} presentaciones →{" "}
-                        {l.equivalente} en unidad de inventario
+                        {l.material}: {formatearCantidad(l.cantidad)} presentaciones →{" "}
+                        {formatearCantidad(l.equivalente)} en unidad de inventario
                       </p>
                     ))}
                   </div>

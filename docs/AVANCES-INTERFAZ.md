@@ -369,3 +369,57 @@ Requiere configurar numeración OT antes de crear el primer documento. Contrato,
 - [x] OT: «Completar reservas» deshabilitado sin faltantes activos o sin confirmación; mensaje de cobertura explícito. La comparación contempla requerimientos MP y abastecimiento MP/PT por origen, sin mezclar coberturas ni contar filas archivadas.
 
 Validación del ajuste de «Completar reservas»: lint/build correctos. No se iniciaron servidores ni se modificó la base de datos.
+
+
+## 15-10-2026 — Inicio explícito de OT
+
+- [x] Iniciar OT pendiente con plan confirmado, fecha válida y confirmación visible; sin efectos físicos ni financieros.
+- [x] Aviso de registro tardío y reservas pendientes; estado/fecha de inicio e historial visibles.
+- [x] Plan fijo en proceso, sin editar/reiniciar; completar/liberar reservas sigue disponible conforme cobertura.
+- [x] Cancelación sin escrituras, Chromium 320/768/1440 sin desbordamientos/errores JavaScript, lint/build y tipos correctos.
+- [ ] Revisión funcional del usuario final e implementación posterior del registro físico de fabricación/avance.
+
+Contrato y evidencias en [HITO-ORDEN-TRABAJO-PRODUCCION.md](HITO-ORDEN-TRABAJO-PRODUCCION.md), checkpoint OT4 de inicio. EN_PROCESO no acredita fabricación ni consumo.
+
+- [x] Inicio de OT: funcionamiento validado por el usuario.
+- [x] Ver OT del listado más visible con borde/acento azul e ícono de ojo decorativo, manteniendo etiqueta textual.
+
+Ajuste visual de Ver OT verificado con lint/build correctos y diff sin errores. Sin cambios de base de datos ni servidores de validación iniciados.
+
+
+## 15-10-2026 — Producción y avances OT5/M2
+
+- [x] Formulario por línea/lote desde Ver OT en proceso, con cantidad/unidad, fecha y bodega de resultado para catálogo.
+- [x] Cargar previsión histórica sin escribir, revisión de redondeo a cero y consumos reales por bodegas buscables; diferencias/omisiones/sustituciones con motivo.
+- [x] Previsualizar efectos, confirmar registro atómico y conservar UUID/datos ante resultado incierto; descarte sin documentos.
+- [x] Avance, previsión/consumo/resultado e historial visibles; cobertura según demanda pendiente y reserva comercial del resultado fabricado.
+- [x] Kardex MP/PT identifica producción y enlaza Ver OT; no ofrece fabricación como inventario inicial ni su corrección mediante ajuste del documento.
+- [x] Chromium 320/768/1440, coma decimal, preview/cancelación sin escrituras, confirmación única, físico/finanzas y fecha de Kardex verificados; lint/tipos/build correctos.
+- [ ] Validación funcional del usuario final de fabricación parcial/completa, servicio y a medida.
+- [ ] OT6/M3 reversión; luego finalización/factura y PDF final.
+
+Detalles operativos, cálculos y límites en [HITO-ORDEN-TRABAJO-PRODUCCION.md](HITO-ORDEN-TRABAJO-PRODUCCION.md), checkpoint OT5/M2.
+
+## Corrección transversal de formato numérico chileno — 15-10-2026
+
+- [x] Cantidades de consulta con punto de miles y coma decimal, sin convertir valores a `number`.
+- [x] OT: planificación, disponibilidad, cobertura, reservas, liberaciones, recetas históricas, producción y avances.
+- [x] Cotizaciones/OCC: cantidades, precios de consulta e IVA histórico; Productos: receta y precio de consulta; Compras: cantidades de recepciones y cierres históricos.
+- [x] Formateador compartido admite también los seis decimales de previsiones/diferencias de producción y decimales con coma procedentes del borrador.
+- [x] PDF de cotización reutiliza el formato de cantidades y muestra la tasa con coma decimal. No modifica PDFs ya emitidos.
+- [x] Conservados los valores internos, cálculos, persistencia y comportamiento de los campos editables.
+- [x] Verificación técnica: nueve casos del formateador (miles, negativos, seis decimales, límites de precisión y entradas con coma), `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm build` y revisión del diff. Pendiente revisión visual del usuario.
+
+## OT6/M3 — corrección productiva y anulación propia — 15-10-2026
+
+- [x] Ver OT ofrece Revertir registro en producción/avance vigente de una OT en proceso.
+- [x] Motivo y fecha, confirmación de restitución física cuando corresponde, preview de cantidades/saldos y confirmación explícita. Distingue error de registro de daño/conteo.
+- [x] Previsualizar/cancelar no escribe; reintento incierto conserva UUID/datos, protección ante doble confirmación y descarte de borrador.
+- [x] Original marcado Revertido con fecha/motivo/registro; avance/cobertura netos y vínculo opcional del registro correcto al original revertido.
+- [x] Kardex MP/PT con origen de reversión y enlace a OT; sin ofrecer corrección productiva como ajuste de documento inicial.
+- [x] Anular obra propia sólo pendiente sin inicio: motivo, confirmación, reservas liberadas, folio e historial conservados.
+- [x] Chromium a 320/768/1440 sin errores de página ni desbordamiento; efectos físicos, historia y finanzas/folios verificados sobre copia.
+- [ ] Validación funcional del usuario final de los límites de reversión y anulación.
+
+Siguiente: OT7/M4, finalización y referencia de factura externa; PDF al final.
+- [x] M3 migrada localmente; Prisma/consultas, regresiones, lint/build finales y conservación de datos verificados. Copias descartables y servidor temporal retirados; servidor del usuario conservado.

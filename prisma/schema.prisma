@@ -45,6 +45,9 @@ model User {
 // 2. CONFIGURACIÓN DE MATERIALES
 // ==========================================
 model UnitMeasure {
+  productionConsumptions ProductionConsumption[]
+  productionOutputs      ProductionOutput[]
+
   reservations         StockReservationAllocation[]
   id                   Int                          @id @default(autoincrement())
   name                 String                       @unique // Ej: "Kilos", "Unidades", "Metros"
@@ -65,6 +68,8 @@ model UnitMeasure {
 // Cada material se maneja siempre en UNA sola unidad (la de unitMeasure).
 // Stock, movimientos y consumos usan esa unidad; las compras conservan además su presentación comercial.
 model RawMaterial {
+  productionConsumptions ProductionConsumption[]
+
   reservations  StockReservationAllocation[]
   id            Int                          @id @default(autoincrement())
   code          String                       @unique
@@ -101,6 +106,9 @@ enum WarehouseClassification {
 }
 
 model Warehouse {
+  productionConsumptions ProductionConsumption[]
+  productionOutputs      ProductionOutput[]
+
   reservations         StockReservationAllocation[]
   // Sin default: conservar bodegas anteriores sin asignarles una clasificación ficticia.
   classification       WarehouseClassification?
@@ -152,6 +160,11 @@ model WarehouseStock {
 // Historial (kardex) de cada entrada, salida o ajuste de stock.
 // quantity lleva signo: positivo suma al stock, negativo descuenta.
 model StockMovement {
+  productionReversalConsumptionId Int?                           @unique
+  productionReversalConsumption   ProductionReversalConsumption? @relation(fields: [productionReversalConsumptionId, rawMaterialId, warehouseId], references: [id, rawMaterialId, warehouseId], onDelete: Restrict)
+  productionConsumptionId         Int?                           @unique
+  productionConsumption           ProductionConsumption?         @relation(fields: [productionConsumptionId, rawMaterialId, warehouseId], references: [id, rawMaterialId, warehouseId], onDelete: Restrict)
+
   id                      Int                  @id @default(autoincrement())
   date                    DateTime             @default(now())
   type                    StockMovementType
@@ -184,6 +197,8 @@ model StockMovement {
   @@unique([outgoingTransferId, warehouseId, rawMaterialId])
   @@unique([incomingTransferId, warehouseId, rawMaterialId])
   @@unique([inventoryAdjustmentId, warehouseId, rawMaterialId])
+  @@unique([productionReversalConsumptionId, rawMaterialId, warehouseId])
+  @@unique([productionConsumptionId, rawMaterialId, warehouseId])
   @@index([warehouseId, rawMaterialId, date])
   @@index([rawMaterialId])
   @@index([purchaseDetailId])
@@ -748,6 +763,9 @@ model SalesOrderOperation {
 // Orden de trabajo. Si salesOrderId es nulo, es una OBRA PROPIA
 // (fabricación sin cliente: stock propio, uso interno, proyecto personal).
 model WorkOrder {
+  productionReversals ProductionReversal[]
+  productionRecords   ProductionRecord[]
+
   reservations         StockReservationAllocation[]
   // Campos nuevos opcionales sólo para conservar trabajos legados sin inventar historia.
   schemaVersion        Int?
@@ -800,6 +818,8 @@ enum WorkOrderExecutionMode {
 
 // Tipos iniciales; Producción/Reservas amplían el historial en sus migraciones.
 enum WorkOrderOperationType {
+  REVERTIR_PRODUCCION
+  REGISTRAR_PRODUCCION
   RESERVAR_STOCK
   LIBERAR_RESERVA
   CREAR
@@ -809,6 +829,8 @@ enum WorkOrderOperationType {
 }
 
 model WorkOrderLine {
+  productionRecords ProductionRecord[]
+
   roundingReview     Json? // Revisión expresa cuando una necesidad positiva redondea a cero.
   reservations       StockReservationAllocation[]
   id                 Int                          @id @default(autoincrement())
@@ -900,6 +922,12 @@ model WorkOrderSupplyPlan {
 }
 
 model WorkOrderOperation {
+  productionReversalId Int?                @unique
+  productionReversal   ProductionReversal? @relation(fields: [productionReversalId, workOrderId], references: [id, workOrderId], onDelete: Restrict)
+
+  productionRecordId Int?              @unique
+  productionRecord   ProductionRecord? @relation(fields: [productionRecordId, workOrderId], references: [id, workOrderId], onDelete: Restrict)
+
   planConfirmed       Boolean? // Sólo CREAR/EDITAR_PLAN; null en historia anterior.
   reason              String?                      @db.VarChar(1000)
   reservationSnapshot Json?
@@ -917,9 +945,13 @@ model WorkOrderOperation {
   updatedAt           DateTime                     @updatedAt
 
   @@unique([workOrderId, version])
+  @@unique([productionRecordId, workOrderId])
+  @@unique([productionReversalId, workOrderId])
 }
 
 model WorkOrderDetail {
+  productionConsumptions ProductionConsumption[]
+
   retiredAt        DateTime? // Revisión anterior conservada fuera del plan vigente.
   reservations     StockReservationAllocation[]
   // Requerimiento previsto; el consumo real se registrará en Producción.
@@ -947,6 +979,7 @@ model WorkOrderDetail {
   updatedAt DateTime @updatedAt // Última modificación (automática)
 
   @@unique([workOrderLineId, rawMaterialId, warehouseId])
+  @@unique([id, workOrderLineId, rawMaterialId, warehouseId])
   @@index([workOrderId])
   @@index([rawMaterialId])
   @@index([warehouseId])
@@ -1114,6 +1147,8 @@ model CompanyBankAccount {
 }
 
 model Product {
+  productionOutputs ProductionOutput[]
+
   reservations        StockReservationAllocation[]
   workOrderLines      WorkOrderLine[]
   workOrderSupplies   WorkOrderSupplyPlan[]
@@ -1214,6 +1249,11 @@ model ProductInitialStock {
 }
 
 model ProductStockMovement {
+  productionReversalOutputId Int?                      @unique
+  productionReversalOutput   ProductionReversalOutput? @relation(fields: [productionReversalOutputId, productId, warehouseId], references: [id, productId, warehouseId], onDelete: Restrict)
+  productionOutputId         Int?                      @unique
+  productionOutput           ProductionOutput?         @relation(fields: [productionOutputId, productId, warehouseId], references: [id, productId, warehouseId], onDelete: Restrict)
+
   id             Int                         @id @default(autoincrement())
   warehouseId    Int
   productId      Int
@@ -1231,6 +1271,8 @@ model ProductStockMovement {
 
   @@unique([initialStockId, productId, warehouseId])
   @@unique([adjustmentId, productId, warehouseId])
+  @@unique([productionReversalOutputId, productId, warehouseId])
+  @@unique([productionOutputId, productId, warehouseId])
   @@index([warehouseId, productId, id])
   @@index([productId])
 }
@@ -1410,6 +1452,9 @@ enum StockReservationEventType {
 }
 
 model StockReservationAllocation {
+  productionOutputId Int?
+  productionOutput   ProductionOutput? @relation(fields: [productionOutputId], references: [id], onDelete: Restrict)
+
   id               Int                     @id @default(autoincrement())
   workOrderId      Int
   workOrder        WorkOrder               @relation(fields: [workOrderId], references: [id], onDelete: Restrict)
@@ -1448,9 +1493,13 @@ model StockReservationAllocation {
   @@index([plannedDetailId])
   @@index([supplyPlanId])
   @@index([operationId])
+  @@index([productionOutputId])
 }
 
 model StockReservationEvent {
+  productionConsumptionId Int?
+  productionConsumption   ProductionConsumption? @relation(fields: [productionConsumptionId], references: [id], onDelete: Restrict)
+
   id           Int                        @id @default(autoincrement())
   allocationId Int
   allocation   StockReservationAllocation @relation(fields: [allocationId], references: [id], onDelete: Restrict)
@@ -1464,4 +1513,184 @@ model StockReservationEvent {
 
   @@index([allocationId])
   @@index([operationId])
+  @@index([productionConsumptionId])
+}
+
+enum ProductionRecordType {
+  FABRICACION_PRODUCTO
+  EJECUCION_A_MEDIDA
+  SERVICIO
+}
+
+// Hecho físico/avance inmutable; no es un ajuste ni un requerimiento previsto.
+model ProductionRecord {
+  reversal                   ProductionReversal?
+  correctsProductionRecordId Int?
+  correctsProductionRecord   ProductionRecord?       @relation("CorreccionProduccion", fields: [correctsProductionRecordId, workOrderLineId, workOrderId], references: [id, workOrderLineId, workOrderId], onDelete: Restrict)
+  corrections                ProductionRecord[]      @relation("CorreccionProduccion")
+  id                         Int                     @id @default(autoincrement())
+  workOrderId                Int
+  workOrder                  WorkOrder               @relation(fields: [workOrderId], references: [id], onDelete: Restrict)
+  workOrderLineId            Int
+  workOrderLine              WorkOrderLine           @relation(fields: [workOrderLineId, workOrderId], references: [id, workOrderId], onDelete: Restrict)
+  type                       ProductionRecordType
+  date                       DateTime                @db.Date
+  quantity                   Decimal                 @db.Decimal(14, 3)
+  note                       String                  @db.VarChar(2000)
+  deviationReason            String?                 @db.VarChar(1000)
+  planVersion                Int
+  expectedSnapshot           Json
+  consumptions               ProductionConsumption[]
+  output                     ProductionOutput?
+  operation                  WorkOrderOperation?
+  createdAt                  DateTime                @default(now())
+  updatedAt                  DateTime                @updatedAt
+
+  @@unique([id, workOrderId])
+  @@unique([id, workOrderLineId, workOrderId])
+  @@index([correctsProductionRecordId, workOrderLineId, workOrderId])
+  @@index([workOrderId, date, id])
+  @@index([workOrderLineId, workOrderId])
+}
+
+model ProductionConsumption {
+  reversal           ProductionReversalConsumption?
+  id                 Int                            @id @default(autoincrement())
+  productionRecordId Int
+  workOrderId        Int
+  workOrderLineId    Int
+  productionRecord   ProductionRecord               @relation(fields: [productionRecordId, workOrderLineId, workOrderId], references: [id, workOrderLineId, workOrderId], onDelete: Restrict)
+  plannedDetailId    Int?
+  plannedDetail      WorkOrderDetail?               @relation(fields: [plannedDetailId, workOrderLineId, rawMaterialId, warehouseId], references: [id, workOrderLineId, rawMaterialId, warehouseId], onDelete: Restrict)
+  rawMaterialId      Int
+  rawMaterial        RawMaterial                    @relation(fields: [rawMaterialId], references: [id], onDelete: Restrict)
+  warehouseId        Int
+  warehouse          Warehouse                      @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  unitMeasureId      Int
+  unitMeasure        UnitMeasure                    @relation(fields: [unitMeasureId], references: [id], onDelete: Restrict)
+  quantity           Decimal                        @db.Decimal(14, 3)
+  expectedQuantity   Decimal                        @db.Decimal(14, 3)
+  materialCode       String
+  materialName       String
+  unitName           String
+  unitAbbreviation   String
+  movement           StockMovement?
+  reservationEvents  StockReservationEvent[]
+  createdAt          DateTime                       @default(now())
+  updatedAt          DateTime                       @updatedAt
+
+  @@unique([id, rawMaterialId, warehouseId])
+  @@unique([productionRecordId, rawMaterialId, warehouseId])
+  @@index([productionRecordId, workOrderLineId, workOrderId])
+  @@index([plannedDetailId, workOrderLineId, rawMaterialId, warehouseId])
+  @@index([workOrderLineId, rawMaterialId, warehouseId])
+  @@index([rawMaterialId, warehouseId, id])
+  @@index([warehouseId])
+  @@index([unitMeasureId])
+}
+
+model ProductionOutput {
+  reversal           ProductionReversalOutput?
+  id                 Int                          @id @default(autoincrement())
+  productionRecordId Int                          @unique
+  workOrderId        Int
+  workOrderLineId    Int
+  productionRecord   ProductionRecord             @relation(fields: [productionRecordId, workOrderLineId, workOrderId], references: [id, workOrderLineId, workOrderId], onDelete: Restrict)
+  productId          Int
+  product            Product                      @relation(fields: [productId], references: [id], onDelete: Restrict)
+  warehouseId        Int
+  warehouse          Warehouse                    @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  unitMeasureId      Int
+  unitMeasure        UnitMeasure                  @relation(fields: [unitMeasureId], references: [id], onDelete: Restrict)
+  quantity           Decimal                      @db.Decimal(14, 3)
+  productCode        String                       @db.Uuid
+  productName        String
+  unitName           String
+  unitAbbreviation   String
+  movement           ProductStockMovement?
+  reservations       StockReservationAllocation[]
+  createdAt          DateTime                     @default(now())
+  updatedAt          DateTime                     @updatedAt
+
+  @@unique([id, productId, warehouseId])
+  @@unique([productionRecordId, workOrderLineId, workOrderId])
+  @@index([productionRecordId, workOrderLineId, workOrderId])
+  @@index([workOrderLineId, workOrderId])
+  @@index([productId, warehouseId, id])
+  @@index([warehouseId])
+  @@index([unitMeasureId])
+  @@index([workOrderId, id])
+}
+
+// Corrección completa e inmutable de un error de registro; no representa daño físico.
+model ProductionReversal {
+  id                           Int                             @id @default(autoincrement())
+  productionRecordId           Int                             @unique
+  workOrderId                  Int
+  workOrderLineId              Int
+  productionRecord             ProductionRecord                @relation(fields: [productionRecordId, workOrderLineId, workOrderId], references: [id, workOrderLineId, workOrderId], onDelete: Restrict)
+  workOrder                    WorkOrder                       @relation(fields: [workOrderId], references: [id], onDelete: Restrict)
+  date                         DateTime                        @db.Date
+  reason                       String                          @db.VarChar(1000)
+  physicalRestitutionConfirmed Boolean
+  planVersion                  Int
+  consumptions                 ProductionReversalConsumption[]
+  output                       ProductionReversalOutput?
+  operation                    WorkOrderOperation?
+  createdAt                    DateTime                        @default(now())
+  updatedAt                    DateTime                        @updatedAt
+
+  @@unique([productionRecordId, workOrderLineId, workOrderId])
+  @@unique([id, workOrderId])
+  @@unique([id, productionRecordId])
+  @@index([productionRecordId, workOrderLineId, workOrderId])
+  @@index([workOrderId, date, id])
+}
+
+model ProductionReversalConsumption {
+  id                      Int                   @id @default(autoincrement())
+  productionReversalId    Int
+  productionRecordId      Int
+  productionReversal      ProductionReversal    @relation(fields: [productionReversalId, productionRecordId], references: [id, productionRecordId], onDelete: Restrict)
+  productionConsumptionId Int                   @unique
+  productionConsumption   ProductionConsumption @relation(fields: [productionConsumptionId, rawMaterialId, warehouseId], references: [id, rawMaterialId, warehouseId], onDelete: Restrict)
+  rawMaterialId           Int
+  warehouseId             Int
+  unitMeasureId           Int
+  quantity                Decimal               @db.Decimal(14, 3)
+  materialCode            String
+  materialName            String
+  unitName                String
+  unitAbbreviation        String
+  movement                StockMovement?
+  createdAt               DateTime              @default(now())
+  updatedAt               DateTime              @updatedAt
+
+  @@unique([id, rawMaterialId, warehouseId])
+  @@unique([productionConsumptionId, rawMaterialId, warehouseId])
+  @@index([productionReversalId, productionRecordId])
+}
+
+model ProductionReversalOutput {
+  id                   Int                   @id @default(autoincrement())
+  productionReversalId Int                   @unique
+  productionRecordId   Int
+  productionReversal   ProductionReversal    @relation(fields: [productionReversalId, productionRecordId], references: [id, productionRecordId], onDelete: Restrict)
+  productionOutputId   Int                   @unique
+  productionOutput     ProductionOutput      @relation(fields: [productionOutputId, productId, warehouseId], references: [id, productId, warehouseId], onDelete: Restrict)
+  productId            Int
+  warehouseId          Int
+  unitMeasureId        Int
+  quantity             Decimal               @db.Decimal(14, 3)
+  productCode          String                @db.Uuid
+  productName          String
+  unitName             String
+  unitAbbreviation     String
+  movement             ProductStockMovement?
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+
+  @@unique([id, productId, warehouseId])
+  @@unique([productionReversalId, productionRecordId])
+  @@unique([productionOutputId, productId, warehouseId])
 }

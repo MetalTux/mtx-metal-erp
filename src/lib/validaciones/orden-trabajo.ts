@@ -23,3 +23,9 @@ export const planTrabajoSchema = z.object({
 }).strict();
 export type PlanTrabajo = z.infer<typeof planTrabajoSchema>;
 export type LineaPlanTrabajo = z.infer<typeof lineaPlanTrabajoSchema>;
+
+export const inicioTrabajoSchema = z.object({
+  workOrderId: id,
+  version: id,
+  startedDate: z.string().refine(fechaCalendarioValida, "Indica una fecha de inicio válida."),
+}).strict();

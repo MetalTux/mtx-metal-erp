@@ -1096,3 +1096,45 @@ Cierre: consultas locales de OT/catálogos correctas; checksums de las 26 migrac
 La consulta de OT habilita «Completar reservas» sólo con plan confirmado y cantidades pendientes, además del estado pendiente y ausencia de operación en curso ya exigidos. Calcula con Decimal por requerimiento/abastecimiento activo y sus reservas propias, sin compensaciones entre orígenes. Muestra texto explícito con/sin cantidades pendientes; sin requisitos de stock la acción queda deshabilitada. Cambio de interfaz sin esquema ni escrituras de base. La prueba funcional del usuario final sigue pendiente.
 
 Validación del ajuste de habilitación: `pnpm lint` y `pnpm build` correctos, con comprobación TypeScript incluida; diff sin errores de espacios. La primera compilación restringida se canceló al quedar en Turbopack; la ejecución posterior fuera de ese entorno terminó correctamente. No se realizaron migraciones, escrituras de base ni se iniciaron servidores para este ajuste.
+
+
+## 15-10-2026 — Inicio de Orden de Trabajo y reservas en proceso
+
+Habilita transición explícita PENDIENTE → EN_PROCESO con fecha de inicio, plan confirmado, versiones, UUID/huella e historial. La estructura Prisma ya contenía startedDate/estado/tipo de operación: migración SQL 20261015200647_inicio_orden_trabajo amplía sólo funciones/triggers, sin nuevos campos ni relleno de datos. Inicio cambia únicamente estado/fecha/versión/updatedAt y preserva exactamente plan/reservas; SQL rechaza fechas incompatibles, alteración simultánea de plan, operación ausente o de otro tipo y reinicios. Plan/receta/fecha quedan fijos desde inicio.
+
+Completar/liberar reservas se mantiene disponible en proceso para cubrir faltantes posteriores, conservando controles físicos e historial; CONSUMIR continúa bloqueado hasta M2. Backend de plan/reservas/inicio comparte advisory de UUID y canonicalización, sin cambiar el orden de locks de recursos. Reintentos reconocidos antes de versión/estado. UI con fecha, aviso de registro tardío/faltantes, confirmación e historial; acciones Editar/Iniciar desaparecen al iniciar.
+
+Nueva integración de inicio en copia local: plan/fechas/versiones, SQL directo, UUID/carreras, rollback y reintento, propia/servicio comercial, conservación de stock/Kardex/cuentas/folios y reservas en proceso. Regresiones plan/MR/M1 correctas. Chromium cancelación/confirmación/consulta/completar en proceso a 320/768/1440 sin errores JS/desbordamiento. Prisma validate/generate, diff copia/local, lint/tipos/build correctos; 27 migraciones y checksums coherentes. 55 tablas previas con huellas/conteos conservados, OT real sin iniciar automáticamente. Respaldo restaurado/evidencias en backups/20261015_inicio_trabajo/. Fabricación/avance OT5/M2 y revisión funcional final pendientes.
+
+Cierre de inicio OT4: cuatro copias descartables retiradas y ausencia verificada; servidor propio de 3031 detenido, puerto libre y servidor previo del usuario en 3030 conservado. Diff revisado sin errores; sin push.
+
+
+## 15-10-2026 — Registros de fabricación y avances OT5/M2
+
+Migración 20261015211304_registros_produccion: ProductionRecord, ProductionConsumption y ProductionOutput inmutables; tipos de fabricación/a medida/servicio; orígenes físicos únicos/compuestos en Kardex MP/PT y vínculo de operación al registro. CONSUMIR exige consumo tipado de la misma operación/línea/material/bodega; asignación del resultado comercial añade tercer origen excluyente. CHECK/FK/índices/triggers preservan historia, cantidades, unidad/bodega, límites, operación y efectos completos al commit. Snapshot de reservas omite referencias nuevas nulas para conservar igualdad con historia anterior. Sin backfill de fabricación ni edición de migraciones previas.
+
+registrarProduccion confirma consumo MP + SALIDA + resultado/ENTRADA PT + débitos/liberaciones de reserva + reserva del resultado comercial + operación/versiones en una transacción. Usa stock libre y reserva propia de la línea; conserva mínimos y saldos/Kardex, sin crear otra deuda/folio. Previsión del lote canónica en SQL desde receta/plan históricos, HALF_UP y revisión positiva de cero, diferencias con motivo. La demanda restante deriva de consumo y avance pendiente; completar reservas no vuelve a reservar insumos ejecutados. MP usa inicioDiaChile para fecha de Kardex; documentos y PT conservan fecha calendario.
+
+Interfaz por línea/lote con carga de previsión, consumos reales, preview de sólo lectura, confirmación y UUID estable ante incertidumbre; acumulados e historia en Ver OT. Kardex de ambos inventarios enlaza al registro mediante OT y distingue fabricación de inventario inicial/ajustes. Servicio puro y a medida no crean producto ficticio. Líneas enteramente desde stock no muestran registro de fabricación.
+
+Integración de producción correcta: parciales, modos, variantes, revisión de cero, tipos/unidades/fechas, SQL adulterado/incompleto, stock inicial posterior bloqueado, UUID y carreras, rollback en SALIDA/ENTRADA/operación, competencia de OT y producción contra ajuste negativo/anulación de compra. Regresiones plan/MR/inicio/inventario inicial/ajustes PT correctas. Chromium 320/768/1440 sin desbordamiento/errores JS, preview/descarte sin escrituras, confirmación única, efectos físicos y finanzas/folios intactos, enlaces y fecha de Kardex verificados. Lint/tipos/build y Prisma validate/generate/diff correctos.
+
+28 migraciones locales al día; 55 tablas originales con conteos/huellas preservados, tres tablas nuevas sin fixtures. OT real conserva estado/versión y cero registros productivos. Respaldos restaurados/evidencias en backups/20261015_produccion/. Revisión funcional de Producción pendiente; reversión OT6/M3, cierre/factura OT7/M4 y PDF final aún no implementados.
+
+Cierre M2: consultas locales correctas, checksums de las 28 migraciones coherentes y tres tablas productivas sin fixtures reales. Cinco copias descartables retiradas y ausencia comprobada; servidor temporal de 3031 detenido, puerto libre y servidor previo del usuario en 3030 conservado. Sin push.
+
+## 2026-10-15: OT6/M3 — reversión productiva y anulación de obra propia
+
+Se incorpora una reversión completa por registro de fabricación, servicio o ejecución a medida. `ProductionReversal` y sus detalles conservan el original, las cantidades y copias históricas; los Kardex usan orígenes tipados de restitución MP y retiro PT. FK compuestas, unicidad y triggers inmutables/diferidos impiden cantidades distintas, omisión de consumos/resultado/movimientos y operaciones incompletas. Migración `20261016004629_reversiones_produccion`.
+
+`src/lib/servicios/reversiones-produccion.ts` previsualiza sin escribir y confirma bajo UUID/versión/bloqueos de OT, recursos y saldos. Exige motivo, fecha compatible, ausencia de despacho y confirmación física para fabricación/a medida. Protege reservas ajenas y bloquea salidas/ajustes negativos posteriores aunque se repongan existencias. La devolución de MP no elimina el consumo histórico que bloquea anular Compras.
+
+El avance y la demanda se derivan de registros sin reversión. Las reservas del resultado se liberan, las de requerimientos pendientes se reconstruyen con asignaciones nuevas hasta el libre disponible y Completar reservas excluye resultados revertidos. Un nuevo registro puede enlazar el original revertido mediante `correctsProductionRecordId`; se conserva la huella de M2 cuando ese vínculo no existe.
+
+La anulación pública sólo admite obra propia pendiente sin inicio/ejecución/despacho. Libera reservas y conserva plan, folio e historial sin efectos físicos ni comerciales. No se habilita cancelación contractual comercial ni anulación de OT iniciadas.
+
+Ver OT incorpora previsualización/confirmación, reversión con motivo e historial, avance neto, vínculo de corrección y anulación propia. Ambos Kardex identifican la reversión y permiten volver a la OT; cantidades se muestran en formato chileno. Finalización/factura y PDF siguen pendientes.
+
+Validación técnica: integración M3 con idempotencia, carreras, rollback inducido en MP/PT/operación, restricciones SQL, variantes propias/comerciales y protección de inventario/Compras; regresiones M2, planificación, inicio y reservas en copias descartables. Chromium 320/768/1440 comprobó descarte/preview sin escritura, confirmación única, restitución física, historial, finanzas/folios intactos, navegación y anulación. Revisión funcional del usuario pendiente. Detalle y pasos en `docs/HITO-ORDEN-TRABAJO-PRODUCCION.md`.
+
+Despliegue local: 29 migraciones al día y cliente generado, sin diferencias de esquema ni checksums alterados. Las 58 tablas previas conservan datos originales según conteos/huellas pre/post migración; nuevas tablas M3 sin fixtures. Consultas locales, ESLint y build final correctos. Cuatro copias descartables retiradas; servidor temporal detenido y 3031 libre, conservando 3030 del usuario. Respaldos/evidencias en `backups/20261015_reversiones/`.

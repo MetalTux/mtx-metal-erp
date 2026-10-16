@@ -74,6 +74,7 @@ function origen(fila: MovimientoInventario) {
     fila.trabajo &&
       `Trabajo #${fila.trabajo.id} · Línea #${fila.trabajo.detalleId}`,
   ].filter(Boolean);
+  if(fila.produccion)return <Link className="text-foreground underline underline-offset-4" href={`/trabajos/ordenes?ver=${fila.produccion.workOrderId}`}>OT #{fila.produccion.workOrderId} · {fila.produccion.reversalId?`Reversión #${fila.produccion.reversalId} · `:""}Registro #{fila.produccion.recordId} · Consumo #{fila.produccion.consumptionId}</Link>;
   return referencias.join(" / ") || "Sin documento asociado";
 }
 
@@ -652,7 +653,7 @@ export function ConsultaInventario({
                       ]),
                   ["Fecha de registro", formatearFecha(detalle.createdAt)],
                 ].map(([etiqueta, valor]) => (
-                  <div key={etiqueta} className="min-w-0">
+                  <div key={String(etiqueta)} className="min-w-0">
                     <dt className="text-xs text-muted-foreground">
                       {etiqueta}
                     </dt>

@@ -1,6 +1,6 @@
-/** Cantidades decimales como texto: no convertir importes o cantidades a number. */
+/** Presentación es-CL sin pérdida de precisión. Acepta decimales canónicos o de entrada, sin separadores de miles. */
 export function formatearCantidad(valor: string): string {
-  const coincidencia = /^(-?)(\d+)(?:\.(\d{1,3}))?$/.exec(valor);
+  const coincidencia = /^(-?)(\d+)(?:[.,](\d+))?$/.exec(valor);
   if (!coincidencia) return valor;
   const [, signo, entero, decimales] = coincidencia;
   const fraccion = decimales?.replace(/0+$/, "");

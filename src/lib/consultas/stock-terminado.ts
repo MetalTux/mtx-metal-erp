@@ -19,7 +19,7 @@ export async function consultarInventarioTerminado(entrada: unknown = {}): Promi
       const base = { productId: f.productId, warehouseId: f.warehouseId, ...(f.texto && { OR: [{ productId: { in: ids.map(p => p.id) } }, { warehouse: { name: { contains: f.texto, mode: "insensitive" as const } } }] }) };
       const orderBy = f.orden === "quantity" ? [{ quantity: f.sentido }, { id: f.sentido }] : [{ id: f.sentido }];
       let total: number, pagina: number;
-      type Fila = { id: number; productId: number; warehouseId: number; quantity: { toString(): string }; createdAt: Date; date?: Date; note?: string; productCode?: string; productName?: string; unitAbbreviation?: string; initialStockId?: number | null; adjustmentId?: number | null; previousQuantity?: { toString(): string }; finalQuantity?: { toString(): string }; reason?: string; correctedInitialStockId?: number | null; correctedAdjustmentId?: number | null };
+      type Fila = { id: number; productId: number; warehouseId: number; quantity: { toString(): string }; createdAt: Date; date?: Date; note?: string; productCode?: string; productName?: string; unitAbbreviation?: string; productionReversalOutputId?:number|null; productionOutputId?:number|null; initialStockId?: number | null; adjustmentId?: number | null; previousQuantity?: { toString(): string }; finalQuantity?: { toString(): string }; reason?: string; correctedInitialStockId?: number | null; correctedAdjustmentId?: number | null };
       let filas: Fila[];
       if (f.vista === "stock") {
         total = await tx.productWarehouseStock.count({ where: base });
@@ -47,11 +47,16 @@ export async function consultarInventarioTerminado(entrada: unknown = {}): Promi
       const bodegas = await tx.warehouse.findMany({ where: { id: { in: filas.map(p => p.warehouseId) } } });
       const documentos = await tx.productInitialStock.findMany({ where: { id: { in: filas.flatMap(p => p.initialStockId ? [p.initialStockId] : []) } } });
       const ajustes = await tx.productInventoryAdjustment.findMany({ where: { id: { in: filas.flatMap(p => p.adjustmentId ? [p.adjustmentId] : []) } } });
+      const retiros=await tx.productionReversalOutput.findMany({where:{id:{in:filas.flatMap(p=>p.productionReversalOutputId?[p.productionReversalOutputId]:[])}}});
+      const reversions=await tx.productionReversal.findMany({where:{id:{in:retiros.map(d=>d.productionReversalId)}}});
+      const resultados=await tx.productionOutput.findMany({where:{id:{in:filas.flatMap(p=>p.productionOutputId?[p.productionOutputId]:[])}}});
       const datos: FilaTerminado[] = filas.map(p => {
         const producto = productos.find(r => r.id === p.productId)!;
-        const historico = documentos.find(r => r.id === p.initialStockId) ?? ajustes.find(r => r.id === p.adjustmentId);
+        const retiro=retiros.find(d=>d.id===p.productionReversalOutputId),reversion=reversions.find(v=>v.id===retiro?.productionReversalId);
+        const resultado=resultados.find(o=>o.id===p.productionOutputId);
+        const historico = retiro ?? resultado ?? documentos.find(r => r.id === p.initialStockId) ?? ajustes.find(r => r.id === p.adjustmentId);
         const ajuste = f.vista === "ajustes" ? p : ajustes.find(r => r.id === p.adjustmentId);
-        return { id: p.id, productId: p.productId, warehouseId: p.warehouseId, producto: p.productName ?? historico?.productName ?? producto.name, codigo: p.productCode ?? historico?.productCode ?? producto.code, bodega: bodegas.find(b => b.id === p.warehouseId)!.name, unidad: p.unitAbbreviation ?? historico?.unitAbbreviation ?? unidades.find(u => u.id === producto.unitMeasureId)!.abbreviation, cantidad: p.quantity.toString(), fecha: p.date?.toISOString().slice(0, 10) ?? null, observacion: p.note ?? null, documentoId: ["ingresos", "ajustes"].includes(f.vista) ? p.id : p.initialStockId ?? p.adjustmentId ?? null, registro: p.createdAt.toISOString(),
+        return { produccion:retiro&&reversion?{workOrderId:reversion.workOrderId,recordId:reversion.productionRecordId,reversalId:reversion.id}:resultado?{workOrderId:resultado.workOrderId,recordId:resultado.productionRecordId}:null,id: p.id, productId: p.productId, warehouseId: p.warehouseId, producto: p.productName ?? historico?.productName ?? producto.name, codigo: p.productCode ?? historico?.productCode ?? producto.code, bodega: bodegas.find(b => b.id === p.warehouseId)!.name, unidad: p.unitAbbreviation ?? historico?.unitAbbreviation ?? unidades.find(u => u.id === producto.unitMeasureId)!.abbreviation, cantidad: p.quantity.toString(), fecha: p.date?.toISOString().slice(0, 10) ?? null, observacion: p.note ?? null, documentoId: ["ingresos", "ajustes"].includes(f.vista) ? p.id : p.initialStockId ?? p.adjustmentId ?? null, registro: p.createdAt.toISOString(),
           documentoTipo: f.vista === "ingresos" || p.initialStockId ? "inicial" : f.vista === "ajustes" || p.adjustmentId ? "ajuste" : null,
           anterior: ajuste?.previousQuantity?.toString() ?? null, final: ajuste?.finalQuantity?.toString() ?? null,
           motivo: ajuste?.reason ?? null, origen: ajuste?.correctedInitialStockId ? { tipo: "inicial", id: ajuste.correctedInitialStockId } : ajuste?.correctedAdjustmentId ? { tipo: "ajuste", id: ajuste.correctedAdjustmentId } : null };

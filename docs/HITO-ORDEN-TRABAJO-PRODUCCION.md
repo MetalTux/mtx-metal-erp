@@ -1,6 +1,6 @@
 # Hito Orden de Trabajo y Producción
 
-**Estado: estructura M1, reservas MR y creación/consulta/edición/confirmación pública del plan implementadas y migradas, con validación técnica. OT3 pendiente de revisión funcional del usuario. OT4 incorpora receta histórica, distribución y reservas; inicio todavía pendiente. Producción/reversión, consumo de reservas, reserva del resultado fabricado, cierre/factura y PDF final aún pendientes. Último cierre técnico: 15-10-2026.**
+**Estado: M1/MR, planificación e inicio implementados; inicio validado por el usuario. OT5/M2 de fabricación parcial, avances, consumos y reserva del resultado implementado y migrado, con validación técnica. Revisión funcional de Producción pendiente. OT6/M3 de reversión completa y anulación de obra propia implementado y validado técnicamente; revisión funcional pendiente. Finalización/factura (OT7/M4) y PDF final aún pendientes. Cierre técnico de M3: 15-10-2026.**
 
 Este documento define estructura, reglas, cambios, secuencia, pruebas y criterios de cierre. La entrega inicial fue exclusivamente documental. Posteriormente el usuario autorizó proceder con los cambios del plan; esa autorización permite avanzar en decisiones técnicas e implementación. Las decisiones comerciales señaladas como pendientes deben resolverse expresamente antes de sus bloques dependientes.
 
@@ -245,7 +245,7 @@ Primer registro: fabrica 2 XY, consume 5,000 kg A y 1,500 m B, ingresa 2 XY. Seg
 
 ## 7. Modelo de datos propuesto
 
-**Estado actual por bloques:** WorkOrder ampliado, WorkOrderLine, WorkOrderRecipeMaterial, WorkOrderSupplyPlan, WorkOrderOperation, ampliación de WorkOrderDetail y vínculo a folio implementados en M1. ProductionRecord/Consumption/Output/Reversal, reservas Allocation/Event y Completion/InvoiceReference siguen siendo diseño futuro. Las tablas siguientes describen el contrato previsto completo; consultar el cierre técnico de M1 para restricciones realmente habilitadas. Cerrar las decisiones aplicables antes de desarrollar cada bloque.
+**Estado actual por bloques:** WorkOrder ampliado, WorkOrderLine, WorkOrderRecipeMaterial, WorkOrderSupplyPlan, WorkOrderOperation, ampliación de WorkOrderDetail y vínculo a folio implementados en M1. Reservas Allocation/Event implementadas en MR y planificación/inicio públicos implementados después. ProductionRecord/Consumption/Output implementados en M2. ProductionReversal y Completion/InvoiceReference siguen siendo diseño futuro. Las tablas siguientes describen el contrato previsto completo; consultar los cierres técnicos M1/MR/OT5 para las restricciones realmente habilitadas. Cerrar las decisiones aplicables antes de desarrollar cada bloque.
 
 ```mermaid
 erDiagram
@@ -876,25 +876,27 @@ Pruebas de una misma copia se ejecutan secuencialmente. Paralelizar sólo con co
 
 - [x] Preparar, probar y aplicar M1 de estructura/plan; sin modificar migraciones históricas.
 - [x] Preparar y aplicar la base MR de reservas de planificación, sin modificar M1 aplicada.
-- [ ] Preparar M2 de registros y ampliar MR con consumo/reserva del resultado/reversión física.
+- [x] Preparar y aplicar M2 de registros, consumo y reserva del resultado.
+- [x] Ampliar con reversión física vinculada mediante M3.
 - [x] Incorporar OT/folio/UUID/versiones/líneas/receta/plan y FK compuestas.
 - [x] Incorporar asignaciones y liberaciones históricas de reserva MP/PT del plan; proteger cobertura en los escritores existentes.
 - [x] Integrar reservas al registro público de plan, conciliando liberaciones con motivo e historial.
-- [ ] Integrar consumo y reserva del resultado fabricado con documentos físicos tipados.
-- [ ] Incorporar registros productivos/orígenes de stock y operaciones propias.
+- [x] Integrar consumo y reserva del resultado fabricado con documentos físicos tipados.
+- [x] Incorporar registros productivos/orígenes de stock y operaciones propias.
 - [x] Proteger completitud de OT/plan, origen comercial, operaciones/snapshots, pertenencia y conservación histórica de M1.
 - [x] Proteger operación, snapshot exacto, origen/remanente y cobertura física de reservas de planificación.
-- [ ] Proteger completitud de consumos/producción/reversión al implementar sus documentos.
+- [x] Proteger completitud de consumos/producción y su operación física atómica.
+- [x] Proteger completitud de reversión en M3 con restricciones y triggers diferidos.
 - [x] Actualizar restricciones/conteos y validaciones de materiales, productos, unidades y bodegas para referencias de planificación actual e histórica.
 - [x] Probar migración M1, rollback y legados en copias descartables.
 - [x] Probar precondiciones MR y migración de revisiones del plan, incluido trabajo/detalle legado sin inferencias.
-- [ ] Probar precondiciones y legados de M2 al implementarla.
+- [x] Probar migración M2 sobre copia restaurada y compatibilidad de OT previa, sin fabricar historia.
 - [x] Validar Prisma, generar cliente y comprobar estado/índices de M1.
 - [x] Validar Prisma/drift de MR y revisiones del plan.
-- [ ] Repetir validación de Prisma/drift para M2.
+- [x] Validar Prisma/drift para M2.
 - [x] Aplicar M1 a entorno local verificado y comprobar conservación de las 49 tablas previas.
 - [x] Aplicar MR y revisiones del plan después de sus pruebas; comprobar huellas de tablas previas.
-- [ ] Aplicar M2 sólo después de sus pruebas y repetir huellas.
+- [x] Aplicar M2 después de sus pruebas y repetir huellas de las 55 tablas anteriores.
 
 **Salida:** esquema apto para operaciones sin debilitar Compras/Inventario/OCC; todavía no declarar producción utilizable.
 
@@ -912,12 +914,12 @@ Pruebas de una misma copia se ejecutan secuencialmente. Paralelizar sólo con co
 
 ### OT4 — recetas, requerimientos y preparación
 
-- [x] Implementar cálculo puro Decimal desde receta histórica con HALF_UP a tres decimales y revisión de necesidad positiva que queda en cero; pruebas puras correctas. Integración con plan validada; registro productivo pendiente.
+- [x] Implementar cálculo puro Decimal desde receta histórica con HALF_UP a tres decimales y revisión de necesidad positiva que queda en cero; pruebas puras correctas. Integración con plan y registro productivo validada técnicamente.
 - [x] Capturar/consultar receta histórica, impedir cambios automáticos por catálogo.
 - [x] Distribuir requerimientos entre bodegas y mostrar disponibilidad/faltantes.
 - [x] Reservar parcialmente al confirmar plan, completar reservas explícitamente y consultar cobertura propia/ajena/libre sin vencimiento automático.
 - [x] Diferenciar producción, stock, materia prima directa, servicio y a medida.
-- [ ] Revisar plan/iniciar con fecha, estado y versión; no consumir al iniciar.
+- [x] Revisar plan/iniciar con fecha, estado y versión; no consumir al iniciar.
 - [ ] Probar cambio concurrente de receta/unidad/clasificación y conjunto de locks.
 - [ ] Usuario valida cantidades, unidades, faltantes, reservas propias/ajenas y disponibilidad libre.
 
@@ -925,25 +927,25 @@ Pruebas de una misma copia se ejecutan secuencialmente. Paralelizar sólo con co
 
 ### OT5 — producción y ejecución atómicas
 
-- [ ] Preview sólo lectura y validación repetida al confirmar.
-- [ ] Registrar fabricación parcial con consumos reales y entrada de producto.
-- [ ] Registrar avance de servicio/a medida según decisiones, sin producto ficticio.
-- [ ] Validar acumulados, stock, Kardex, versiones, motivos y límites.
-- [ ] Añadir historial/orígenes/navegación en ambos inventarios.
-- [ ] Probar inyección de fallos por etapa y recuperación de respuesta perdida.
-- [ ] Probar dos OT compitiendo por el mismo stock y producción vs inventario/Compras.
+- [x] Preview sólo lectura y validación repetida al confirmar.
+- [x] Registrar fabricación parcial con consumos reales y entrada de producto.
+- [x] Registrar avance de servicio/a medida según decisiones, sin producto ficticio.
+- [x] Validar acumulados, stock, Kardex, versiones, motivos y límites.
+- [x] Añadir historial/orígenes/navegación en ambos inventarios.
+- [x] Probar inyección de fallos por etapa y recuperación de respuesta perdida.
+- [x] Probar dos OT compitiendo por el mismo stock y producción vs inventario/Compras.
 - [ ] Usuario valida fabricación completa/parcial y casos sin fabricación.
 
 **Salida:** cada hecho deja exactamente sus efectos físicos y documentales; stock nunca queda parcialmente actualizado.
 
 ### OT6 — correcciones y cancelaciones permitidas
 
-- [ ] Implementar M3 y reversión completa tipada con UUID/motivo.
-- [ ] Exigir cantidades originales, disponibilidad y ausencia de dependencias incompatibles.
-- [ ] Diferenciar error de registro de daño/conteo físico.
-- [ ] Conservar original y mostrar avance neto sin borrar movimientos.
-- [ ] Habilitar únicamente anulaciones aprobadas; mantener folio y unicidad comercial.
-- [ ] Probar doble reversión, fallos, reposición posterior y bloqueos por hechos posteriores.
+- [x] Implementar M3 y reversión completa tipada con UUID/motivo.
+- [x] Exigir cantidades originales, disponibilidad y ausencia de dependencias incompatibles.
+- [x] Diferenciar error de registro de daño/conteo físico.
+- [x] Conservar original y mostrar avance neto sin borrar movimientos.
+- [x] Habilitar únicamente anulaciones aprobadas; mantener folio y unicidad comercial.
+- [x] Probar doble reversión, fallos, reposición posterior y bloqueos por hechos posteriores.
 - [ ] Usuario valida procedimiento y límites de corrección.
 
 **Salida:** errores corregibles de forma trazable dentro del alcance aprobado; casos bloqueados explicados.
@@ -1222,3 +1224,166 @@ El usuario comprobó creación/guardado de borrador y posterior confirmación co
 Por su aprobación posterior, «Completar reservas» sólo se habilita en una OT pendiente con plan confirmado y cantidades todavía sin reservar. La cobertura se compara con Decimal por cada origen activo de material o abastecimiento, sumando sus reservas activas; no se compensan faltantes de una línea/bodega con reservas de otra y se ignoran orígenes archivados. Un plan sin requerimientos de stock tampoco habilita la acción. La consulta indica si hay cantidades pendientes o si no queda ninguna. Al liberar reservas y volver a consultar, se recalcula la condición con los datos recibidos. No exige que haya stock libre: con faltantes puede intentarse completar, conservando los controles del servidor.
 
 Validación del ajuste de habilitación: `pnpm lint` y `pnpm build` correctos, con comprobación TypeScript incluida; diff sin errores de espacios. La primera compilación restringida se canceló al quedar en Turbopack; la ejecución posterior fuera de ese entorno terminó correctamente. No se realizaron migraciones, escrituras de base ni se iniciaron servidores para este ajuste.
+
+
+### OT4 — inicio explícito y reservas en proceso (15-10-2026)
+
+**Implementado y validado técnicamente:** acción Iniciar OT, fecha calendario y transición PENDIENTE → EN_PROCESO con historial/UUID/versiones. Este bloque habilita preparación/inicio, no registra todavía fabricación o ejecución. OT5/M2 sigue pendiente; no se presenta una OT en proceso como producto fabricado ni como consumo de materias primas.
+
+#### Revisión de estructura y migración
+
+La estructura vigente ya contiene `WorkOrder.startedDate`, estado `EN_PROCESO` y operación `INICIAR`; no requiere nuevos modelos, campos, índices ni relleno de datos. Se agrega exclusivamente la migración SQL versionada `20261015200647_inicio_orden_trabajo`, sin editar las anteriores, para ampliar las funciones de protección de cabecera/operación/estado y admitir reservas en proceso. No se usa db push, reset ni seed. Legados siguen en consulta; no se les asigna inicio ficticio.
+
+El inicio exige última decisión de plan confirmada explícitamente y distribución completa conforme los triggers existentes; acepta reservas parciales. La cobertura completa se exigirá en las acciones que la requieran, no se inventa consumo ni disponibilidad para permitir el inicio. Sólo cambian estado, fecha de inicio, versión y timestamp de actualización. Los snapshots de líneas/recetas/distribución/reservas se conservan exactamente. El servicio no crea folio, cuenta, asignaciones ni movimientos físicos al iniciar.
+
+El guard de cabecera valida fecha no anterior a OT ni futura respecto de Santiago y versión consecutiva. La operación INICIAR debe conservar snapshot anterior y transición exacta; insertar otro tipo de operación para encubrir un inicio, cambiar el plan simultáneamente o actualizar sin operación se rechaza. En proceso sólo quedan habilitadas revisiones de reservas, con cabecera/plan/fecha fijos. No se habilitan aún finalización, anulación, vuelta a pendiente ni cambios de receta después de iniciar.
+
+`iniciarTrabajo` valida un DTO estricto y reconoce reintento por UUID/huella antes de revisar versión, estado o fecha actual. Advisory UUID compartido con plan/reservas → bloqueo de OT → nueva lectura de estado/versión → cambio y operación en una transacción. No adquiere locks de origen comercial o recursos porque no cambia esas referencias ni las existencias. La PK global y el reconocimiento previo no permiten reutilizar una clave para otra intención. Se incorpora el mismo advisory lock y UUID canónico a completar/liberar para serializar su identidad con crear/editar/iniciar, conservando el orden de locks de recursos existente.
+
+Completar/liberar reservas admite PENDIENTE y EN_PROCESO; conserva sus validaciones de versión, cobertura, origen, historial y saldo/Kardex. `CONSUMIR` sigue bloqueado hasta el documento físico de M2. Esta ampliación evita dejar sin posibilidad de reservar una OT iniciada con faltantes, sin habilitar todavía efectos productivos.
+
+#### Uso y validación funcional pendiente
+
+1. Abrir Ver OT de un documento pendiente y confirmar antes su plan/distribución. Iniciar OT está deshabilitado en borrador; los legados no ofrecen la acción.
+2. Pulsar **Iniciar OT**, revisar fecha entre la del documento y hoy, y comprobar aviso de faltantes si los hay. Una fecha pasada muestra **Registro tardío** y conserva el timestamp real del registro en el historial.
+3. Revisar y confirmar la transición. El aviso explica que el plan quedará fijo y no se consume ni fabrica. Cancelar no registra fecha/estado/operación.
+4. Consultar estado EN_PROCESO, fecha de inicio e historial. Ya no se ofrecen Editar plan ni otro Inicio. Completar/liberar reservas continúa disponible conforme faltantes y cobertura activa.
+5. Ante resultado incierto, conservar datos/UUID y reintentar; no crear una intención distinta suponiendo que el inicio falló. La confirmación conserva los datos mientras reconoce el resultado.
+6. Queda pendiente la revisión funcional del usuario final de este bloque y el flujo productivo posterior. La numeración OT ya aparece configurada en la base local; este bloque no cambió sus valores.
+
+#### Verificación y cierre técnico
+
+- Nuevo `tests/ordenes-trabajo-inicio.integration.ts`, guardado para copia local `mtx_validacion_inicio_*`. Prueba plan sin confirmar, fechas inválidas/anteriores/futuras, falta de operación, inicio encubierto como reserva, modificación simultánea de plan por SQL, versión obsoleta, UUID repetido/en mayúsculas/con otra intención, carreras con mismo y distintos UUID, rollback inducido al insertar operación y reintento de la misma solicitud. Prueba propia con reservas parciales y servicio comercial sin stock; iniciar no cambia físico, Kardex, cuentas o folios. Plan/fecha quedan fijos y completar/liberar/recompletar funciona en proceso. Reintentar el inicio original funciona incluso después de revisiones posteriores de reserva.
+- Regresiones de planificación OT3/OT4, reservas MR y estructura M1 correctas sobre copias separadas, secuenciales por copia. El cambio del contrato de estado no debilita validaciones previas de origen, catálogo, reservas o snapshots.
+- Chromium: cancelar sin escritura, aviso de fecha tardía y faltantes, confirmación de inicio, consulta EN_PROCESO, desaparición de edición/nuevo inicio y completar reservas en proceso. Comparación de existencias/Kardex MP/PT, cuentas, pagos, folios y reservas antes/después del inicio sin cambios. Diálogo verificado a 320/768/1440 sin desbordamiento ni errores JavaScript; captura de móvil inspeccionada. No equivale a auditoría formal de accesibilidad.
+- Prisma validate/generate correctos; migración probada en copias restauradas y aplicada localmente. 27 migraciones al día, checksums coinciden y diff Prisma sin diferencias en copia/local. `pnpm lint`, comprobación TypeScript y `pnpm build` correctos. Las 55 tablas de negocio conservan huellas/conteos antes/después de migrar; la OT real permanece pendiente en su versión anterior, sin fecha de inicio asignada por la migración.
+- Respaldo PostgreSQL restaurado, auditorías OCC previas, huellas, logs y capturas en `backups/20261015_inicio_trabajo/`. Las cuatro copias descartables se retiraron y se verificó su ausencia; el servidor propio de 3031 se detuvo y se comprobó el puerto libre, conservando el servidor previo del usuario en 3030. Sin push.
+
+**Siguiente entrega:** OT5/M2, registros parciales de fabricación/servicio/a medida y consumos reales. Debe ampliar demanda/reserva pendiente para descontar lo ya consumido, registrar consumo MP + entrada PT + débitos de reserva + reserva del resultado comercial atómicos y respetar receta histórica/desvíos con motivo. No basta con permitir SALIDA o editar stock desde el inicio. Las correcciones M3, finalización/factura M4 y PDF final conservan su orden posterior.
+
+
+### Revisión funcional de inicio y acceso a OT — 15-10-2026
+
+El usuario confirma «Listo, validado el cambio» para el inicio de OT. Esta aprobación acredita la transición entregada, sin cerrar fabricación/avance ni la validación global del usuario final. A su solicitud, la acción Ver OT del listado usa botón delineado con acento azul suave e ícono de ojo, conservando texto, estado ocupado, foco y apertura existentes.
+
+
+### OT5/M2 — fabricación parcial y avances (15-10-2026)
+
+**Entrega implementada y validada técnicamente:** registrar fabricación por línea/lote y bodega de resultado; registrar avance de servicio o trabajo a medida; consumos reales, resultado de terminado, débitos y liberaciones de reservas y operación/versiones atómicos. La migración no registra fabricación para documentos anteriores. La revisión funcional del usuario final de este bloque sigue pendiente; no se cierra el módulo por esta entrega.
+
+#### Estructura definitiva de esta entrega
+
+Migración `20261015211304_registros_produccion`, creada con Prisma Migrate en copia local y completada/revisada en SQL antes de aplicarla a la base real. Incorpora:
+
+- `ProductionRecord`: línea/OT, tipo FABRICACION_PRODUCTO / EJECUCION_A_MEDIDA / SERVICIO, fecha calendario, cantidad positiva, observación, motivo global de diferencias, versión del plan y `expectedSnapshot`. No usa un saldo o avance mutable: se obtiene sumando registros confirmados de la línea. Sin reversión implementada todavía, no hay registros que descontar de esa suma.
+- `ProductionConsumption`: material/bodega/unidad y cantidad real positiva; requerimiento planificado opcional del mismo origen, cantidad prevista por combinación y copias históricas de material/unidad. Un material/bodega por registro; no se permite repetir filas contra el mismo saldo. El motivo de diferencias se guarda en el registro que agrupa sus consumos, en lugar de duplicarlo por hijo.
+- `ProductionOutput`: un resultado por registro de catálogo, producto de la misma línea, bodega compatible, cantidad idéntica a la fabricada y copias de código/denominación histórica de línea/unidad. Obra propia deja resultado disponible; la comercial lo reserva para su propia línea.
+- `StockMovement.productionConsumptionId` y `ProductStockMovement.productionOutputId` opcionales y únicos, con FK compuestas de recurso/bodega. Cada consumo tiene una SALIDA negativa exacta; cada resultado tiene una ENTRADA positiva exacta. No se utiliza `workOrderDetailId` previsto como sustituto del consumo físico ni se simula producción mediante Ajustar/Inventario inicial.
+- `WorkOrderOperation.productionRecordId` opcional, único y de la misma OT; obligatorio exclusivamente para REGISTRAR_PRODUCCION. Se conserva UUID, huella, versión y snapshots anterior/posterior. Folio y deuda no se vuelven a crear.
+- `StockReservationEvent.productionConsumptionId` sólo para CONSUMIR, con validación de mismo registro/operación/línea/material/bodega/unidad. LIBERAR no representa consumo.
+- `StockReservationAllocation.productionOutputId` como tercer origen, exclusivo de los otros dos, para resultado comercial. Cobertura por resultado no supera lo fabricado; cobertura de entrega de la línea no supera el compromiso contratado. Completar reservas puede reponer una reserva del resultado previamente liberada, usando únicamente libre disponible.
+
+CHECK rechazan cantidades inválidas/NaN y familias de origen incompatibles. Se mantienen FK Restrict, unicidades e índices de nuevas referencias. Los triggers impiden editar/borrar registros, hijos y movimientos; agregar hijos o movimientos después de confirmar un registro tampoco está permitido. La comprobación diferida exige documento, operación, hijos, movimientos y reservas coherentes al commit. Los orígenes anteriores de Compras, ajustes, traslados e inventario inicial permanecen válidos.
+
+`expectedSnapshot` conserva previsión del lote, materiales/unidades, exactos/redondeados, distribución por origen y revisiones de cero. La receta y el plan completos usados quedan además en el snapshot anterior de la operación, correspondiente a `planVersion`; no se consultan recetas actuales para reconstruir hechos pasados. La función SQL `necesidades_produccion` calcula y valida la previsión canónica; una copia adulterada se rechaza incluso por SQL directo.
+
+La función de snapshot de reservas omite las nuevas referencias cuando son nulas, conservando la forma JSON histórica de asignaciones/eventos previos. No se reescriben operaciones antiguas para introducir claves nuevas. Se probó una operación de reserva de una OT previa sobre la copia migrada.
+
+#### Cálculos, fechas y reservas pendientes
+
+1. Catálogo: previsión por lote = receta histórica por unidad × cantidad del lote, con HALF_UP a tres decimales y exacto de seis visible. A medida: proporción del total previsto de cada material según cantidad de avance/cantidad total de la línea; conserva entradas del cálculo y representación de seis decimales para consulta. No hay conversión de unidades.
+2. Si una necesidad positiva queda en cero, se exige para ese lote cantidad revisada positiva y motivo. No basta con la revisión del plan general: un lote parcial puede producir otro caso de redondeo. El cálculo inicial puede mostrar el caso sin resolver, pero el registro no se confirma hasta revisarlo.
+3. La cantidad prevista del lote se reparte entre los orígenes planificados por su proporción: redondeo a tres, limitado al remanente, y último origen recibe la diferencia. El total por material coincide con su previsión. Cada consumo conserva lo previsto para su material/bodega; un origen adicional tiene previsión cero.
+4. Cambiar cantidad, omitir/agregar/sustituir material o cambiar bodega exige motivo global de diferencias. Para consumo cero se quita la fila, conservando el motivo de omisión; no se crean movimientos cero ni merma duplicada.
+5. La suma registrada por línea no supera `quantityToProduce` de catálogo o `quantity` de servicio/a medida. Las cantidades desde stock/venta directa no son fabricación. Las líneas sin cantidad que fabricar no ofrecen formulario productivo.
+6. Disponibilidad elegible = físico − reservas totales + reservas propias de consumo de **esa línea y ese material/bodega**. No se usan reservas de otra OT, de otra línea ni de entrega directa. Primero se debita reserva propia elegible en orden de asignación; sólo el exceso real puede usar libre. Luego se descuenta físico y se crea Kardex en la misma transacción.
+7. Pendiente de requerimiento = menor entre (previsto original menos consumo real vinculado, limitado a cero) y (previsto proporcional al avance que aún falta, HALF_UP a tres y limitado a cero). La función `demanda_pendiente_requerimiento` lo deriva sin guardar saldo duplicado. Al terminar la línea, el pendiente de sus insumos es cero, incluso si hubo sustituciones o consumos menores.
+8. El registro libera con motivo automático sólo la cobertura que exceda ese pendiente. No se vuelve a reservar por defecto lo ya consumido ni se asigna automáticamente stock nuevo a faltantes futuros. Completar reservas utiliza la demanda restante y, en una OT comercial, sus resultados producidos aún no cubiertos. La consulta y habilitación del botón usan esos mismos pendientes.
+9. Fecha del registro entre inicio de OT y hoy de Santiago; fecha/objetivo/inicio no se cambian al fabricar. `ProductionRecord.date` y movimiento PT son calendario UTC para campos Date. La SALIDA MP usa `inicioDiaChile`, igual que Inventario: primer instante del día local, incluyendo cambio de hora. SQL verifica el mismo día de Santiago; `createdAt` sigue siendo el instante real y el orden de dependencia se basa en IDs de movimientos, no en la fecha manual.
+
+#### Transacción e idempotencia
+
+`registrarProduccion` valida DTO estricto y normaliza cantidades/fechas/motivos/UUID. Advisory UUID 91357 → reconocer operación previa antes de revisar estado/versión/stock → bloquear OT → validar línea, límite y fecha → reunir recursos de consumos y requerimientos de la línea → materiales ascendentes → producto → bodegas → saldos MP por ID y saldo PT correspondiente. Las consultas sobre el cliente de transacción son secuenciales.
+
+Se relee disponibilidad y saldo/Kardex bajo los locks. Registro e hijos se insertan juntos; se consumen reservas propias, se libera exceso derivado del avance y se escriben SALIDA MP/saldos. Para catálogo se escribe resultado + saldo/Kardex PT y, si es comercial, reserva completa del nuevo resultado. Se incrementa una vez la versión de OT y se inserta su operación/snapshots. Un fallo en cualquiera de estos pasos revierte todo. Mínimos MP y referencias físicas anteriores se conservan.
+
+La previsualización usa RepeatableRead sin escribir documentos, filas de stock, reservas ni movimientos. Se vuelve a validar al confirmar; no constituye una garantía de disponibilidad futura. Un UUID repetido con la misma intención devuelve el registro existente incluso tras avanzar la versión; cambiar datos con esa clave se rechaza. Ante resultado incierto, el formulario conserva datos/UUID y bloquea edición/cierre mientras permite reintentar. Las validaciones de dominio permiten corregir los datos; los errores técnicos no se confunden con rollback confirmado.
+
+#### Uso paso a paso y revisión funcional pendiente
+
+1. Abrir **Ver OT** con estado En proceso. En la línea pendiente elegir **Registrar fabricación** o **Registrar avance**. Materia prima directa y líneas abastecidas enteramente desde stock no requieren registro productivo.
+2. Indicar fecha del hecho y cantidad del lote/avance en la unidad de la línea. Catálogo exige bodega de terminado o mixta; servicio/a medida no selecciona resultado ficticio.
+3. Usar **Cargar consumos previstos** para proponer filas desde el plan/receta históricos. Esta acción reemplaza las filas de propuesta y no escribe inventario. Si aparece revisión de cero, completar cantidad positiva/motivo y volver a cargar la previsión antes de ajustar los consumos reales.
+4. Revisar consumos reales por material/bodega/unidad. Se pueden quitar o añadir materiales mediante selector buscable y repartir por varias bodegas sin duplicar una combinación. Justificar diferencias/sustituciones/omisiones y completar observación si corresponde. Servicio puro sólo registra cantidad de avance y observación.
+5. **Previsualizar registro**: revisar avance anterior/posterior, consumo, físico anterior/final, reserva propia/ajena/libre y entrada de terminado; se indica si el resultado quedará reservado para la OT comercial. No se mezclan cantidades de unidades diferentes.
+6. **Confirmar registro → Registrar** confirma todos los efectos juntos. Cancelar o descartar antes de confirmar no genera documentos ni folios. No se ofrece editar/borrar el registro confirmado; la reversión corresponde al siguiente bloque OT6/M3.
+7. En **Ver OT** revisar acumulados, previsión histórica, revisiones de redondeo, consumos, resultado, motivo y operación. En Kardex MP o Movimientos de terminado usar el enlace a la OT para rastrear el registro. Una fabricación no se presenta como inventario inicial ni se ofrece su corrección mediante el botón de documentos iniciales/ajustes.
+8. Probar dos lotes parciales, consumo distinto con motivo, obra propia, resultado comercial reservado y servicio/a medida. Comprobar que ni la creación ni el inicio de la OT consumieron materiales y que al producir se descontaron una sola vez. La revisión del usuario final de estos casos sigue pendiente.
+
+#### Validación técnica y evidencias
+
+- `tests/produccion.integration.ts` sólo acepta copia local `mtx_validacion_produccion_*`. Fabricación propia/comercial mixta, lotes parciales y límite, receta histórica tras cambiar catálogo, demanda restante/completar reservas sin volver a reservar consumo, variaciones/omisiones/adicionales con motivo, servicio puro y a medida sin producto ficticio, revisión positiva de cero, unidad/destino/fecha inválidos y snapshot adulterado por SQL.
+- UUID repetido, mayúsculas, misma clave con otra intención y dos registros concurrentes sobre la misma versión. Dos OT compitiendo por un saldo reservado: sólo una consume. Producción concurrente con conteo negativo y anulación de Compra: el consumo se confirma y la operación incompatible se rechaza, manteniendo saldo/Kardex coherentes.
+- Fallos inducidos al escribir SALIDA MP, ENTRADA PT y WorkOrderOperation: registro, hijos, reservas, saldos y movimientos idénticos a la instantánea anterior; reintento con la misma solicitud/UUID funciona. SQL rechaza registro incompleto, modificación de documento y modificación de movimiento productivo. Una entrada por fabricación impide después carga inicial en esa combinación.
+- Regresiones de planificación, reservas e inicio, más inventario inicial/ajustes de terminado correctas. La prueba MR que intentaba CONSUMIR sin documento sigue rechazándose; su aserción admite el nuevo mensaje del origen físico propio obligatorio.
+- Chromium: cálculo y preview sin escrituras, coma decimal, motivo, descarte sin registro, confirmación de un único registro ante doble clic, efectos físicos exactos y cuentas/pagos/folios sin cambios. Enlaces de Kardex MP/PT hacia OT e historia comprobados, incluida fecha visible de Santiago. Formulario a 320/768/1440 sin desbordamiento de página ni errores JavaScript; captura móvil inspeccionada. No constituye auditoría formal de accesibilidad.
+- Prisma validate/generate correctos; esquema de copia/local sin diferencias. Lint, tipos y build final correctos. Migración aplicada localmente: 28 al día. Las 55 tablas previas conservaron huellas/conteos de sus columnas originales antes/después; tres tablas productivas nuevas sin fixtures en base real. Consulta de la OT real en proceso conserva versión 3 y cero registros productivos: no se fabricó automáticamente ni se usó para pruebas.
+- Respaldo PostgreSQL restaurado en las copias, dump inmediatamente anterior a migrar, auditorías, huellas, logs y capturas en `backups/20261015_produccion/`. El primer rechazo automático por límite de uso ocurrió después de migrar/verificar los datos y antes de cerrar consulta/recursos; la reanudación completó el trabajo pendiente sin eludir esa revisión.
+
+**Límites y siguiente entrega:** M2 permite registrar hechos, no revertirlos ni finalizar/facturar. OT6/M3 debe implementar reversión completa vinculada, efectos físicos inversos, reserva/restauración según pendientes y bloqueo por dependencias posteriores. Debe ampliar el cálculo de avance/demanda para usar producción neta de reversiones, sin editar registros originales. Después sigue OT7/M4 de cierre/factura y PDF de OT al final. No se habilitan despacho, cobros ni nuevas cargas de archivos como efecto de esta entrega.
+
+
+Cierre de M2 tras la reanudación: compilación final y lint terminaron con código 0. Consultas locales de OT/catálogos/terminado correctas; checksums de las 28 migraciones coinciden. Las tres tablas productivas reales tienen cero registros de prueba. Las cinco copias descartables se retiraron y se comprobó su ausencia. Servidor propio de 3031 detenido y puerto libre; servidor previo del usuario en 3030 conservado. Diff revisado sin errores de espacios, sin push.
+
+
+### OT6/M3 — reversión completa y anulación propia (15-10-2026)
+
+**Alcance:** corrección de un error de registro de producción/avance, antes del cierre y dentro de las dependencias admitidas por D09. No representa desarme, recuperación ficticia de materias primas, daño ni cancelación contractual. La revisión funcional de M2 y M3 sigue pendiente del usuario.
+
+#### Estructura y contratos
+
+- Migración `20261016004629_reversiones_produccion` (fecha UTC; implementación del 15-10 en Chile): `ProductionReversal`, `ProductionReversalConsumption` y `ProductionReversalOutput`. Original único, detalles únicos por consumo/resultado, cantidades exactas y copias históricas; FK compuestas, índices, Restrict y documentos inmutables.
+- `WorkOrderOperation.REVERTIR_PRODUCCION` apunta exclusivamente a su reversión y misma OT; versión previa, motivo, snapshots y UUID estable. `productionRecordId` sigue exclusivo de REGISTRAR_PRODUCCION. No se reutilizan operaciones de ajustes o Compras.
+- `StockMovement.productionReversalConsumptionId` identifica AJUSTE positivo de restitución; `ProductStockMovement.productionReversalOutputId` identifica AJUSTE negativo de retiro. Una sola fuente tipada por movimiento. Originales y sus SALIDA/ENTRADA permanecen intactos.
+- `ProductionRecord.correctsProductionRecordId` opcional permite enlazar un registro nuevo a uno revertido de la misma línea/OT. No es único: admite ejecución correcta en varios registros parciales. Se conserva la huella de idempotencia de M2 cuando el vínculo es nulo.
+- Los triggers comprueban hijos completos, copias/cantidades originales, fecha y signo de movimientos, saldo = Kardex, operación propia y liberación completa de las reservas del resultado. No se admiten hijos/movimientos añadidos a documentos ya confirmados ni reversión de reversión.
+
+#### Servicio transaccional y límites
+
+1. Validar entrada estricta, motivo no vacío, fecha calendario y UUID; normalizar UUID a minúsculas. Recuperar resultado de la misma intención antes de evaluar la versión o estado actual.
+2. Bloquear UUID → OT → registro original → materias primas ascendentes → producto → bodegas → saldos MP por ID → saldo PT. Todos los escritores de inventario conservan locks de recurso/saldo compatibles y las consultas en `tx` son secuenciales.
+3. Exigir OT EN_PROCESO, registro propio sin reversión y versión vigente. Fecha entre el hecho original y hoy en Santiago. No admitir OT legada, finalizada, anulada ni con despacho asociado.
+4. Para fabricación/a medida exigir confirmación explícita de restitución física por error de registro. Servicio puro revierte sólo avance; no produce materiales ni PT ficticios.
+5. Leer consumos/resultado originales, nunca la receta actual. Verificar saldo/Kardex y capacidad de devolución. Bloquear retiro de PT si no conserva stock para las reservas ajenas. Liberar únicamente las reservas del resultado corregido; no apropiarse de otras asignaciones.
+6. Cualquier SALIDA o AJUSTE negativo posterior a la entrada original del mismo producto/bodega bloquea la reversión, incluso con reposición o fecha manual anterior. El orden histórico se obtiene del ID de Kardex. También bloquea un resultado con reserva consumida.
+7. Crear reversión e hijos exactos; devolver MP y registrar AJUSTE positivo con inicio de día de Santiago; retirar PT y registrar AJUSTE negativo con fecha calendario. Preservar mínimos, incrementar versión de stock PT y no crear otros documentos financieros ni folios.
+8. Recalcular demanda desde consumo/avance netos, excluyendo originales revertidos. Crear asignaciones nuevas para faltantes de los requerimientos de la misma línea hasta donde alcance el libre; preservar débitos y liberaciones anteriores. Sustitutos sin requerimiento quedan libres. Nunca volver a reservar el resultado revertido al pulsar Completar reservas.
+9. Incrementar versión e insertar operación/snapshots en la misma transacción. Fallo en cualquier paso revierte documentos, stock, movimientos, reservas e historial juntos. Respuesta incierta conserva contenido/UUID para reintento.
+
+**Anulación de OT:** únicamente obra propia PENDIENTE, sin inicio, producción, movimientos heredados ni despacho. Exige motivo, libera todas sus reservas y conserva plan, folio e historial sin mover existencias. SQL impide cambiar el plan al anular. Inicio y anulación compiten por una única revisión. No se habilita anulación comercial, borrado, reciclaje de folio ni anulación de una OT iniciada aunque luego se hayan revertido sus registros.
+
+**Compras:** restituir materia prima no borra el consumo histórico posterior ni desbloquea una anulación de compra prohibida por ese hecho.
+
+#### Uso de la interfaz
+
+1. En **Ver OT → Registros de producción y avances**, elegir **Revertir registro #…** en un registro vigente de una OT en proceso.
+2. Indicar fecha y motivo. Si corresponde, confirmar que la devolución de materiales y retiro del producto son hechos físicos reales de una corrección de registro.
+3. Pulsar **Previsualizar reversión**: muestra cantidades originales y saldos antes/después, reserva del resultado a liberar y el efecto sobre el avance. No escribe datos.
+4. Revisar y confirmar **Revertir registro**. Cancelar/descartar no genera documentos. La validación de stock/dependencias se repite al confirmar.
+5. El original queda marcado **Revertido**, con número/fecha/motivo/registro de la reversión. El avance neto permite registrar la ejecución correcta; el formulario ofrece enlazarla al registro revertido. Los Kardex MP/PT identifican la reversión y enlazan Ver OT.
+6. En obra propia pendiente, **Anular obra propia** pide motivo y confirmación. La OT anulada continúa visible con fecha/motivo y sus reservas liberadas.
+
+#### Verificación técnica
+
+- `tests/produccion-reversiones.integration.ts`: fabricación propia/comercial, servicio/a medida, consumos sustituidos y exactos, preview sin escrituras, fechas/motivo/confirmación/versiones, UUID/huella de M2, doble reversión, concurrencia, corrección posterior y avance/demanda netos.
+- Reservas del resultado liberadas, reconstrucción de MP sin reactivar historia, Completar reservas excluye resultado revertido, reservas ajenas protegidas y finanzas sin alteraciones.
+- Bloqueos por salida negativa con reposición posterior, despacho, capacidad de saldo y contratos de anulación. Reversión no desbloquea anulación de compra consumida.
+- Fallos inducidos en AJUSTE MP, AJUSTE PT y operación: rollback completo y reintento. SQL rechaza cantidades falsas, documentos incompletos, omisión de resultado/movimientos y edición/borrado de historia.
+- Carreras de la misma intención/intenciones distintas, producción vs reversión, conteo MP vs reversión, anulación concurrente y anulación vs inicio.
+- Regresiones M2, reservas/escritores de inventario, planificación e inicio en copias separadas. No se ejecutan fixtures ni triggers de prueba sobre la base de uso real.
+- Chromium a 320/768/1440: formato chileno, previsualización/descarte sin escrituras, confirmación única, efectos físicos, cuenta/pagos/folios intactos, navegación en ambos Kardex y anulación propia. Sin errores de página ni desbordamientos tras estabilizar el viewport.
+- Evidencias y respaldos locales ignorados por git: `backups/20261015_reversiones/`. La validación funcional del usuario queda sin marcar.
+
+**Siguiente hito:** OT7/M4 de finalización, referencia de factura externa y vencimiento. Despachos, cobros y PDF final no se habilitan por esta entrega.
+
+**Cierre técnico de M3:** migración aplicada a `mtx_metal_erp`, cliente regenerado y 29 migraciones al día, con checksums comprobados y sin diferencias Prisma. Respaldo actualizado previo y comparación de las 58 tablas anteriores por sus columnas originales: mismos conteos/huellas antes y después. La OT local #3 conserva EN_PROCESO, versión 3; las tres tablas nuevas de reversión están vacías y no contienen fixtures. Consultas locales de OT/catálogos/Kardex MP/PT correctas. ESLint y compilación de producción final correctos. Las cuatro copias descartables fueron retiradas y se verificó su ausencia; servidor temporal 3031 detenido y puerto libre, servidor previo del usuario 3030 conservado. Sin push. Estos resultados no sustituyen la validación funcional pendiente.

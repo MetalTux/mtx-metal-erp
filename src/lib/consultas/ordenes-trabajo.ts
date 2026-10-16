@@ -1,3 +1,4 @@
+import type { NecesidadesProduccion } from "@/lib/servicios/produccion";
 import { z } from "zod";
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
@@ -57,22 +58,30 @@ export async function consultarTrabajo(id:number){
     const ultima=operations.find(o=>o.type==="CREAR"||o.type==="EDITAR_PLAN");
     const source=w.salesOrderId?await tx.salesOrder.findUniqueOrThrow({where:{id:w.salesOrderId}}):null;
     const sf=source?.folioId?await tx.documentFolio.findUniqueOrThrow({where:{id:source.folioId}}):null;
-    const reservas=await tx.$queryRaw<{id:number;workOrderLineId:number;purpose:string;warehouseId:number;rawMaterialId:number|null;productId:number|null;quantity:string;active:string;resourceName:string;unitAbbreviation:string;plannedDetailId:number|null;supplyPlanId:number|null}[]>`
-      SELECT id,"workOrderLineId",purpose::text,"warehouseId","rawMaterialId","productId",quantity::text,public.reserva_activa_asignacion(id)::text AS active,"resourceName","unitAbbreviation","plannedDetailId","supplyPlanId"
+    const reservas=await tx.$queryRaw<{id:number;workOrderLineId:number;purpose:string;warehouseId:number;rawMaterialId:number|null;productId:number|null;quantity:string;active:string;resourceName:string;unitAbbreviation:string;plannedDetailId:number|null;supplyPlanId:number|null;productionOutputId:number|null}[]>`
+      SELECT id,"workOrderLineId",purpose::text,"warehouseId","rawMaterialId","productId",quantity::text,public.reserva_activa_asignacion(id)::text AS active,"resourceName","unitAbbreviation","plannedDetailId","supplyPlanId","productionOutputId"
       FROM "StockReservationAllocation" WHERE "workOrderId"=${id} ORDER BY id`;
     const stock=await tx.$queryRaw<{rawMaterialId:number|null;productId:number|null;warehouseId:number;quantity:string;reserved:string}[]>`
       SELECT "rawMaterialId",NULL::integer AS "productId","warehouseId",quantity::text,public.reserva_activa_recurso("rawMaterialId",NULL,"warehouseId")::text AS reserved FROM "WarehouseStock"
       UNION ALL SELECT NULL::integer,"productId","warehouseId",quantity::text,public.reserva_activa_recurso(NULL,"productId","warehouseId")::text FROM "ProductWarehouseStock"`;
     const eventos=await tx.stockReservationEvent.findMany({where:{allocationId:{in:reservas.map(r=>r.id)}},orderBy:{id:"asc"}});
+    const productionRecords=await tx.productionRecord.findMany({where:{workOrderId:id},orderBy:{id:"desc"}});
+    const reversals=await tx.productionReversal.findMany({where:{workOrderId:id},orderBy:{id:"asc"}});
+    const productionConsumptions=await tx.productionConsumption.findMany({where:{productionRecordId:{in:productionRecords.map(r=>r.id)}},orderBy:{id:"asc"}});
+    const productionOutputs=await tx.productionOutput.findMany({where:{workOrderId:id},orderBy:{id:"asc"}});
+    const pending=await tx.$queryRaw<{id:number;quantity:string}[]>`SELECT id,public.demanda_pendiente_requerimiento(id)::text AS quantity FROM "WorkOrderDetail" WHERE "workOrderId"=${id} AND "retiredAt" IS NULL`;
     const plan:PlanTrabajo|null=w.schemaVersion===null?null:{id:w.id,version:w.version,salesOrderId:w.salesOrderId,salesOrderVersion:w.salesOrderVersion,date:w.date!.toISOString().slice(0,10),
       productName:w.productName,ownPurpose:w.ownPurpose,internalInstructions:w.internalInstructions??"",targetDate:w.targetDate?.toISOString().slice(0,10)??null,confirmPlan:ultima?.planConfirmed===true,reason:"",
       lines:lines.map(l=>({id:l.id,sourceDetailId:l.salesOrderDetailId,kind:l.kind,executionMode:l.executionMode,productId:l.productId,rawMaterialId:l.rawMaterialId,unitMeasureId:l.unitMeasureId,description:l.description,quantity:l.quantity.toFixed(3),quantityToProduce:l.quantityToProduce?.toFixed(3)??"0.000",productVersion:l.productVersion,refreshRecipe:false,
         supplies:supplies.filter(s=>s.workOrderLineId===l.id&&!s.retiredAt).map(s=>({warehouseId:s.warehouseId,quantity:s.quantity.toFixed(3)})),materials:materials.filter(m=>m.workOrderLineId===l.id&&!m.retiredAt).map(m=>({rawMaterialId:m.rawMaterialId,warehouseId:m.warehouseId,quantity:m.quantityNeeded.toFixed(3)})),roundingReviews:revision(l.roundingReview)}))};
-    return {id:w.id,version:w.version,folio:folio?.folio??`Histórica #${id}`,status:w.status,legada:w.schemaVersion===null,plan,clientName:source?.clientName??null,salesFolio:sf?.folio??null,
+    return {id:w.id,version:w.version,folio:folio?.folio??`Histórica #${id}`,status:w.status,voidedAt:w.voidedAt?.toISOString()??null,voidReason:w.voidReason,startedDate:w.startedDate?.toISOString().slice(0,10)??null,legada:w.schemaVersion===null,plan,clientName:source?.clientName??null,salesFolio:sf?.folio??null,
       technicalDescription:w.technicalDescription?validarTextoCotizacion(w.technicalDescription):documentoVacioCotizacion,
       historicalRecipes:recipe.filter(r=>!r.retiredAt).map(r=>({workOrderLineId:r.workOrderLineId,rawMaterialId:r.rawMaterialId,unitMeasureId:r.unitMeasureId,quantityPerUnit:r.quantityPerUnit.toFixed(3),materialName:r.materialName,unitName:r.unitName})),
-      materials:materials.map(m=>({id:m.id,workOrderLineId:m.workOrderLineId,rawMaterialId:m.rawMaterialId,warehouseId:m.warehouseId,quantity:m.quantityNeeded.toFixed(3),retired:Boolean(m.retiredAt),name:m.materialName??"Material histórico"})),
+      materials:materials.map(m=>({id:m.id,workOrderLineId:m.workOrderLineId,rawMaterialId:m.rawMaterialId,warehouseId:m.warehouseId,quantity:m.quantityNeeded.toFixed(3),pendingQuantity:pending.find(p=>p.id===m.id)?.quantity??"0.000",retired:Boolean(m.retiredAt),name:m.materialName??"Material histórico"})),
       stock:stock.map(s=>({...s,free:new Prisma.Decimal(s.quantity).minus(s.reserved).toFixed(3)})),supplies:supplies.map(s=>({id:s.id,workOrderLineId:s.workOrderLineId,warehouseId:s.warehouseId,quantity:s.quantity.toFixed(3),retired:Boolean(s.retiredAt)})),reservas,
+      productionRecords:productionRecords.map(r=>({id:r.id,correctsProductionRecordId:r.correctsProductionRecordId,reversal:(()=>{const v=reversals.find(v=>v.productionRecordId===r.id);return v?{id:v.id,date:v.date.toISOString().slice(0,10),reason:v.reason,createdAt:v.createdAt.toISOString()}:null;})(),workOrderLineId:r.workOrderLineId,type:r.type,unit:lines.find(l=>l.id===r.workOrderLineId)?.unitAbbreviation??"",date:r.date.toISOString().slice(0,10),quantity:r.quantity.toFixed(3),note:r.note,deviationReason:r.deviationReason,planVersion:r.planVersion,createdAt:r.createdAt.toISOString(),expected:r.expectedSnapshot as unknown as NecesidadesProduccion,
+        consumptions:productionConsumptions.filter(c=>c.productionRecordId===r.id).map(c=>({id:c.id,rawMaterialId:c.rawMaterialId,warehouseId:c.warehouseId,quantity:c.quantity.toFixed(3),expectedQuantity:c.expectedQuantity.toFixed(3),name:c.materialName,unit:c.unitAbbreviation}))})),
+      productionOutputs:productionOutputs.map(o=>({id:o.id,reversed:reversals.some(v=>v.productionRecordId===o.productionRecordId),productionRecordId:o.productionRecordId,workOrderLineId:o.workOrderLineId,warehouseId:o.warehouseId,productId:o.productId,name:o.productName,quantity:o.quantity.toFixed(3),unit:o.unitAbbreviation})),
       eventos:eventos.map(e=>({id:e.id,allocationId:e.allocationId,type:e.type,quantity:e.quantity.toFixed(3),reason:e.reason,createdAt:e.createdAt.toISOString()})),
       operations:operations.map(o=>({...o,createdAt:o.createdAt.toISOString()})),legacyTitle:w.productName,legacyDescription:w.description};
   },{isolationLevel:"RepeatableRead"});
