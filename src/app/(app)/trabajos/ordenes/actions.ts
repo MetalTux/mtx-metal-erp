@@ -27,3 +27,10 @@ export async function registrarLote(datos:unknown,clave:unknown){const r=await (
 export async function previsualizarReversion(datos:unknown){return (await import("@/lib/servicios/reversiones-produccion")).previsualizarReversionProduccion(datos);}
 export async function revertir(datos:unknown,clave:unknown){const r=await (await import("@/lib/servicios/reversiones-produccion")).revertirProduccion(datos,clave);if(r.ok){refrescar();revalidatePath("/inventario/movimientos");}return r;}
 export async function anularPropia(datos:unknown,clave:unknown){const r=await (await import("@/lib/servicios/reversiones-produccion")).anularTrabajoPropio(datos,clave);if(r.ok)refrescar();return r;}
+
+export async function previsualizarCierre(datos:unknown){return (await import("@/lib/servicios/cierre-trabajo")).previsualizarCierreTrabajo(datos);}
+export async function finalizar(datos:unknown,clave:unknown){const r=await (await import("@/lib/servicios/cierre-trabajo")).finalizarTrabajo(datos,clave);if(r.ok)refrescar();return r;}
+export async function facturar(datos:unknown,clave:unknown){const r=await (await import("@/lib/servicios/cierre-trabajo")).registrarFacturaTrabajo(datos,clave);if(r.ok){refrescar();revalidatePath("/ventas/cobranza");}return r;}
+
+export async function emitirPdfTrabajo(referencia:unknown,clave:unknown){return (await import("@/lib/servicios/pdfs-trabajo")).emitirPdfTrabajo(referencia,clave);}
+export async function consultarPdfsTrabajo(id:number){try{return {ok:true as const,filas:await (await import("@/lib/servicios/pdfs-trabajo")).historialPdfTrabajo(id)};}catch{return {ok:false as const,mensaje:"No se pudo consultar el historial de PDF de OT."};}}

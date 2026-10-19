@@ -423,3 +423,29 @@ Detalles operativos, cálculos y límites en [HITO-ORDEN-TRABAJO-PRODUCCION.md](
 
 Siguiente: OT7/M4, finalización y referencia de factura externa; PDF al final.
 - [x] M3 migrada localmente; Prisma/consultas, regresiones, lint/build finales y conservación de datos verificados. Copias descartables y servidor temporal retirados; servidor del usuario conservado.
+
+
+## 16-10-2026 — Cierre y factura de OT (OT7/M4)
+
+- [x] Finalizar desde Ver OT con fecha, observación, confirmación de preparación y previsualización por línea/bodega.
+- [x] Bloquear cierre industrial incompleto y preparación comercial sin reserva física completa; conservar stock/reservas.
+- [x] Registrar factura externa después del cierre; corregir con motivo e historial sin editar revisiones previas.
+- [x] Consultar importe, abonos, saldo, vencimiento y promesa separados; detalle de pagos e historial de factura.
+- [x] Confirmaciones/descarte y UUID estable ante incertidumbre; Chromium 320/768/1440 sin errores ni desbordamiento.
+- [x] Aprobación funcional general del módulo, incluidos cierre/factura y M2/M3, registrada el 18-10-2026.
+- [x] PDF propio de OT implementado en OT8, conforme D18.
+
+Fuente, reglas y evidencia: `docs/HITO-ORDEN-TRABAJO-PRODUCCION.md`, checkpoint OT7/M4. No se habilitan guías, cobros ni reapertura.
+
+
+## 16-10-2026 — OT8/OT9: PDF y cierre técnico de OT
+
+- [x] PDF Carta propio por revisión de OT con confirmación, archivo inmutable, historial, vista previa y descarga de bytes verificados.
+- [x] Plan/receta/ejecución/reversiones/cierre/factura históricos y recursos locales, sin alterar folio, versión ni inventarios.
+- [x] Reintento estable ante incertidumbre; concurrencia y rollback validados en copia.
+- [x] Revisión de teclado/foco/Escape, selectores con búsqueda/vacío, readonly, errores de cantidad y 320/375/768/1440.
+- [x] Flujo OCC→producción→reversión→cierre/factura/PDF y regresiones de módulos relacionados.
+- [x] Manual operativo, recuperación, archivos y contratos para Despacho/Cobranza documentados.
+- [x] Usuario aprueba funcionamiento integral el 18-10-2026, después de la corrección del incidente de producción. Aceptación general sin reporte individual por escenario.
+
+Fuente: `HITO-ORDEN-TRABAJO-PRODUCCION.md`, checkpoint OT8/OT9, y `OPERACION-ORDENES-TRABAJO.md`.

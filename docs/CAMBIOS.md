@@ -1138,3 +1138,45 @@ Ver OT incorpora previsualización/confirmación, reversión con motivo e histor
 Validación técnica: integración M3 con idempotencia, carreras, rollback inducido en MP/PT/operación, restricciones SQL, variantes propias/comerciales y protección de inventario/Compras; regresiones M2, planificación, inicio y reservas en copias descartables. Chromium 320/768/1440 comprobó descarte/preview sin escritura, confirmación única, restitución física, historial, finanzas/folios intactos, navegación y anulación. Revisión funcional del usuario pendiente. Detalle y pasos en `docs/HITO-ORDEN-TRABAJO-PRODUCCION.md`.
 
 Despliegue local: 29 migraciones al día y cliente generado, sin diferencias de esquema ni checksums alterados. Las 58 tablas previas conservan datos originales según conteos/huellas pre/post migración; nuevas tablas M3 sin fixtures. Consultas locales, ESLint y build final correctos. Cuatro copias descartables retiradas; servidor temporal detenido y 3031 libre, conservando 3030 del usuario. Respaldos/evidencias en `backups/20261015_reversiones/`.
+
+
+## 16-10-2026 — Finalización y factura externa OT7/M4
+
+Migración `20261016184002_finalizacion_factura_trabajo`: cierre inmutable, identidad permanente emisor/folio y revisiones de factura, puntero vigente y operaciones tipadas. FK compuestas/índices/CHECK/triggers protegen origen, sucesión, preparación completa y vencimiento ligado a referencia; no se infieren hechos legados ni se modifican migraciones previas.
+
+`servicios/cierre-trabajo.ts` finaliza desde avance neto y reservas completas de entrega con respaldo físico/Kardex, sin escribir stock ni liberar reservas. Factura externa posterior y corrección con motivo calculan vencimiento desde fecha/plazo históricos, preservando importe/pagos/promesa. UUID/huella antes de versión, locks Quote → orden → OT → cuenta y recursos ascendentes; operaciones/snapshots juntos. Identidades anteriores no se liberan y el emisor histórico no se refresca desde Empresa.
+
+Interfaz Finalizar/Revisar preparación, Registrar/Corregir factura con confirmación y reintento estable; consulta de importe/abonos/saldo/vencimiento/promesa e historia desde Ver OT. Sin reapertura, cierre parcial, guías, emisión tributaria ni registro de pagos. PDF propio queda pendiente al final.
+
+Integración M4 validada en copias locales: propios/comerciales/mixtos, preparación, calendario, identidad, anticipos/saldo cero, condiciones históricas, UUID, carreras, rollback y restricciones SQL. Regresiones de reservas/inicio/plan/producción/reversión y Chromium 320/768/1440 correctos. Respaldo y comparación de las 61 tablas anteriores conservan sus datos originales al migrar localmente. Evidencia en `backups/20261016_finalizacion/`; detalle y revisión funcional pendiente en `docs/HITO-ORDEN-TRABAJO-PRODUCCION.md`.
+
+Cierre técnico local: 30 migraciones al día, checksums/esquema correctos, consultas y lint/tipos/build final correctos. Tablas nuevas M4 sin fixtures y OT real #3 en proceso, versión 3. Siete copias descartables retiradas, 3031 libre y servidor previo 3030 conservado. Sin push; aprobación funcional pendiente.
+
+
+## 16-10-2026 — OT8/OT9: PDF propio e integración final
+
+Migración `20261017000019_pdf_ordenes_trabajo`: emisiones/solicitudes inmutables de PDF de OT, unicidad por revisión/plantilla, origen/snapshot completos, tamaño/huella e integridad diferida. `snapshot_pdf_trabajo` conserva plan y ejecución históricos con cantidades como texto; no se agrega backfill ni se modifican migraciones aplicadas.
+
+Servicio de emisión captura coherentemente, renderiza fuera de tx y reconfirma revisión/origen bajo bloqueo compartido antes de archivar emisión/UUID. `AlmacenPdfTrabajo` local en `var/trabajos/pdfs` o `TRABAJO_PDF_DIR`, preparado para otro proveedor. Descarga verifica los bytes originales por SHA-256; respaldo de carpeta y recursos junto con PostgreSQL. PDF Carta interno con plan/receta, consumos/resultados, reversiones, cierre y factura externa. Chromium sin JS/red durante render, imágenes locales embebidas y texto escapado. La emisión no cambia revisión, stock, reservas ni cuenta.
+
+Ver OT añade generación confirmada, historial, preview/descarga y reintento estable. Accesibilidad básica: error de cantidad asociado, motivos de acciones bloqueadas y validación de teclado/foco/búsquedas/readonly en 320/375/768/1440. La prueba de consultas de Inventario usa ahora fixtures de documentos vigentes en lugar de insertar OT sin contrato ni eliminar historia; numeración tiene regresión sobre documentos existentes. Flujo integral y regresiones en copias aisladas; manual de operación/recuperación y contratos futuros de Despacho/Cobranza en `docs/OPERACION-ORDENES-TRABAJO.md`. Aprobación funcional integral pendiente, sin marcar por la solicitud de finalizar el desarrollo.
+
+Cierre local OT8/OT9: 31 migraciones, checksums/esquema correctos y 64 tablas anteriores conservadas. Tablas PDF reales vacías y OT #3 conserva EN_PROCESO/versión 3. Lint/tipos/build y 22 suites correctos; comprobación de 17 PDFs de prueba sin huérfanos. Copias y servidor temporal retirados, 3031 libre y 3030 previo conservado. Sin push; aprobación funcional pendiente.
+
+## 17-10-2026 — Compatibilidad de snapshots de OT anteriores a factura
+
+Se corrigió una regresión de M4: `currentInvoiceReferenceId` se agregó nullable a WorkOrder, pero las cabeceras JSON de operaciones anteriores no tienen esa clave. Al registrar producción, la comparación literal interpretaba la ausencia histórica frente al nuevo null como un cambio de plan y rechazaba la transacción. La OT local anterior a M4 permitió confirmar el diagnóstico sin modificarla.
+
+Migración nueva `20261017034142_compatibilidad_snapshots_trabajo`: `normalizar_cabecera_snapshot_trabajo` equipara exclusivamente ausencia y null del campo conocido al comparar cabeceras. Producción, inicio, reservas y reversiones usan la misma normalización. No se elimina la clave ni se ignoran valores no nulos; se conservan diferencias de otros campos, controles de estado/versión, identidad, plan e inventario. No cambia el esquema Prisma ni se reescriben operaciones, snapshots, movimientos o PDFs; las migraciones aplicadas anteriores quedan intactas.
+
+`tests/produccion-snapshots.integration.ts` inserta fixtures válidos con formato JSON anterior a M4 sin deshabilitar triggers ni actualizar historia. Reproduce el rechazo/rollback antes de la corrección y comprueba después catálogo, servicio puro, a medida, inicio, liberación/completado de reservas, reversión, idempotencia y conservación exacta de los snapshots previos. También verifica que valores no nulos, cambios de plan y claves desconocidas siguen siendo distintos. Las pruebas se ejecutan exclusivamente en copia local `mtx_validacion_produccion_snapshots_*`.
+
+Corrección aplicada localmente tras respaldo/restauración de copia y reproducción del error. 32 migraciones al día, checksums y esquema verificados; las 66 tablas conservan conteos/huellas antes/después. La OT real #3 sigue EN_PROCESO, versión 3 y sin producción registrada automáticamente; su cabecera histórica permanece sin el campo nuevo, pero la comparación normalizada es compatible. Regresiones de producción, reversión, inicio y reservas correctas, además de la prueba específica antes/después; lint, tipos y build correctos. Cuatro copias descartables retiradas, sin servidor de aplicación propio iniciado ni push. Evidencias en `backups/20261017_compatibilidad_snapshots/`.
+
+## 18-10-2026 — Aprobación funcional y cierre de OT
+
+El usuario confirma que todo funciona correctamente tras revisar el módulo. Se registra la aprobación funcional general y se cierra OT0–OT9 en el hito, el manual operativo y el seguimiento de interfaz. No se atribuye una ejecución individual de cada escenario. El siguiente hito del flujo es Guías de Despacho / entregas; servicios de Cobranza posteriores e independientes. Cambio documental, sin modificación de esquema, código o base de datos.
+
+## 18-10-2026 — Planificación de Guías de Despacho y Entregas
+
+Se agrega `HITO-GUIAS-DESPACHO-ENTREGAS.md` con dependencias actuales, invariantes propuestas, etapas G0–G6, casos mínimos y criterios de cierre. `OPERACION-ORDENES-TRABAJO.md` enlaza el plan y refleja la regla aprobada de conformidad por línea para servicios/a medida. La planificación queda cerrada funcionalmente tras las cinco respuestas del usuario del 18-10-2026: sólo OCC/clientes, entregas parciales antes de finalizar OT, documento operativo interno, conformidad por línea para servicios/a medida y legado `DeliveryNote` no conciliado. No se modifica esquema, código ni base de datos.

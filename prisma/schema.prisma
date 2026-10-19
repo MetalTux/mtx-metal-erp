@@ -763,6 +763,13 @@ model SalesOrderOperation {
 // Orden de trabajo. Si salesOrderId es nulo, es una OBRA PROPIA
 // (fabricación sin cliente: stock propio, uso interno, proyecto personal).
 model WorkOrder {
+  pdfEmissions              WorkOrderPdfEmission[]
+  completion                WorkOrderCompletion?
+  invoiceIdentities         WorkOrderInvoiceIdentity[]
+  invoiceReferences         WorkOrderInvoiceReference[] @relation("InvoiceHistory")
+  currentInvoiceReferenceId Int?                        @unique
+  currentInvoiceReference   WorkOrderInvoiceReference?  @relation("CurrentInvoice", fields: [currentInvoiceReferenceId, id], references: [id, workOrderId], onDelete: Restrict, onUpdate: NoAction)
+
   productionReversals ProductionReversal[]
   productionRecords   ProductionRecord[]
 
@@ -798,6 +805,7 @@ model WorkOrder {
   updatedAt DateTime @updatedAt // Última modificación (automática)
   // La unicidad permite múltiples obras propias con salesOrderId = null.
 
+  @@unique([currentInvoiceReferenceId, id])
   @@index([status, date, id])
   @@index([targetDate, id])
 }
@@ -818,6 +826,9 @@ enum WorkOrderExecutionMode {
 
 // Tipos iniciales; Producción/Reservas amplían el historial en sus migraciones.
 enum WorkOrderOperationType {
+  FINALIZAR
+  REGISTRAR_FACTURA
+  CORREGIR_FACTURA
   REVERTIR_PRODUCCION
   REGISTRAR_PRODUCCION
   RESERVAR_STOCK
@@ -922,6 +933,11 @@ model WorkOrderSupplyPlan {
 }
 
 model WorkOrderOperation {
+  completionId       Int?                       @unique
+  completion         WorkOrderCompletion?       @relation(fields: [completionId, workOrderId], references: [id, workOrderId], onDelete: Restrict)
+  invoiceReferenceId Int?                       @unique
+  invoiceReference   WorkOrderInvoiceReference? @relation(fields: [invoiceReferenceId, workOrderId], references: [id, workOrderId], onDelete: Restrict)
+
   productionReversalId Int?                @unique
   productionReversal   ProductionReversal? @relation(fields: [productionReversalId, workOrderId], references: [id, workOrderId], onDelete: Restrict)
 
@@ -944,6 +960,8 @@ model WorkOrderOperation {
   createdAt           DateTime                     @default(now())
   updatedAt           DateTime                     @updatedAt
 
+  @@unique([completionId, workOrderId])
+  @@unique([invoiceReferenceId, workOrderId])
   @@unique([workOrderId, version])
   @@unique([productionRecordId, workOrderId])
   @@unique([productionReversalId, workOrderId])
@@ -1693,4 +1711,97 @@ model ProductionReversalOutput {
   @@unique([id, productId, warehouseId])
   @@unique([productionReversalId, productionRecordId])
   @@unique([productionOutputId, productId, warehouseId])
+}
+
+// Cierre industrial inmutable; no acredita despacho ni pago.
+model WorkOrderCompletion {
+  id                   Int                 @id @default(autoincrement())
+  workOrderId          Int                 @unique
+  workOrder            WorkOrder           @relation(fields: [workOrderId], references: [id], onDelete: Restrict)
+  date                 DateTime            @db.Date
+  note                 String              @db.VarChar(1000)
+  preparationConfirmed Boolean
+  progressSnapshot     Json
+  operation            WorkOrderOperation?
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+
+  @@unique([id, workOrderId])
+}
+
+// Identidad permanente: corregir una referencia nunca libera el folio anterior.
+model WorkOrderInvoiceIdentity {
+  id            Int                         @id @default(autoincrement())
+  workOrderId   Int
+  workOrder     WorkOrder                   @relation(fields: [workOrderId], references: [id], onDelete: Restrict)
+  issuerRut     String                      @db.VarChar(12)
+  invoiceNumber String                      @db.VarChar(150)
+  references    WorkOrderInvoiceReference[]
+  createdAt     DateTime                    @default(now())
+  updatedAt     DateTime                    @updatedAt
+
+  @@unique([issuerRut, invoiceNumber])
+  @@unique([id, workOrderId])
+  @@index([workOrderId])
+}
+
+model WorkOrderInvoiceReference {
+  id                         Int                        @id @default(autoincrement())
+  workOrderId                Int
+  workOrder                  WorkOrder                  @relation("InvoiceHistory", fields: [workOrderId], references: [id], onDelete: Restrict)
+  identityId                 Int
+  identity                   WorkOrderInvoiceIdentity   @relation(fields: [identityId, workOrderId], references: [id, workOrderId], onDelete: Restrict)
+  revision                   Int
+  issuerRut                  String                     @db.VarChar(12)
+  invoiceNumber              String                     @db.VarChar(150)
+  invoiceDate                DateTime                   @db.Date
+  paymentTermDays            Int
+  dueDate                    DateTime                   @db.Date
+  replacesInvoiceReferenceId Int?                       @unique
+  replaces                   WorkOrderInvoiceReference? @relation("InvoiceReplacement", fields: [replacesInvoiceReferenceId, workOrderId], references: [id, workOrderId], onDelete: Restrict, onUpdate: NoAction)
+  replacedBy                 WorkOrderInvoiceReference? @relation("InvoiceReplacement")
+  correctionReason           String?                    @db.VarChar(1000)
+  currentFor                 WorkOrder?                 @relation("CurrentInvoice")
+  operation                  WorkOrderOperation?
+  createdAt                  DateTime                   @default(now())
+  updatedAt                  DateTime                   @updatedAt
+
+  @@unique([replacesInvoiceReferenceId, workOrderId])
+  @@unique([id, workOrderId])
+  @@unique([workOrderId, revision])
+  @@index([identityId, workOrderId])
+}
+
+// Emisiones históricas de OT: no cambian revisión, folio ni inventarios.
+model WorkOrderPdfEmission {
+  id               String                @id @db.Uuid
+  workOrderId      Int
+  workOrder        WorkOrder             @relation(fields: [workOrderId], references: [id], onDelete: Restrict)
+  workOrderVersion Int
+  templateVersion  Int
+  snapshotVersion  Int
+  status           WorkOrderStatus
+  folio            String
+  snapshot         Json
+  fileKey          String                @unique
+  fileSize         Int
+  fileHash         String
+  requests         WorkOrderPdfRequest[]
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+
+  @@unique([workOrderId, workOrderVersion, templateVersion])
+  @@index([workOrderId, createdAt])
+}
+
+// Distintas solicitudes de una misma revisión apuntan a una única emisión.
+model WorkOrderPdfRequest {
+  idempotencyKey String               @id @db.Uuid
+  fingerprint    String
+  emissionId     String               @db.Uuid
+  emission       WorkOrderPdfEmission @relation(fields: [emissionId], references: [id], onDelete: Restrict)
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+
+  @@index([emissionId])
 }

@@ -1,6 +1,6 @@
 # Hito Orden de Trabajo y Producción
 
-**Estado: M1/MR, planificación e inicio implementados; inicio validado por el usuario. OT5/M2 de fabricación parcial, avances, consumos y reserva del resultado implementado y migrado, con validación técnica. Revisión funcional de Producción pendiente. OT6/M3 de reversión completa y anulación de obra propia implementado y validado técnicamente; revisión funcional pendiente. Finalización/factura (OT7/M4) y PDF final aún pendientes. Cierre técnico de M3: 15-10-2026.**
+**Estado: hito OT cerrado. Implementación y validación técnica de OT0–OT9 completadas; aprobación funcional general del usuario registrada el 18-10-2026, después de corregir el incidente de producción del 17-10-2026. Incluye planificación/reservas, inicio, producción, reversiones, cierre/factura y PDF histórico propio.**
 
 Este documento define estructura, reglas, cambios, secuencia, pruebas y criterios de cierre. La entrega inicial fue exclusivamente documental. Posteriormente el usuario autorizó proceder con los cambios del plan; esa autorización permite avanzar en decisiones técnicas e implementación. Las decisiones comerciales señaladas como pendientes deben resolverse expresamente antes de sus bloques dependientes.
 
@@ -245,7 +245,7 @@ Primer registro: fabrica 2 XY, consume 5,000 kg A y 1,500 m B, ingresa 2 XY. Seg
 
 ## 7. Modelo de datos propuesto
 
-**Estado actual por bloques:** WorkOrder ampliado, WorkOrderLine, WorkOrderRecipeMaterial, WorkOrderSupplyPlan, WorkOrderOperation, ampliación de WorkOrderDetail y vínculo a folio implementados en M1. Reservas Allocation/Event implementadas en MR y planificación/inicio públicos implementados después. ProductionRecord/Consumption/Output implementados en M2. ProductionReversal y Completion/InvoiceReference siguen siendo diseño futuro. Las tablas siguientes describen el contrato previsto completo; consultar los cierres técnicos M1/MR/OT5 para las restricciones realmente habilitadas. Cerrar las decisiones aplicables antes de desarrollar cada bloque.
+**Estado vigente por bloques:** M1 de estructura/plan, MR de reservas, M2 de producción, M3 de reversiones y M4 de cierre/factura implementados y migrados. OT8 incorpora PDF histórico propio con emisiones/solicitudes inmutables. Las tablas siguientes conservan el diseño y su justificación original; para restricciones efectivas usar el esquema, migraciones y checkpoints finales. No quedan decisiones D01–D20 bloqueantes del alcance entregado.
 
 ```mermaid
 erDiagram
@@ -848,6 +848,8 @@ Pruebas de una misma copia se ejecutan secuencialmente. Paralelizar sólo con co
 
 ## 16. Plan de implementación por hitos y criterios de salida
 
+Checklist acumulado conciliado al cierre OT8/OT9. Las salidas de cada etapa conservan su alcance histórico; los checkpoints finales acreditan las ampliaciones posteriores. Las aprobaciones funcionales sólo se marcan con confirmación expresa del usuario.
+
 ### OT0 — planificación documental (esta entrega)
 
 - [x] Revisar estado de archivos y preservar cambios previos.
@@ -856,19 +858,19 @@ Pruebas de una misma copia se ejecutan secuencialmente. Paralelizar sólo con co
 - [x] Separar reglas aprobadas de decisiones D01–D20.
 - [x] Definir diseño condicionado, transacciones, interfaz, migración y matriz de pruebas.
 - [x] Crear únicamente este documento de planificación.
-- [ ] Usuario revisa decisiones comerciales y delimita primera entrega.
+- [x] Usuario revisa decisiones comerciales y delimita primera entrega; respuestas registradas en 5.2–5.5.
 
 **Salida:** plan revisable, sin cambios de sistema. Los checks documentales no acreditan pruebas de funcionamiento.
 
 ### OT1 — acuerdos, auditoría y diseño ejecutable
 
-- [ ] Registrar respuestas D01–D20 por bloque, sin asumir aprobación general de recomendaciones.
-- [ ] Ajustar modelos/estados/alcance del plan a las respuestas y cerrar alternativas incompatibles.
+- [x] Registrar respuestas D01–D20 por bloque, sin asumir aprobación general de recomendaciones.
+- [x] Ajustar modelos/estados/alcance del plan a las respuestas y cerrar alternativas incompatibles.
 - [x] Auditar datos/legados, restricciones instaladas de las tablas revisadas, numeración y stock en sólo lectura; evidencia y límites en la continuación de OT1.
-- [ ] Trazar locks de servicios y triggers, incluidos recursos descubiertos en receta.
-- [ ] Definir catálogo de errores, límites de formulario, política de reintentos y matriz de permisos futuros.
+- [x] Trazar locks de servicios y triggers, incluidos recursos descubiertos en receta.
+- [x] Definir catálogo de errores, límites de formulario, política de reintentos y matriz de permisos futuros.
 - [x] Preparar respaldo y copia descartable; comprobar restauración (M1).
-- [ ] Convertir modelo propuesto en diseño Prisma/SQL con mapa completo de FK/índices/checks.
+- [x] Convertir modelo propuesto en diseño Prisma/SQL con mapa completo de FK/índices/checks.
 
 **Salida:** cero decisiones bloqueantes del siguiente bloque, auditoría sin incidencias abiertas para migrar y contrato de legados explícito.
 
@@ -908,7 +910,7 @@ Pruebas de una misma copia se ejecutan secuencialmente. Paralelizar sólo con co
 - [x] Editar plan pendiente con versión e historial; conservar alcance y cantidades comerciales.
 - [x] Integrar Crear/Ver trabajo desde OCC y menú/ruta existente.
 - [x] Probar carreras de creación, cancelación de formulario, numeración ausente y rollback.
-- [ ] Usuario valida creación comercial, parcial aceptada y obra propia.
+- [x] Usuario valida creación comercial, parcial aceptada y obra propia. Aceptación general del módulo el 18-10-2026; sin reporte individual por caso.
 
 **Salida:** OT documental operativa; guardar borrador no reserva. Confirmar plan reserva explícitamente lo disponible, sin movimientos físicos.
 
@@ -920,8 +922,8 @@ Pruebas de una misma copia se ejecutan secuencialmente. Paralelizar sólo con co
 - [x] Reservar parcialmente al confirmar plan, completar reservas explícitamente y consultar cobertura propia/ajena/libre sin vencimiento automático.
 - [x] Diferenciar producción, stock, materia prima directa, servicio y a medida.
 - [x] Revisar plan/iniciar con fecha, estado y versión; no consumir al iniciar.
-- [ ] Probar cambio concurrente de receta/unidad/clasificación y conjunto de locks.
-- [ ] Usuario valida cantidades, unidades, faltantes, reservas propias/ajenas y disponibilidad libre.
+- [x] Probar cambio concurrente de receta/unidad/clasificación y conjunto de locks; regresión específica en OT8.
+- [x] Usuario valida cantidades, unidades, faltantes, reservas propias/ajenas y disponibilidad libre. Aceptación general del módulo el 18-10-2026; sin reporte individual por caso.
 
 **Salida:** plan reproducible, con insumos claros y sin efectos físicos anticipados.
 
@@ -934,7 +936,7 @@ Pruebas de una misma copia se ejecutan secuencialmente. Paralelizar sólo con co
 - [x] Añadir historial/orígenes/navegación en ambos inventarios.
 - [x] Probar inyección de fallos por etapa y recuperación de respuesta perdida.
 - [x] Probar dos OT compitiendo por el mismo stock y producción vs inventario/Compras.
-- [ ] Usuario valida fabricación completa/parcial y casos sin fabricación.
+- [x] Usuario valida fabricación completa/parcial y casos sin fabricación. Aceptación general del módulo el 18-10-2026; sin reporte individual por caso.
 
 **Salida:** cada hecho deja exactamente sus efectos físicos y documentales; stock nunca queda parcialmente actualizado.
 
@@ -946,43 +948,43 @@ Pruebas de una misma copia se ejecutan secuencialmente. Paralelizar sólo con co
 - [x] Conservar original y mostrar avance neto sin borrar movimientos.
 - [x] Habilitar únicamente anulaciones aprobadas; mantener folio y unicidad comercial.
 - [x] Probar doble reversión, fallos, reposición posterior y bloqueos por hechos posteriores.
-- [ ] Usuario valida procedimiento y límites de corrección.
+- [x] Usuario valida procedimiento y límites de corrección. Aceptación general del módulo el 18-10-2026; sin reporte individual por caso.
 
 **Salida:** errores corregibles de forma trazable dentro del alcance aprobado; casos bloqueados explicados.
 
 ### OT7 — cierre, factura y consulta financiera
 
-- [ ] Implementar M4 y condiciones de cierre por modo de línea.
-- [ ] Finalizar con hecho/estado/operación coherentes, sin movimientos ocultos.
-- [ ] Registrar factura y calcular vencimiento desde plazo histórico.
-- [ ] Implementar corrección de referencia conforme D16 aprobada, incluso con abonos, preservando importe/pagos.
-- [ ] Probar identidad por RUT emisor/folio: duplicados entre OT rechazados aun en años distintos; mismo folio de otro RUT permitido; corregir sólo fecha mantiene identidad y revisiones; folio previo conserva vínculo histórico.
-- [ ] Mostrar cuenta/abonos/saldo/promesa sin duplicar cuentas o inferir pagos.
-- [ ] Probar cierre incompleto, factura parcial de datos, concurrencia con pagos y cambios de condición.
-- [ ] Usuario valida finalización, factura/vencimiento y consulta de anticipos.
+- [x] Implementar M4 y condiciones de cierre por modo de línea.
+- [x] Finalizar con hecho/estado/operación coherentes, sin movimientos ocultos.
+- [x] Registrar factura y calcular vencimiento desde plazo histórico.
+- [x] Implementar corrección de referencia conforme D16 aprobada, incluso con abonos, preservando importe/pagos.
+- [x] Probar identidad por RUT emisor/folio: duplicados entre OT rechazados aun en años distintos; mismo folio de otro RUT permitido; corregir sólo fecha mantiene identidad y revisiones; folio previo conserva vínculo histórico.
+- [x] Mostrar cuenta/abonos/saldo/promesa sin duplicar cuentas o inferir pagos.
+- [x] Probar cierre incompleto, factura parcial de datos, concurrencia con pagos y cambios de condición.
+- [x] Usuario valida finalización, factura/vencimiento y consulta de anticipos. Aceptación general del módulo el 18-10-2026; sin reporte individual por caso.
 
 **Salida:** estado industrial y vencimiento tienen fuentes auditables e independientes de entregas/pagos.
 
 ### OT8 — experiencia de uso y regresión integral
 
-- [ ] Validar flujo completo desde OCC a OT y producción/corrección/cierre.
-- [ ] Revisar accesibilidad, teclado, readonly, búsquedas, errores, confirmaciones y pantallas pequeñas.
+- [x] Validar flujo completo desde OCC a OT y producción/corrección/cierre.
+- [x] Revisar accesibilidad, teclado, readonly, búsquedas, errores, confirmaciones y pantallas pequeñas.
 - [x] Registrar D18: PDF propio de OT al final del desarrollo, después del flujo operativo.
-- [ ] Implementar PDF propio en ese bloque final y validar su almacenamiento/historia.
-- [ ] Regresiones de Compras, inventarios, catálogo, numeración, Cotizaciones/OCC/PDF.
-- [ ] Ejecutar `pnpm lint`, `pnpm build` y comprobaciones específicas de dominio.
-- [ ] Revisar diff, migraciones, tipos serializados, datos preservados y recursos locales.
-- [ ] Retirar copias/servidores propios y verificar puertos.
+- [x] Implementar PDF propio en ese bloque final y validar su almacenamiento/historia.
+- [x] Regresiones de Compras, inventarios, catálogo, numeración, Cotizaciones/OCC/PDF.
+- [x] Ejecutar `pnpm lint`, `pnpm build` y comprobaciones específicas de dominio.
+- [x] Revisar diff, migraciones, tipos serializados, datos preservados y recursos locales.
+- [x] Retirar copias/servidores propios y verificar puertos.
 
 **Salida:** evidencias reproducibles y sin regresiones conocidas en los flujos comprobados.
 
 ### OT9 — cierre funcional y continuación
 
-- [ ] Documentar uso, límites, recuperación y resultados en este hito.
-- [ ] Registrar cambios reales de esquema/arquitectura en `docs/CAMBIOS.md` al implementar.
-- [ ] Actualizar instrucciones y checkpoints de módulos relacionados sólo por funciones implementadas/validadas.
-- [ ] Usuario aprueba funcionamiento de la entrega completa.
-- [ ] Registrar contrato final para Guías de Despacho y Cobranza, sin declararlos implementados.
+- [x] Documentar uso, límites, recuperación y resultados en este hito.
+- [x] Registrar cambios reales de esquema/arquitectura en `docs/CAMBIOS.md` al implementar.
+- [x] Actualizar instrucciones y checkpoints de módulos relacionados sólo por funciones implementadas/validadas.
+- [x] Usuario aprueba funcionamiento de la entrega completa (18-10-2026; aprobación general, ver checkpoint de cierre).
+- [x] Registrar contrato final para Guías de Despacho y Cobranza, sin declararlos implementados.
 
 **Salida:** hito cerrado por validación funcional expresa, no sólo por build correcto.
 
@@ -1105,7 +1107,9 @@ Las dudas bloquean el bloque dependiente, no la preparación documental o las co
 
 El módulo estará terminado cuando el usuario pueda crear su única OT desde lo aceptado, planificar correctamente, registrar/corregir hechos permitidos, consultar materiales y productos históricos y finalizar con factura/vencimiento coherentes; todo ello con conservación del stock, la deuda, los folios y los módulos previos. Las exclusiones de primera entrega deben quedar expresas y la aprobación funcional debe registrarse al final, sin confundirla con la aprobación de este plan.
 
-**Paso actual de implementación: OT1.** Resolver primero D01–D08 por su impacto estructural; después D09–D20 antes de los bloques correspondientes. La entrega inicial creó únicamente este documento; la estructura se evaluó estáticamente, sin declararla validada por ejecución ni suficiente para producir sin sus ampliaciones.
+**Paso actual: hito OT cerrado con aprobación funcional general del usuario el 18-10-2026.** Las decisiones D01–D20 se resolvieron durante la implementación. El siguiente hito del flujo es Guías de Despacho; su alcance y decisiones se deben definir antes de implementarlo.
+
+**Cronología histórica:** las continuaciones siguientes describen lo que estaba implementado o pendiente en cada fecha. No reemplazan el estado vigente ni el cierre OT8/OT9; se conservan para trazabilidad.
 
 ### Inicio de OT1 — autorización posterior del usuario
 
@@ -1387,3 +1391,104 @@ Cierre de M2 tras la reanudación: compilación final y lint terminaron con cód
 **Siguiente hito:** OT7/M4 de finalización, referencia de factura externa y vencimiento. Despachos, cobros y PDF final no se habilitan por esta entrega.
 
 **Cierre técnico de M3:** migración aplicada a `mtx_metal_erp`, cliente regenerado y 29 migraciones al día, con checksums comprobados y sin diferencias Prisma. Respaldo actualizado previo y comparación de las 58 tablas anteriores por sus columnas originales: mismos conteos/huellas antes y después. La OT local #3 conserva EN_PROCESO, versión 3; las tres tablas nuevas de reversión están vacías y no contienen fixtures. Consultas locales de OT/catálogos/Kardex MP/PT correctas. ESLint y compilación de producción final correctos. Las cuatro copias descartables fueron retiradas y se verificó su ausencia; servidor temporal 3031 detenido y puerto libre, servidor previo del usuario 3030 conservado. Sin push. Estos resultados no sustituyen la validación funcional pendiente.
+
+
+### OT7/M4 — finalización, factura externa y consulta financiera (16-10-2026)
+
+**Alcance implementado:** cierre industrial completo, factura externa posterior y correcciones históricas. Finalizar no despacha, no consume ni libera reservas, no genera terminado, no crea deuda ni registra pagos. Se mantienen pendientes las aprobaciones funcionales de M2/M3/M4 y el PDF propio de OT para el final del módulo. No se habilitan guías, cobros, facturación parcial, reapertura ni cierre incompleto.
+
+#### Estructura y contratos
+
+- Migración `20261016184002_finalizacion_factura_trabajo`: `WorkOrderCompletion`, `WorkOrderInvoiceIdentity` y `WorkOrderInvoiceReference`, más puntero vigente en WorkOrder y vínculos propios de operación. Cada documento tiene timestamps, FK compuestas de la misma OT, índices, Restrict e inmutabilidad. No hay backfill ni actualización ficticia de documentos existentes.
+- `FINALIZAR` enlaza exclusivamente el cierre; `REGISTRAR_FACTURA` y `CORREGIR_FACTURA` enlazan exclusivamente una revisión. La interfaz utiliza acciones separadas: finalizar sin factura y luego registrar factura. Cada acción tiene UUID estable, huella normalizada, versión y snapshots propios.
+- La identidad permanente `(issuerRut, invoiceNumber)` conserva el folio literal sin año ni serie. Corregir fecha reutiliza identidad; corregir folio conserva también la identidad anterior. Otro emisor puede usar el mismo folio. El emisor proviene del snapshot comercial y, en correcciones, de la referencia histórica vigente; no se refresca desde Empresa ni se permite cambiarlo en el formulario.
+- Triggers impiden cierre incompleto, resumen adulterado, documentos huérfanos, ramas de revisiones, puntero distinto de la última factura o vencimiento sin fuente. El vencimiento de cuentas de OT con contrato nuevo debe coincidir con la referencia vigente, o ser nulo antes de facturar. Se conserva el contrato legado sin inventar facturas.
+
+#### Servicios y reglas de cierre
+
+`servicios/cierre-trabajo.ts` reconoce UUID/huella antes de comprobar versión/estado. Bloquea UUID → Quote → SalesOrder → WorkOrder → AccountReceivable; obras propias omiten referencias comerciales. Para finalizar, continúa con materiales/productos ascendentes y bodegas compatibles con los escritores existentes. Consultas sobre tx secuenciales.
+
+- Sólo OT de contrato nuevo EN_PROCESO, con fecha entre el último hecho productivo/reversión y hoy de Santiago, nunca antes del inicio.
+- Avance neto excluye registros revertidos: catálogo debe completar `quantityToProduce`; servicio/a medida, toda `quantity`; venta directa no simula fabricación.
+- En OT comercial, catálogo y MP directa requieren reservas completas de entrega por línea y respaldo físico/Kardex de sus bodegas. No quedan reservas de consumo incompatibles con ejecución terminada. Obra propia no reserva ficticiamente su resultado para un cliente.
+- `snapshot_preparacion_trabajo` captura avance, cantidades/unidades, reservas propias, bodega, físico y reservado total. Preview RepeatableRead no escribe; confirmar vuelve a validar. Cierre + estado + operación se confirman juntos. Se conservan reservas comerciales para el futuro Despacho.
+- Una OT finalizada no admite editar plan, producir, revertir ni reabrir; tampoco se habilitan nuevas liberaciones/completados desde esta UI.
+
+#### Factura y consulta de cuenta
+
+Folio y fecha obligatorios juntos, fecha válida no futura; se admite fecha anterior al cierre. Una sola factura vigente por OT comercial finalizada, orden/cuenta vigentes y plazo histórico disponible. `vencimientoFactura` suma días calendario UTC a la fecha documental, sin sumar horas de Santiago ni consultar el plazo actual del mantenedor. Al día suma cero. Se rechaza vencimiento fuera de rango.
+
+Registrar crea identidad/referencia/operación y actualiza puntero + `AccountReceivable.dueDate` en una transacción. Corregir exige motivo y reemplaza exclusivamente la vigente con una nueva revisión; conserva anteriores. Se admiten anticipos e incluso saldo cero. No cambia importe, abonos, promesa de pago ni documentos de despacho.
+
+Ver OT muestra cuenta vigente/anulada, importe aceptado, abonos vigentes, saldo derivado, vencimiento y promesa separados, detalle de abonos incluidos anulados e historial de factura. Cuenta anulada se identifica y se excluye conceptualmente de por cobrar, sin presentarla como saldada. Obra propia indica «Sin cuenta comercial». No hay acciones para ingresar pagos.
+
+#### Uso y revisión funcional pendiente
+
+1. En **Ver OT → Finalizar OT**, indicar fecha y observación opcional; confirmar revisión de ejecución/preparación. **Revisar preparación** muestra avance neto y reservas/físico por línea/bodega. Si falta ejecución o reserva, resolverla antes del cierre.
+2. **Confirmar finalización → Finalizar OT** guarda el cierre irreversible de esta primera entrega. Ver OT muestra fecha/observación y mantiene cuenta sin vencimiento mientras no exista factura.
+3. En OT comercial finalizada, **Registrar factura externa** solicita folio literal y fecha del documento emitido fuera del ERP. **Revisar factura → Registrar factura** guarda referencia y vencimiento desde plazo histórico.
+4. **Corregir factura** permite corregir folio/fecha con motivo. Confirmar conserva revisiones e identidades antiguas; comprobar nueva fecha de vencimiento y abonos intactos, también con cuenta saldada.
+5. Revisar cuenta/abonos/saldo/promesa desde Ver OT; comprobar obra propia, servicio/a medida y una OT mixta. Descartar antes de confirmar no escribe. Una respuesta incierta bloquea cambios y conserva datos/UUID para reintento.
+
+#### Validación técnica y evidencias
+
+- `tests/ordenes-trabajo-cierre.integration.ts` exige copia local `mtx_validacion_finalizacion_*`. Cierre propio/comercial, lotes incompletos, fechas, confirmación explícita, preview sin escrituras, estado terminal, cuenta sin vencimiento y anticipos intactos; rechazo de factura propia.
+- Catálogo con reservas incompletas bloquea cierre; completar permite cerrar conservando stock/reservas. Venta de terminado desde stock y MP directa cierran sin fabricación. OT mixta de cuatro líneas: catálogo combina stock/fabricación, servicio puro, a medida y venta MP; cada pendiente bloquea hasta completar todas las líneas.
+- Factura parcial/folio vacío rechazados; días calendario, bisiesto, fin de mes/año y cambio horario; plazo histórico pese a edición de catálogo. Correcciones de fecha/folio con motivo, identidad reutilizada o conservada; mismo folio en otro año/OT rechazado, otro emisor permitido. Abonos, saldo cero y promesa intactos.
+- UUID en mayúsculas/reintentos, otra intención rechazada, cierres/facturas concurrentes, cierre vs reversión y factura vs abono bajo cuenta bloqueada. Fallo inducido al insertar operación demuestra rollback de cierre/identidad/referencia/vencimiento y posterior reintento con la misma clave. SQL rechaza cierre sin documento, vencimiento adulterado, identidad huérfana y edición de historia.
+- Regresiones de reservas, inicio, planificación, producción y reversiones correctas en cinco copias separadas, cada una retirada al terminar. Ningún fixture/trigger de fallo en base de uso.
+- Chromium 320/768/1440: preview/descarte sin escritura, confirmación única ante doble clic, cierre sin cambios físicos, factura literal y corrección histórica, vencimiento coincidente, abonos/folios/reservas intactos, sin errores JS ni desbordamiento. Capturas inspeccionadas; no equivale a auditoría formal de accesibilidad.
+- Respaldo restaurado en copias y dump actualizado antes de migrar. Migración local aplicada, cliente generado; 61 tablas anteriores conservan conteos/huellas por columnas originales. Evidencias ignoradas en `backups/20261016_finalizacion/`.
+
+**Siguiente entrega:** PDF propio de OT al final del flujo operativo conforme D18; validación funcional de Producción, reversiones y cierre/factura sigue pendiente. Despacho y servicios de Cobranza requieren sus propios hitos.
+
+**Cierre técnico local de M4:** 30 migraciones al día, checksums coincidentes y esquema sin diferencias; consultas de OT/catálogos/Kardex correctas. OT real #3 conserva EN_PROCESO y versión 3. Cierre, identidades y referencias de factura reales tienen cero filas de prueba. Lint, tipos y build final correctos. Las siete copias descartables fueron retiradas; 3031 libre y servidor previo del usuario en 3030 conservado. Sin push. La validación funcional sigue sin marcar.
+
+
+### OT8/OT9 — PDF propio, regresión integral y cierre técnico (16-10-2026)
+
+**Entrega técnica completa; aprobación funcional pendiente.** Se completaron el PDF y la validación integral solicitados. Los checks antiguos de OT0/OT1/OT4/OT8/OT9 se conciliaron con código, decisiones y evidencia; no se marcaron las revisiones funcionales de OT3–OT7 ni la aprobación final de OT9. La instrucción «Finaliza entonces los hitos de OT» autoriza desarrollar y validar, no acredita por sí misma una prueba funcional realizada por el usuario.
+
+#### PDF de OT
+
+- Migración `20261017000019_pdf_ordenes_trabajo` (nombre UTC; entrega del 16-10 en Chile): `WorkOrderPdfEmission` y `WorkOrderPdfRequest`, con índices/FK Restrict, unicidad por OT/revisión/plantilla, UUID, tamaño/huella, origen coherente, inmutabilidad y solicitud obligatoria junto con emisión. No crea emisiones para documentos anteriores ni altera datos existentes.
+- `snapshot_pdf_trabajo` captura plan/receta/requerimientos/distribución históricos, registros/consumos/resultados, reversiones, reservas propias, cierre, referencias de factura, folio, emisor y nombres de bodegas usados. Cantidades como texto decimal. No consulta precios/recetas actuales para reconstruir ejecución ni inventa producción para legado.
+- `emitirPdfTrabajo`: lectura RepeatableRead secuencial → render fuera de transacción → serialización de UUID/OT y bloqueo compartido del trabajo → verificar revisión/huella y archivar emisión/solicitud juntas. No cambia versión, folios, reservas, físico, Kardex ni cuenta. Solicitudes concurrentes de la misma revisión/plantilla convergen en una emisión.
+- Reintento con UUID normalizado reconoce emisión anterior; otra intención con la misma clave se rechaza. Un archivo perdedor/no referenciado se elimina sólo después de verificar la base; si esa comprobación falla, se conserva. La UI bloquea cambios/cierre ante resultado incierto y permite reintentar con referencia/clave originales.
+- `AlmacenPdfTrabajo` local en `var/trabajos/pdfs/` o `TRABAJO_PDF_DIR`; fábrica preparada para otro proveedor. Respaldar con PostgreSQL, logos e imágenes históricas. No hay purga automática. `GET /api/trabajos/pdfs/[emision]` verifica tamaño/SHA-256 y sirve los bytes originales, con descarga opcional, sin regenerar historia.
+- Plantilla Carta propia, texto escapado, cantidades/unidades visibles, plan y avance neto separados, registro revertido y corrección vinculada, cierre y referencia externa. Alcance técnico enriquecido reutiliza nodos validados e imágenes locales embebidas; no imprime una página técnica vacía. Emisor comercial desde compromiso histórico; obra propia captura Empresa al emitir. Documento interno sin detalle de abonos ni precios comerciales.
+- Chromium Node, JS deshabilitado y red bloqueada durante render; cierre garantizado del navegador. `TRABAJO_CHROMIUM_PATH` opcional. Ver OT incorpora generación confirmada, historial, vista previa/descarga. Versionar plantilla/snapshot al evolucionarlos; no reconstruir revisiones antiguas nunca emitidas.
+
+#### Validación integral
+
+- `tests/pdfs-trabajo.integration.ts`: OCC → plan confirmado → inicio → fabricación parcial → reversión → fabricación correcta vinculada → cierre → factura → anticipo. Emisiones en estados pendiente/en proceso/finalizado y obra propia anulada. Comprobación de bytes, contenido PDF, receta histórica, origen decimal, ejecución/reversión/cierre/factura, emisiones únicas concurrentes, reintentos/UUID, rollback inducido al escribir solicitud, limpieza del archivo perdedor, inmutabilidad y rechazo de origen SQL adulterado/documento sin solicitud. Corrupción del archivo detectada por huella; lectura histórica intacta tras cambiar Empresa/producto/receta.
+- `tests/ordenes-trabajo-catalogos-concurrencia.integration.ts`: carreras de plan vs unidad, reclasificación de bodega y receta; mismo orden de locks, sin confirmar clasificación incompatible ni mezclar receta/requerimientos de revisiones diferentes.
+- Regresiones aisladas de Compras/recepciones/cierre; consultas Inventario, mínimos, ajustes/traslados MP; catálogo/stock/ajustes PT; Cotizaciones y PDF; OCC/adicional/integridad; planificación/producción/reversiones/cierre. Cada prueba que escribe utiliza su propia copia y las pruebas de cada copia son secuenciales.
+- La antigua prueba de consultas Inventario intentaba insertar una OT sin contrato y movimientos sin sus documentos. Se actualizaron sus fixtures a Compra/recepción, inicial/mínimos y producción mediante servicios vigentes; conserva comprobaciones de lectura sin escritura, precisión, filtros/paginación/orden/orígenes, concurrencia y días Chile/DST. No se deshabilitaron restricciones. Los negativos históricos se siguen formateando, pero no se inventa stock negativo nuevo para un fixture.
+- `tests/numeracion-con-documentos.integration.ts` comprueba UUID, secuencia concurrente, rollback, versiones/formato inmutable y preservación de folios anteriores sobre una copia con documentos. La prueba inicial de numeración vacía conserva su ámbito histórico y no se usa sobre una copia con folios ya consumidos.
+- Chromium 320/375/768/1440: PDF único ante doble clic, ruta/bytes/404, confirmación por teclado, Escape/foco tras estabilizar el montaje del diálogo, búsqueda/vacío de selector por teclado, consulta readonly y ausencia de desbordamiento/errores JS. La cantidad de lote informa dato inválido con `aria-invalid`/descripción; acciones de inicio/reservas explican su bloqueo. Revisión básica de foco y lectura, sin afirmar auditoría formal WCAG.
+- Build, lint, tipos, Prisma, migración y conservación de datos se registran en el cierre operativo siguiente. Evidencias, logs/capturas y respaldos ignorados por git en `backups/20261016_ot_final/`.
+
+#### OT9: operación y continuidad
+
+[OPERACION-ORDENES-TRABAJO.md](OPERACION-ORDENES-TRABAJO.md) documenta uso, límites, incidencias/reintentos, respaldo/recuperación, emisores, archivos y matriz de permisos futuros. También fija el contrato de Despacho (entregables/reservas/orígenes/salidas atómicas) y Cobranza (cuenta única, vencimiento desde factura, pagos y locks compatibles), sin presentarlos como implementados.
+
+**Pendiente exclusivamente del cierre funcional del alcance entregado:** que el usuario pruebe y apruebe creación/planificación/reservas, producción/reversiones, cierre/factura/anticipos y PDF. No queda desarrollo de PDF ni otro bloque técnico OT planificado por implementar. Login/roles, uploads/firma, Despacho, Cobranza operativa y las ampliaciones excluidas conservan sus hitos propios.
+
+**Cierre operativo final OT8/OT9:** 31 migraciones locales al día, checksums coincidentes y esquema sin diferencias; cliente regenerado. Las 64 tablas previas conservan sus conteos y huellas por columnas originales. La OT real #3 sigue EN_PROCESO, versión 3; no se emitieron PDFs ni se registraron cierres/facturas de prueba sobre la base de uso. Lint, tipos y build definitivo correctos. Registro final de 22 suites correctas; 17 archivos PDF de prueba cotejados por tamaño/huella, sin huérfanos. Muestra final Carta, etiquetada, sin JavaScript y sin página técnica vacía. Todas las copias descartables retiradas, servidor propio detenido y 3031 libre; servidor previo del usuario en 3030 conservado. Diff revisado, sin push. Sólo queda la validación funcional expresa del usuario para cerrar OT9 funcionalmente.
+
+### Corrección de compatibilidad de operaciones anteriores a M4 — 17-10-2026
+
+El usuario reporta rechazo al registrar producto/servicio con «Producción exige operación propia sin cambiar plan». Diagnóstico de sólo lectura: la última operación de la OT anterior a M4 no contiene `currentInvoiceReferenceId` en su header, mientras la fila actual contiene null. La comparación JSON de Producción detectaba esa diferencia de forma incorrecta. Los tests anteriores creaban OT después de M4 y no cubrían esa transición de esquema.
+
+Migración `20261017034142_compatibilidad_snapshots_trabajo`: normalizar ausencia/null exclusivamente de ese campo nullable conocido en las comparaciones de Producción, Inicio, Reservas y Reversión. Mantiene el beforeSnapshot histórico exacto; no rellena ni edita operaciones/documentos existentes. No se ignoran valores no nulos ni otros cambios del plan. Los controles sobre filas actuales y la completitud/atomicidad física permanecen iguales.
+
+Regresión específica: `tests/produccion-snapshots.integration.ts`, sólo copia local descartable. Emula al insertar el formato antiguo de snapshots válidos, reproduce el error y verifica rollback antes de migrar; después admite producto, servicio y a medida, inicio, reservas y reversión, preservando historia y UUID. Verifica por separado que cambios reales y campos desconocidos no quedan ocultos. Las revisiones funcionales del módulo permanecen pendientes; corregir este incidente no las marca automáticamente.
+
+**Cierre del incidente:** migración aplicada localmente, 32 al día y esquema/checksums correctos. Respaldo actualizado y 66 tablas con datos intactos según conteos/huellas. Comparación de cabecera de la OT real compatible, manteniendo versión 3, EN_PROCESO, historia original y cero registros productivos; no se confirmó producción por cuenta del usuario. Prueba específica y regresiones de Producción/M3/Inicio/Reservas, lint/tipos/build correctos. Cuatro copias descartables retiradas; no se inició servidor de aplicación propio. Sin push. Evidencias: `backups/20261017_compatibilidad_snapshots/`.
+
+## 18-10-2026 — Cierre funcional del hito OT
+
+El usuario confirma: «Según pude revisar, todo funciona correctamente». Se registra su aprobación funcional general después de la corrección de compatibilidad de snapshots y se cierra el hito OT. Esta aceptación no constituye un registro de ejecución individual de cada escenario de la lista. Las referencias a aprobaciones pendientes en checkpoints anteriores conservan su carácter histórico y quedan superadas por este cierre.
+
+El siguiente hito del flujo es Guías de Despacho / entregas, conforme al contrato de integración del manual operativo. Los servicios de Cobranza constituyen una entrega posterior independiente. Ambos requieren definir sus decisiones antes de implementar; este cierre no los habilita. Actualización exclusivamente documental, sin cambios de código ni escrituras en la base.
