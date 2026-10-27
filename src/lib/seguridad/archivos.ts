@@ -7,7 +7,7 @@ import { consultarSesionSeguridad, registrarDenegacionSeguridad } from "./servic
 import { tienePermiso, type PermisoSeguridad } from "./permisos";
 
 export async function accesoArchivo(permiso?: PermisoSeguridad) {
-  const sesion = await consultarSesionSeguridad((await cookies()).get(nombreCookieSeguridad("sesion"))?.value, true, metadatosSeguridad(await cabecerasPeticion()));
+  const sesion = await consultarSesionSeguridad((await cookies()).get(nombreCookieSeguridad("sesion", await cabecerasPeticion()))?.value, true, metadatosSeguridad(await cabecerasPeticion()));
   const headers = { "Cache-Control": "private, no-store" };
   if (!sesion) return { respuesta: new Response(null, { status: 401, headers }), sesion: null };
   if (permiso && !tienePermiso(sesion.roles, permiso)) {await registrarDenegacionSeguridad(sesion.id,permiso,metadatosSeguridad(await cabecerasPeticion()));return { respuesta: new Response(null, { status: 403, headers }), sesion: null };}

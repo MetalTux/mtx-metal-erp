@@ -652,3 +652,20 @@ Continuidad: HITO-MANUAL-USABILIDAD.md y REVISION-USABILIDAD-V1.md. No se da por
 
 - [x] Documento [HITO-GRILLAS-DETALLE.md](HITO-GRILLAS-DETALLE.md): grillas existentes, bloques pendientes, prioridades, restricciones y criterios de aceptación.
 - [ ] Implementar y validar las etapas propuestas GD1–GD7. Esta actualización no modifica la aplicación.
+
+
+### 27-10-2026 — GD1: patrón de grillas de detalle
+
+- [x] Definir [patrón compartido](PATRON-GRILLAS-DETALLE.md) con componentes existentes, estados, identidad, foco, permisos y distinción de partidas de origen/historia.
+- [x] Definir 18 criterios verificables y contrato de recepción/OCC para GD2. Sin cambios de aplicación en esta etapa de definición.
+- [ ] Aplicar y validar GD2–GD7; estos criterios definidos aún no son pruebas ejecutadas.
+
+
+### 27-10-2026 — GD2: recepción y OCC
+
+- [x] Grillas con selección y editor de cantidad; consulta histórica de OCC tabular con detalle Ver y precios por permiso.
+- [x] Editor reutilizado con cancelación/descarte, foco y bloqueo de envío; Table acepta propiedades opcionales de su contenedor accesible.
+- [x] Ensayo Chromium con API simulada, lint/tipos, cobertura S4 y cálculos puros correctos.
+- [ ] Revisión visual con estilos reales, teclado completo, zoom y aceptación del usuario; build bloqueado por Turbopack.
+
+Estado/evidencia: [GRILLAS-GD2-VALIDACION.md](GRILLAS-GD2-VALIDACION.md). Sin migraciones, fixtures de BD ni servidores de aplicación.

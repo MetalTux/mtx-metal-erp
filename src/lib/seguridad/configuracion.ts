@@ -1,3 +1,4 @@
+import { origenesSeguridad, origenPeticionSeguridad } from "./origenes-desarrollo";
 import { createHash, createHmac, randomBytes } from "node:crypto";
 import { EncryptJWT, jwtDecrypt } from "jose";
 import { z } from "zod";
@@ -11,6 +12,7 @@ export function configuracionSeguridad() {
   try{origin=new URL(process.env.SEGURIDAD_ORIGEN);}catch{throw new ErrorConfiguracionSeguridad("SEGURIDAD_ORIGEN debe ser una URL absoluta válida.");}
   if (origin.username || origin.password || origin.pathname !== "/" || origin.search || origin.hash
     || (origin.protocol !== "https:" && !(origin.protocol === "http:" && ["localhost","127.0.0.1"].includes(origin.hostname)))) throw new ErrorConfiguracionSeguridad("SEGURIDAD_ORIGEN exige HTTPS, sin ruta ni credenciales; HTTP sólo se admite en localhost o 127.0.0.1.");
+  origenesSeguridad(origin.origin);
   if(!process.env.SEGURIDAD_CLAVES)throw new ErrorConfiguracionSeguridad("Falta SEGURIDAD_CLAVES. Configura claves privadas Base64 de 32 bytes; consulta docs/OPERACION-SEGURIDAD.md.");
   let keys:Record<string,string>;
   try{keys=z.record(z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/), z.string()).parse(JSON.parse(process.env.SEGURIDAD_CLAVES));}
@@ -40,9 +42,9 @@ export async function descifrarPrivado(value:string,purpose:string) {
   return payload;
 }
 
-export function nombreCookieSeguridad(tipo:"sesion"|"desafio") {
+export function nombreCookieSeguridad(tipo:"sesion"|"desafio", headers?: Pick<Headers, "get">) {
   // Usar la misma normalización de URL que la configuración, también con HTTPS en mayúsculas.
   let seguro=false;
-  try { seguro=new URL(process.env.SEGURIDAD_ORIGEN??"").protocol==="https:"; } catch {}
+  try { const principal = process.env.SEGURIDAD_ORIGEN ?? ""; seguro = new URL(headers ? origenPeticionSeguridad(headers, principal) : principal).protocol === "https:"; } catch {}
   return (seguro?"__Host-":"")+`mtx_${tipo}`;
 }

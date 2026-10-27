@@ -1,8 +1,8 @@
 # Hito — Unificación de grillas de detalle
 
-Fecha de revisión: **27-10-2026**. Estado: **inventario y propuesta de cambios preparados; implementación pendiente por etapas**.
+Fecha de revisión: **27-10-2026**. Estado: **GD0 aprobado por el usuario; GD1 definido; GD2 implementado con pruebas de interacción, revisión funcional y build pendientes**.
 
-El usuario solicita revisar los módulos que todavía muestran bloques repetidos por detalle y documentar los puntos necesarios para unificar su lectura en grillas. Este documento registra lo encontrado en el código; no autoriza por sí solo la ejecución de todas las etapas ni reemplaza las validaciones funcionales pendientes de otros hitos.
+El usuario solicita revisar los módulos que todavía muestran bloques repetidos por detalle y documentar los puntos necesarios para unificar su lectura en grillas. El usuario aprobó este documento y los hitos definidos el 27-10-2026, y solicitó comenzar por GD1. Esta aprobación no reemplaza las validaciones funcionales pendientes de otros hitos.
 
 ## 1. Resultado de la revisión
 
@@ -60,10 +60,10 @@ Prioridad y complejidad son estimaciones de esta revisión, no compromisos de pl
 
 Fuente: [recepcion-compra.tsx](../src/components/compras/recepcion-compra.tsx), iteración `compra.lines`.
 
-- [ ] Sustituir bloques por grilla: material, presentación, comprado, recibido, cerrado, pendiente, cantidad a recibir, equivalencia y acción.
-- [ ] Editar la cantidad de cada partida en diálogo y mantener visible el conjunto seleccionado para esta recepción.
-- [ ] Conservar filas de origen; dejar sin selección/cantidad equivale a no recibir esa partida, no a borrar el detalle comprado.
-- [ ] Deshabilitar recepción sobre pendientes agotados y conservar fecha/observación, previsualización, confirmación e idempotencia.
+- [x] Sustituir bloques por grilla: material, presentación, comprado, recibido, cerrado, pendiente, cantidad a recibir, equivalencia y acción.
+- [x] Editar la cantidad de cada partida en diálogo y mantener visible el conjunto seleccionado para esta recepción.
+- [x] Conservar filas de origen; dejar sin selección/cantidad equivale a no recibir esa partida, no a borrar el detalle comprado.
+- [x] Deshabilitar recepción sobre pendientes agotados y conservar fecha/observación, previsualización, confirmación e idempotencia.
 - [ ] Validar recepción parcial, varias líneas y reintento sin duplicar stock/Kardex.
 
 ### GD-02 — OCC: aceptación y consulta
@@ -72,10 +72,10 @@ Fuente: [recepcion-compra.tsx](../src/components/compras/recepcion-compra.tsx), 
 
 Fuentes: [formulario-orden.tsx](../src/components/ordenes-compra-cliente/formulario-orden.tsx) y [ver-orden.tsx](../src/components/ordenes-compra-cliente/ver-orden.tsx).
 
-- [ ] Grilla de aceptación: seleccionar, descripción, unidad, cantidad cotizada, cantidad aceptada, precio según modalidad, importe y Editar cantidad.
-- [ ] Mantener deselección como exclusión del alcance contratado; no eliminar ni agregar partidas ajenas a la cotización.
-- [ ] Grilla de consulta: cantidad cotizada, contratada, no contratada e importes sólo para roles autorizados.
-- [ ] Conservar alcance técnico, revisión explícita, descuento proporcional, IVA histórico y deuda única por total contratado.
+- [x] Grilla de aceptación: seleccionar, descripción, unidad, cantidad cotizada, cantidad aceptada, precio según modalidad, importe y Editar cantidad.
+- [x] Mantener deselección como exclusión del alcance contratado; no eliminar ni agregar partidas ajenas a la cotización.
+- [x] Grilla de consulta: cantidad cotizada, contratada, no contratada e importes sólo para roles autorizados.
+- [x] Conservar alcance técnico, revisión explícita, descuento proporcional, IVA histórico y deuda única por total contratado.
 - [ ] Probar aceptación completa/parcial con precios netos y cotizaciones históricas con IVA incluido.
 
 ### GD-03 — OT: líneas del plan
@@ -191,9 +191,9 @@ También permanecen como formularios la identidad del cliente/proveedor/material
 
 | Etapa | Alcance propuesto | Estado |
 | --- | --- | --- |
-| GD0 | Inventario de componentes, clasificación y propuesta | Documento preparado y referencias comprobadas |
-| GD1 | Definir patrón compartido y criterios de aceptación | Pendiente |
-| GD2 | Recepción de compras y OCC (GD-01/GD-02) | Pendiente |
+| GD0 | Inventario de componentes, clasificación y propuesta | Aprobado por el usuario el 27-10-2026 |
+| GD1 | Definir patrón compartido y criterios de aceptación | Completado: [patrón y criterios](PATRON-GRILLAS-DETALLE.md); aplicación pendiente en GD2–GD7 |
+| GD2 | Recepción de compras y OCC (GD-01/GD-02) | Implementado; [verificación y pendientes](GRILLAS-GD2-VALIDACION.md) |
 | GD3 | Planificación OT y subgrillas (GD-03/GD-04/GD-05) | Pendiente |
 | GD4 | Producción y consultas OT (GD-06/GD-09) | Pendiente |
 | GD5 | Preparación y corrección de guías (GD-07/GD-08) | Pendiente |
@@ -215,12 +215,36 @@ Para cada etapa:
 
 No se anticipan migraciones para la conversión visual. Si un flujo necesita un nuevo DTO o acción de lectura, inventariar su permiso/origen y actualizar la cobertura de seguridad. Si aparece una necesidad real de esquema o cambio de reglas, documentarla y evaluarla por separado.
 
-## 7. Verificación de esta entrega documental
+## 7. Verificación de la entrega inicial GD0
 
 - [x] Revisar estado de Git y componentes/páginas afectados sin editar código de aplicación.
 - [x] Distinguir captura repetida, consulta/historial, grillas existentes y formularios de un registro.
 - [x] Registrar fuentes reales, prioridades, restricciones y checks de trabajo pendiente.
 - [x] Comprobar referencias locales y revisión de diff.
-- [ ] Implementar etapas GD1–GD7 y validar funcionalmente: no realizado en esta entrega.
+- [ ] Implementar módulos GD2–GD7 y validar funcionalmente: pendiente; GD1 se registra en el checkpoint siguiente.
 
 Esta entrega sólo modifica documentación: no ejecuta build, no inicia servidores y no toca la base de datos.
+
+
+## 8. Checkpoint GD1 — 27-10-2026
+
+- [x] Registrar aprobación del usuario del documento y los hitos.
+- [x] Entregar [PATRON-GRILLAS-DETALLE.md](PATRON-GRILLAS-DETALLE.md): composición con componentes existentes, cuatro clases de detalle, estados/identidades, foco y formularios, permisos y recuperación de respuestas inciertas.
+- [x] Definir contrato de recepción/OCC para GD2 y 18 criterios de aceptación con forma de verificación.
+- [x] Resolver reutilización: Table/Dialog/confirmaciones/selectores actuales; sin nuevo motor genérico, dependencias ni cambios a módulos en GD1.
+- [x] Revisar referencias locales y diff. Sólo documentación; no se ejecutó build ni se inició servidor o modificó BD.
+- [ ] GD2: aplicar el patrón a recepción de compras y aceptación/consulta de OCC, con criterios pertinentes y revisión funcional.
+
+GD1 queda completado como definición. Las verificaciones de navegador y las conversiones funcionales aún no se han ejecutado por este hito.
+
+
+## 9. Checkpoint GD2 — 27-10-2026
+
+- [x] Recepción, aceptación de OCC y consulta histórica convertidas a tablas con diálogo por partida.
+- [x] Reutilizar editor de cantidad/descarte y contenedor accesible de Table; conservar IDs, origen, permisos y validación de servidor.
+- [x] Mantener datos y UUID bloqueados cuando no se puede comprobar la confirmación de recepción/OCC; reintento idéntico.
+- [x] Lint/tipos, cobertura S4 y pruebas puras de importes correctas. Chromium con API simulada correcto; sin BD ni servidor.
+- [ ] Build final: ejecutado pero bloqueado por permiso de puerto interno de Turbopack.
+- [ ] Revisión funcional y visual del usuario; no se sustituyen por el ensayo simulado.
+
+Detalle exacto, criterios CA aplicados y comando de reproducción: [GRILLAS-GD2-VALIDACION.md](GRILLAS-GD2-VALIDACION.md). GD3 no iniciado.

@@ -15,7 +15,7 @@ export function conCredencialSeguridad<T>(token: string, tarea: () => T): T {
   return credencialInterna.run(token, tarea);
 }
 export async function credencialServidor() {
-  return credencialInterna.getStore() ?? (await cookies()).get(nombreCookieSeguridad("sesion"))?.value;
+  return credencialInterna.getStore() ?? (await cookies()).get(nombreCookieSeguridad("sesion", await headers()))?.value;
 }
 export async function exigirAccesoEnTransaccion(tx: Prisma.TransactionClient, permiso: PermisoSeguridad) {
   const actor = await autorizarSesionEnTransaccion(tx, await credencialServidor(), permiso);

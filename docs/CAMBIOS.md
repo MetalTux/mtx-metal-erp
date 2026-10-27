@@ -1462,3 +1462,19 @@ Cierre de verificación: `prisma validate`, `prisma generate`, lint, tipos y cob
 ## 27-10-2026 — Compras: grilla con editor de detalles
 
 La captura de detalles se separa del borrador de cabecera mediante diálogo; la grilla muestra cantidades, equivalencias, precios e importes, y acciones Ver/Editar/Quitar. Cambios de fila se aceptan explícitamente; cancelar conserva el borrador de compra y quitar requiere confirmación. Se mantiene alta de materia prima anidada, permisos y restricciones de precio/recepción/cierre. Se añade calcularDetalleCompra como Server Action protegida de previsualización, reutilizando el cálculo Decimal existente (calcularCompra recibe sólo las líneas que realmente utiliza). No hay cambios de modelo, migración ni escritura adicional en documentos/stock. Cobertura S4 pasa de 92 a 93 acciones; manual y checklist actualizados. Revisión funcional pendiente.
+
+
+## 27-10-2026 — GD2: recepción de compras y OCC en grillas
+
+Se sustituyen bloques por tablas en recepción y aceptación/consulta de OCC, manteniendo partidas de origen e IDs estables. Nuevo DialogoCantidadDetalle compartido con borrador local, validación de cada dominio, descarte, errores y foco. Table admite containerProps opcional para región, tabulación y referencias. Formularios de detalle separados del formulario principal; consulta de OCC bloquea cierre del padre mientras su detalle está abierto. Columnas de precio y detalle monetario dependen de precios.leer, sin modificar DTO/guardas del servidor.
+
+Recepción y OCC congelan datos/UUID tras respuesta incierta y permiten reintentar el mismo intento. No cambian servicios de stock/deuda, cálculos ni esquema, y no se añaden Server Actions. Lint/tipos, cobertura S4, pruebas puras y ensayo de componentes en Chromium con API simulada correctos; build ejecutado y bloqueado por el entorno de Turbopack. Sin fixtures ni escrituras en BD para validar. Revisión humana y alcance de prueba documentados en GRILLAS-GD2-VALIDACION.md.
+
+
+## 27-10-2026 — Acceso simultáneo por localhost y Dev Tunnels
+
+Nueva lista explícita `SEGURIDAD_ORIGENES_DESARROLLO`, usada sólo en desarrollo y derivada también por next.config.ts para Server Actions/recursos. El origen canónico permanece para enlaces y desafíos; API y acciones admiten los orígenes configurados y mantienen el rechazo cross-site y la excepción acotada del Origin reescrito por Dev Tunnels. Configuración local preparada con túnel canónico y localhost adicional, sin cambiar claves privadas.
+
+Cookies de sesión/desafío por host de petición: HTTP local usa nombres sin prefijo y HTTPS conserva Secure/__Host-. Guardas, archivos y páginas de seguridad leen el nombre correspondiente. No se añaden sesiones compartidas entre dominios, permisos, servicios de BD ni migraciones. Producción ignora la lista adicional y conserva el origen único. Nuevas pruebas puras y de API/cookies en Chromium con servicio/transporte simulados; validación real del túnel pendiente del usuario. Operación en OPERACION-SEGURIDAD.md.
+
+Validación: pruebas puras de orígenes anteriores/nuevos y API/cookies en Chromium correctas; lint, tipos y cobertura S4 (93 acciones, 25 páginas, 7 rutas y 127 entradas) correctos. `pnpm build` ejecutado y bloqueado por el entorno al abrir puerto interno de Turbopack (Operation not permitted). No se inició servidor ni se escribió en BD; navegador de ensayo cerrado.

@@ -159,7 +159,7 @@ Ejemplo: dos presentaciones con factor seis representan doce unidades de inventa
 ### Recibir parcial o totalmente
 
 1. Localizar el documento y usar la acción **Recibir compra [número]** de su fila; puede mostrarse como icono con ayuda.
-2. Indicar sólo lo efectivamente recibido en algunas o todas las líneas, hasta el pendiente disponible.
+2. En la grilla de partidas, usar **Editar cantidad de…** para indicar lo recibido y **Aceptar cantidad** para seleccionarlo. Se puede dejar vacío o desmarcar una partida para no recibirla; Ver consulta sus datos. Las líneas sin pendiente no admiten edición. Cancelar/descartar conserva la cantidad anterior.
 3. Revisar equivalencias y confirmar. La recepción ingresa stock/Kardex en la bodega de compra.
 4. Volver a consultar stock y el pendiente de la compra. Una entrega posterior del proveedor se registra como otra recepción del mismo documento.
 
@@ -393,3 +393,12 @@ La compra nueva comienza sin filas. Usar **Agregar detalle de compra** para ingr
 **Editar** abre un borrador de la fila; cancelar o descartar conserva su valor anterior. **Quitar** pide confirmación y se puede quitar la última fila, pero la compra no se puede guardar sin al menos un detalle. Los precios de líneas ya guardadas permanecen protegidos. En consulta o después de recepciones/cierres se permite **Ver**, conservando cantidades recibidas/cerradas/pendientes y vínculo al Kardex para líneas guardadas; no se habilitan edición ni eliminación de líneas bloqueadas.
 
 La tabla permite desplazamiento horizontal en pantallas pequeñas. Estos cambios aún no están en el PDF anterior del manual.
+
+
+### Grillas de recepción y OCC — 27-10-2026 (GD2)
+
+La recepción de Compras y la aceptación de una cotización muestran partidas en tabla. No permiten agregar o borrar líneas del documento de origen. En recepción, **Editar cantidad de…** abre un diálogo; indicar presentaciones recibidas hasta el pendiente disponible y aceptar. Dejar vacío excluye la partida, pero escribir cero no equivale a omitirla. La equivalencia proviene del servidor y la recepción completa se confirma después de revisarla.
+
+En aceptación de OCC, marcar las partidas contratadas y usar **Editar cantidad de…** para la aceptación parcial. Aceptar cantidad no guarda la OCC. Cambiar cantidad o selección obliga a revisar nuevamente el alcance técnico. **Revisar importes** y **Confirmar aceptación** conservan sus pasos. La consulta de OCC muestra una tabla de cotizado/contratado/no contratado y **Ver** por partida; las columnas monetarias dependen del permiso de precios.
+
+Si una confirmación queda sin resultado comprobable, se conservan datos y UUID: recepción ofrece **Reintentar la misma recepción**; OCC permite reintentar desde la misma confirmación. No iniciar otra operación para repetirla ni cambiar sus datos. Las tablas admiten desplazamiento horizontal. El PDF anterior del manual todavía no incorpora esta sección.

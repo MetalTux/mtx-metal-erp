@@ -10,6 +10,7 @@ Configurar variables en un archivo privado del servidor o gestor de secretos, fu
 
 | Variable | Uso |
 | --- | --- |
+| `SEGURIDAD_ORIGENES_DESARROLLO` | Lista adicional separada por comas, sólo con `NODE_ENV=development`: HTTP localhost/127.0.0.1 o HTTPS de Dev Tunnels, sin rutas ni comodines. Ignorada en producción/test. |
 | `SEGURIDAD_ORIGEN` | Origen canónico, por ejemplo `https://erp.su-dominio.cl`, sin ruta, usuario o parámetros. HTTP sólo se admite en localhost/127.0.0.1 para comprobaciones. |
 | `SEGURIDAD_CLAVES` | Objeto JSON con identificador → clave Base64 de exactamente 32 bytes aleatorios. No usar ejemplos literales como clave. |
 | `SEGURIDAD_CLAVE_ACTIVA` | Identificador presente en ese objeto; nuevas configuraciones se cifran con esa clave. Conservar claves anteriores mientras haya factores cifrados con ellas. |
@@ -210,10 +211,34 @@ La confirmación administrativa se solicita dentro de Usuarios, con contraseña 
 El usuario confirma S7-02/S7-03/S7-06/S7-07 y aprueba S7-09. Se consideran resueltas las observaciones de retorno al login, avisos visibles, diálogo administrativo y cierre visible de sesión. Con las aprobaciones anteriores, quedan aprobados S7-01/02/03/05/06/07/09. Pendientes S7-04/08/10/11/12 según la [guía](GUIA-PRUEBAS-SEGURIDAD-S7.md); S7 sigue abierto. Esta actualización sólo registra resultados del usuario: revisión de contenido, referencias y diff, sin ejecutar pruebas de aplicación, servidores ni operaciones en base.
 
 
-### 26-10-2026 — Demostración mediante túnel de VS Code
+### 26-10-2026 — Demostración mediante túnel de VS Code (modalidad inicial)
+
+La configuración de un solo acceso de este bloque se amplía el 27-10-2026 en la sección siguiente; ya no es necesario alternar el origen para usar localhost y el túnel durante desarrollo.
 
 Configurar `SEGURIDAD_ORIGEN` con la URL HTTPS exacta del túnel (sin ruta), conservar las claves privadas existentes y reiniciar el proceso de desarrollo. Usar esa URL también para la sesión del Administrador y generar desde ella los enlaces de activación/recuperación. En `next.config.ts`, el dominio debe coincidir con `allowedDevOrigins` y el permitido por Server Actions. No usar comodines para todos los túneles.
 
 Dev Tunnels puede reescribir `Origin` a localhost. La comprobación compartida de API de seguridad y Server Actions conserva el origen canónico como regla; exclusivamente con `NODE_ENV=development` y origen HTTPS de `.devtunnels.ms`, admite `http://localhost:3030` o `https://localhost:3030` si el navegador envía `Sec-Fetch-Site: same-origin` y `X-Forwarded-Host` (o Host si falta) coincide exactamente con el host público configurado. Rechaza solicitudes cross-site, otros hosts, listas de hosts y cabeceras ausentes para esta excepción. En producción no existe esa excepción. No cambia permisos, contraseñas ni cookies Secure/HttpOnly/SameSite.
 
 Comprobación específica sin base de datos: `node --import tsx tests/seguridad-origen-tunel.ts`. La validación de ingreso y guardado desde el túnel real debe confirmarse en el navegador; no confundir la comprobación de cabeceras con aceptación funcional remota. Al terminar la demostración, detener el túnel y restaurar el origen local si se vuelve a localhost.
+
+
+### 27-10-2026 — Localhost y túnel simultáneos en desarrollo
+
+Configuración actual para `pnpm dev`:
+
+```dotenv
+SEGURIDAD_ORIGEN=https://b1315pk2-3030.brs.devtunnels.ms
+SEGURIDAD_ORIGENES_DESARROLLO=http://localhost:3030
+```
+
+Reiniciar el proceso de desarrollo después de cambiar estas variables. Se permite entrar tanto por `http://localhost:3030` como por el HTTPS público configurado, sin alternar `.env`. Cada dirección tiene sus cookies y requiere su propio ingreso. Las claves privadas se conservan y no se regeneran por cambiar esta lista.
+
+`SEGURIDAD_ORIGEN` continúa siendo la URL canónica de enlaces de activación/recuperación y emisor de los desafíos cifrados. Se eligió el túnel como canónico para poder compartir esos enlaces con usuarios externos. Si el túnel está detenido, el acceso local sigue disponible, pero los enlaces canónicos públicos requieren que el túnel esté activo. No cambiar el origen principal durante un desafío de acceso en curso: completar nuevamente el ingreso si cambia el emisor.
+
+Sólo se habilitan adicionales con `NODE_ENV=development`. En producción y test se ignora esta variable y se conserva el único origen canónico. HTTP remoto, credenciales en URL, rutas, parámetros, fragmentos y comodines son rechazados. Para usar `127.0.0.1`, añadir explícitamente su URL a la lista; no se habilita por equivalencia implícita con localhost.
+
+`next.config.ts` obtiene los hosts de estas variables para Server Actions y recursos de desarrollo; ya no contiene un dominio fijo del túnel. Si VS Code genera otra URL, actualizar el origen público y reiniciar. Se conserva la compatibilidad con Origin reescrito a localhost:3030 cuando el navegador indica same-origin y el host reenviado coincide con un túnel autorizado; cross-site sigue rechazado. Las cabeceras de proxy sólo eligen entre direcciones configuradas, no conceden acceso ni reemplazan sesión/permisos.
+
+Cookies por petición: en HTTP local se usan `mtx_sesion`/`mtx_desafio`; en el túnel HTTPS, `__Host-mtx_sesion`/`__Host-mtx_desafio` con Secure. En ambos casos permanecen HttpOnly, SameSite=Lax, Path=/ y sin Domain. API, Server Components, guardas de acciones, Mi acceso, Usuarios y archivos privados seleccionan el nombre según el host autorizado de la petición. No se acepta una cookie arbitraria de otro nombre como alternativa.
+
+Verificación: `node --import tsx tests/seguridad-origenes-desarrollo.ts` y `tests/seguridad-origen-tunel.ts` comprueban autorización, configuración y nombres de cookie; `tests/seguridad-origenes-desarrollo.ui.ts` prueba el API real en Chromium con transporte y servicio de seguridad simulados, sin servidor ni BD. Incluye HTTP/HTTPS simultáneos, desafío/sesión, cookies por host, cierre local, bloqueo cross-site y rechazo del origen adicional en producción. No sustituye la prueba de autenticación real a través del túnel de VS Code; esa comprobación queda pendiente del usuario.

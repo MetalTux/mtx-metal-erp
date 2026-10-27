@@ -1,7 +1,12 @@
+import { origenesSeguridad } from "./src/lib/seguridad/origenes-desarrollo";
 import type { NextConfig } from "next";
 
 const esDesarrollo = process.env.NODE_ENV === "development";
-const dominioTunel = "b1315pk2-3030.brs.devtunnels.ms";
+const origenes = esDesarrollo
+  ? origenesSeguridad(process.env.SEGURIDAD_ORIGEN ?? "http://localhost:3030")
+  : [];
+const hostsDesarrollo = origenes.map(origen => new URL(origen).host);
+const dominiosDesarrollo = origenes.map(origen => new URL(origen).hostname);
 
 const nextConfig: NextConfig = {
   reactCompiler: true,
@@ -41,12 +46,12 @@ const nextConfig: NextConfig = {
       bodySizeLimit: "22mb",
       ...(esDesarrollo && {
         // Devtunnels reescribe Origin a localhost aunque conserva el host público.
-        allowedOrigins: ["localhost:3030", dominioTunel],
+        allowedOrigins: [...new Set([...hostsDesarrollo, "localhost:3030"])],
       }),
     },
   },
   ...(esDesarrollo && {
-    allowedDevOrigins: [dominioTunel],
+    allowedDevOrigins: [...new Set(dominiosDesarrollo)],
   }),
 };
 
