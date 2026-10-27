@@ -1,0 +1,18 @@
+[Unit]
+Description=Retención de eventos de seguridad MTX Metal ERP
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=mtx-erp
+Group=mtx-erp
+WorkingDirectory=/srv/mtx-metal-erp
+Environment=NODE_ENV=production
+EnvironmentFile=/etc/mtx-metal-erp/erp.env
+ExecStart=/usr/bin/node --import tsx scripts/depurar-auditoria.ts --aplicar
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+UMask=0077

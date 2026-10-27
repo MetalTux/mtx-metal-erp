@@ -1,3 +1,5 @@
+import { tienePermiso } from "@/lib/seguridad/permisos";
+import { exigirAcceso, exigirAccesoEnTransaccion } from "@/lib/seguridad/acceso";
 import { z } from "zod";
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
@@ -13,6 +15,10 @@ const filtrosSchema = z.object({
 });
 const pesos = (v: Prisma.Decimal | null) => v?.toFixed(0) ?? "0";
 export async function consultarOrdenesCompraCliente(entrada: unknown) {
+  const sesion = await exigirAcceso("ordenes_cliente.leer");
+  const verPrecios = tienePermiso(sesion.roles,"precios.leer");
+  const pesos = (v: Prisma.Decimal | null) => verPrecios ? (v?.toFixed(0) ?? "0") : "";
+
   const parsed = filtrosSchema.safeParse(entrada), f = parsed.success ? parsed.data : filtrosSchema.parse({});
   const where: Prisma.SalesOrderWhereInput = {
     folioId: { not: null }, ...(f.estado !== "TODOS" ? { status: f.estado } : {}),
@@ -22,7 +28,7 @@ export async function consultarOrdenesCompraCliente(entrada: unknown) {
   };
   return prisma.$transaction(async tx => {
     const total = await tx.salesOrder.count({ where }), paginas = Math.max(1, Math.ceil(total / 10)), pagina = Math.min(f.pagina, paginas);
-    const campo = f.orden === "total" ? "totalAmount" : f.orden === "cliente" ? "clientName" : "acceptanceDate";
+    const campo = verPrecios && f.orden === "total" ? "totalAmount" : f.orden === "cliente" ? "clientName" : "acceptanceDate";
     const filas = await tx.salesOrder.findMany({ where, orderBy: [{ [campo]: f.sentido }, { id: "desc" }], skip: (pagina - 1) * 10, take: 10 });
     const folios = await tx.documentFolio.findMany({ where: { id: { in: filas.map(o => o.folioId!) } }, select: { id: true, folio: true } });
     const quotes = await tx.quote.findMany({ where: { id: { in: filas.map(o => o.quoteId) } }, select: { id: true, folioId: true } });
@@ -41,6 +47,9 @@ export async function consultarOrdenesCompraCliente(entrada: unknown) {
   }, { isolationLevel: "RepeatableRead" });
 }
 export async function catalogoOfertasParaOrden() {
+  await exigirAcceso("ordenes_cliente.leer");
+  await exigirAcceso("precios.leer");
+
   return prisma.$transaction(async tx => {
     const hoy = new Date(`${hoyOrden()}T00:00:00Z`);
     const filas = await tx.quote.findMany({ where: { deletedAt: null, folioId: { not: null }, salesOrder: null,
@@ -51,6 +60,8 @@ export async function catalogoOfertasParaOrden() {
   }, { isolationLevel: "RepeatableRead" });
 }
 export async function catalogoCotizacionesConOrden() {
+  await exigirAcceso("ordenes_cliente.leer");
+
   return prisma.$transaction(async tx => {
     const filas = await tx.quote.findMany({ where: { salesOrder: { is: { folioId: { not: null } } } }, orderBy: { id: "desc" }, select: { id: true, folioId: true, clientName: true } });
     const folios = await tx.documentFolio.findMany({ where: { id: { in: filas.flatMap(q => q.folioId ? [q.folioId] : []) } }, select: { id: true, folio: true } });
@@ -58,13 +69,18 @@ export async function catalogoCotizacionesConOrden() {
   }, { isolationLevel: "RepeatableRead" });
 }
 export async function obtenerOfertaParaOrden(id: number) {
+  await exigirAcceso("ordenes_cliente.operar");
+  await exigirAcceso("precios.leer");
+
   if (!Number.isSafeInteger(id) || id <= 0) throw new Error("Referencia inválida.");
   return prisma.$transaction(async tx => {
+      await exigirAccesoEnTransaccion(tx, "ordenes_cliente.operar");
+
     if (await tx.salesOrder.findUnique({ where: { quoteId: id }, select: { id: true } })) throw new Error("La cotización ya tiene una orden; consulta Ver orden desde Cotizaciones.");
     const q = await tx.quote.findUniqueOrThrow({ where: { id }, select: { version: true } });
     const { q: documento, folio, details, technicalDescription } = await cargarOfertaOrden(tx, id, q.version);
     const pdfs = await tx.quotePdfEmission.findMany({ where: { quoteId: id, quoteVersion: q.version }, orderBy: { createdAt: "desc" }, select: { id: true, status: true, quoteVersion: true } });
-    return { id, version: q.version, folio: folio.folio, date: documento.date.toISOString().slice(0, 10), validUntil: documento.validUntil?.toISOString().slice(0, 10) ?? null,
+    return { pricesIncludeVat: documento.pricesIncludeVat, id, version: q.version, folio: folio.folio, date: documento.date.toISOString().slice(0, 10), validUntil: documento.validUntil?.toISOString().slice(0, 10) ?? null,
       status: documento.status, clientName: documento.clientName!, branchName: documento.branchName!, paymentConditionName: documento.paymentConditionName!, paymentTermDays: documento.paymentTermDays!,
       totalAmount: pesos(documento.totalAmount), subtotal: pesos(documento.subtotal), discountAmount: pesos(documento.discountAmount), vatRate: documento.vatRate!.toString(),
       discountMode: documento.discountMode, discountValue: documento.discountValue?.toString() ?? null, commercialTerms: documento.commercialTerms,
@@ -72,6 +88,10 @@ export async function obtenerOfertaParaOrden(id: number) {
   }, { isolationLevel: "RepeatableRead" });
 }
 export async function obtenerOrdenCompraCliente(id: number) {
+  const sesion = await exigirAcceso("ordenes_cliente.leer");
+  const verPrecios = tienePermiso(sesion.roles,"precios.leer");
+  const pesos = (v: Prisma.Decimal | null) => verPrecios ? (v?.toFixed(0) ?? "0") : "";
+
   if (!Number.isSafeInteger(id) || id <= 0) throw new Error("Referencia inválida.");
   return prisma.$transaction(async tx => {
     const o = await tx.salesOrder.findUniqueOrThrow({ where: { id } });
@@ -86,15 +106,15 @@ export async function obtenerOrdenCompraCliente(id: number) {
     const snapshot = o.quoteSnapshot as { quote: { totalAmount: string; technicalDescription: unknown }; folio: { folio: string }; details: { id: number; description: string; quantity: string; unitPrice: string; unitName: string }[] };
     const abonado = pagos.filter(p => !p.voidedAt).reduce((s, p) => s.plus(p.amount), new Prisma.Decimal(0));
     const total = o.totalAmount!;
-    return { id, version: o.version, folio: folio.folio, date: o.acceptanceDate!.toISOString().slice(0, 10), status: o.status!, quoteId: o.quoteId,
+    return { pricesIncludeVat: o.pricesIncludeVat, id, version: o.version, folio: folio.folio, date: o.acceptanceDate!.toISOString().slice(0, 10), status: o.status!, quoteId: o.quoteId,
       quoteFolio: snapshot.folio.folio, quoteVersion: o.quoteVersion!, approvedQuoteVersion: o.approvedQuoteVersion!,
-      clientName: o.clientName!, branchName: o.branchName!, clientSnapshot: o.clientSnapshot, companySnapshot: o.companySnapshot, bankSnapshot: o.bankSnapshot,
-      paymentConditionName: o.paymentConditionName!, paymentTermDays: o.paymentTermDays!, commercialTerms: o.commercialTerms,
+      clientName: o.clientName!, branchName: o.branchName!, clientSnapshot: o.clientSnapshot, companySnapshot: o.companySnapshot, bankSnapshot: verPrecios ? o.bankSnapshot : {},
+      paymentConditionName: verPrecios ? o.paymentConditionName! : "", paymentTermDays: verPrecios ? o.paymentTermDays! : 0, commercialTerms: verPrecios ? o.commercialTerms : null,
       technicalDescription: validarTextoCotizacion(o.technicalDescription), originalTechnicalDescription: validarTextoCotizacion(snapshot.quote.technicalDescription ?? documentoVacioCotizacion),
-      customerOrderNumber: o.customerOrderNumber, customerOrderDate: o.customerOrderDate?.toISOString().slice(0, 10) ?? null, pdfEmissionId: o.pdfEmissionId,
-      subtotal: pesos(o.subtotal), discountAmount: pesos(o.discountAmount), netAmount: pesos(o.netAmount), vatAmount: pesos(o.vatAmount), vatRate: o.vatRate!.toString(), totalAmount: pesos(total), offeredTotal: snapshot.quote.totalAmount,
-      lines: snapshot.details.map(l => { const aceptada = detalles.find(d => d.quoteDetailId === l.id); return { id: l.id, description: l.description, unitName: l.unitName, offeredQuantity: l.quantity, acceptedQuantity: aceptada?.quantity.toString() ?? "0", excludedQuantity: new Prisma.Decimal(l.quantity).minus(aceptada?.quantity ?? 0).toString(), unitPrice: l.unitPrice, lineAmount: pesos(aceptada?.lineAmount ?? null) }; }),
-      cuenta: { id: cuenta.id, amount: cuenta.amount.toFixed(0), abonado: abonado.toFixed(2), saldo: cuenta.voidedAt ? "0.00" : total.minus(abonado).toFixed(2), anulada: Boolean(cuenta.voidedAt), dueDate: cuenta.dueDate?.toISOString().slice(0, 10) ?? null },
+      customerOrderNumber: o.customerOrderNumber, customerOrderDate: o.customerOrderDate?.toISOString().slice(0, 10) ?? null, pdfEmissionId: verPrecios ? o.pdfEmissionId : null,
+      subtotal: pesos(o.subtotal), discountAmount: pesos(o.discountAmount), netAmount: pesos(o.netAmount), vatAmount: pesos(o.vatAmount), vatRate: verPrecios ? o.vatRate!.toString() : "", totalAmount: pesos(total), offeredTotal: verPrecios ? snapshot.quote.totalAmount : "",
+      lines: snapshot.details.map(l => { const aceptada = detalles.find(d => d.quoteDetailId === l.id); return { id: l.id, description: l.description, unitName: l.unitName, offeredQuantity: l.quantity, acceptedQuantity: aceptada?.quantity.toString() ?? "0", excludedQuantity: new Prisma.Decimal(l.quantity).minus(aceptada?.quantity ?? 0).toString(), unitPrice: verPrecios ? l.unitPrice : "", lineAmount: pesos(aceptada?.lineAmount ?? null) }; }),
+      cuenta: verPrecios ? { id: cuenta.id, amount: cuenta.amount.toFixed(0), abonado: abonado.toFixed(2), saldo: cuenta.voidedAt ? "0.00" : total.minus(abonado).toFixed(2), anulada: Boolean(cuenta.voidedAt), dueDate: cuenta.dueDate?.toISOString().slice(0, 10) ?? null } : null,
       workOrderId: trabajo?.id ?? null, puedeAnular: o.status === "CONFIRMADA" && !trabajo && !pagos.length && !cuenta.voidedAt && !cuenta.dueDate && !cuenta.paymentPromiseDate,
       voidReason: o.voidReason, operaciones: operaciones.map(op => ({ ...op, createdAt: op.createdAt.toISOString() })) };
   }, { isolationLevel: "RepeatableRead" });

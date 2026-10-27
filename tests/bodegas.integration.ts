@@ -78,11 +78,7 @@ async function main() {
     await verificarBloqueo(relacionada, "compras");
     await prisma.purchase.delete({where:{id:compraId}});compraId=undefined;
 
-    trabajoId = (await prisma.workOrder.create({ data: { productName: nombre } })).id;
-    const detalleTrabajo = await prisma.workOrderDetail.create({ data: { workOrderId: trabajoId, rawMaterialId: materialId, warehouseId: relacionada.id, quantityNeeded: "1" } });
-    await verificarBloqueo(relacionada, "trabajos");
-    await prisma.workOrderDetail.delete({ where: { id: detalleTrabajo.id } });
-
+    // Las referencias productivas vigentes se verifican en referencias-plan.integration.ts.
     assert.equal((await eliminarBodega({ id: relacionada.id, updatedAt: relacionada.updatedAt })).ok, true);
     assert.equal((await consultarBodega(relacionada.id)).ok, false);
     assert.equal((await eliminarBodega({ id: relacionada.id, updatedAt: relacionada.updatedAt })).ok, false);

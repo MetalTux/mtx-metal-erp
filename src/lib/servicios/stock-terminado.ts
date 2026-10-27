@@ -1,3 +1,5 @@
+import { anotarMutacion } from "@/lib/seguridad/autoria";
+import { exigirAcceso, exigirAccesoEnTransaccion } from "@/lib/seguridad/acceso";
 import { cantidadReservadaRecurso } from "./reservas-stock";
 import { createHash } from "node:crypto";
 import { prisma } from "@/lib/prisma";
@@ -25,6 +27,8 @@ async function validarReferencias(tx: Prisma.TransactionClient, d: { productId: 
 }
 /** Consultar no crea saldo ni documentos; conserva versión e ID de último movimiento. */
 export async function consultarSaldoTerminado(entrada: unknown): Promise<ResultadoSaldoTerminado> {
+  await exigirAcceso("inventario.leer");
+
   const v = combinacionTerminadoSchema.safeParse(entrada);
   if (!v.success) return { ok: false, mensaje: "Selecciona un producto y una bodega válidos." };
   try {
@@ -41,6 +45,8 @@ export async function consultarSaldoTerminado(entrada: unknown): Promise<Resulta
   } catch (error) { return fallo(error); }
 }
 export async function registrarInicialTerminado(entrada: unknown): Promise<ResultadoInicialTerminado> {
+  await exigirAcceso("inventario.operar");
+
   const v = inicialTerminadoSchema.safeParse(entrada);
   if (!v.success) return { ok: false, mensaje: v.error.issues[0].message };
   const d = v.data, cantidad = new Prisma.Decimal(d.quantity);
@@ -48,6 +54,8 @@ export async function registrarInicialTerminado(entrada: unknown): Promise<Resul
   const fingerprint = createHash("sha256").update(JSON.stringify({ ...d, idempotencyKey: undefined, quantity: cantidad.toFixed(3), reference: { ...d.reference, quantity: new Prisma.Decimal(d.reference.quantity).toFixed(3) } })).digest("hex");
   try {
     return await prisma.$transaction(async tx => {
+      await exigirAccesoEnTransaccion(tx, "inventario.operar");
+
       // UUID → producto → bodega → stock. Consultas secuenciales en un único cliente pg.
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${d.idempotencyKey.toLowerCase()}, 72114))`;
       const anterior = await tx.productInventoryOperation.findUnique({ where: { idempotencyKey: d.idempotencyKey } });
@@ -72,7 +80,7 @@ export async function registrarInicialTerminado(entrada: unknown): Promise<Resul
       if (s.stock) await tx.productWarehouseStock.update({ where: { id: s.stock.id }, data: { quantity: cantidad, version: { increment: 1 } } });
       else await tx.productWarehouseStock.create({ data: { productId: producto.id, warehouseId: d.warehouseId, quantity: cantidad } });
       await tx.productStockMovement.create({ data: { productId: producto.id, warehouseId: d.warehouseId, initialStockId: documento.id, type: "ENTRADA", quantity: cantidad, date: documento.date, note: d.note } });
-      await tx.productInventoryOperation.create({ data: { idempotencyKey: d.idempotencyKey, fingerprint, initialStockId: documento.id } });
+      await anotarMutacion(tx, "productInventoryOperation", "create", await tx.productInventoryOperation.create({ data: { idempotencyKey: d.idempotencyKey, fingerprint, initialStockId: documento.id } }));
       return { ok: true, mensaje: "Inventario inicial de producto terminado registrado.", documentoId: documento.id };
     }, { timeout: 20000 });
   } catch (error) { return fallo(error); }
@@ -80,6 +88,8 @@ export async function registrarInicialTerminado(entrada: unknown): Promise<Resul
 
 /** Conserva el ingreso y corrige el saldo físico actual, sin consumir receta ni revertir a ciegas. */
 export async function registrarAjusteTerminado(entrada: unknown): Promise<ResultadoInicialTerminado> {
+  await exigirAcceso("inventario.operar");
+
   const v = ajusteTerminadoSchema.safeParse(entrada);
   if (!v.success) return { ok: false, mensaje: v.error.issues[0].message };
   const d = v.data;
@@ -90,6 +100,8 @@ export async function registrarAjusteTerminado(entrada: unknown): Promise<Result
   })).digest("hex");
   try {
     return await prisma.$transaction(async tx => {
+      await exigirAccesoEnTransaccion(tx, "inventario.operar");
+
       // Comparte orden y espacio de UUID con el inicial: no reutilizar claves entre operaciones.
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${d.idempotencyKey.toLowerCase()}, 72114))`;
       const previa = await tx.productInventoryOperation.findUnique({ where: { idempotencyKey: d.idempotencyKey } });
@@ -135,7 +147,7 @@ export async function registrarAjusteTerminado(entrada: unknown): Promise<Result
         productId: d.productId, warehouseId: d.warehouseId, adjustmentId: documento.id,
         type: "AJUSTE", quantity: diferencia, date: documento.date, note: d.note,
       } });
-      await tx.productInventoryOperation.create({ data: { idempotencyKey: d.idempotencyKey, fingerprint, adjustmentId: documento.id } });
+      await anotarMutacion(tx, "productInventoryOperation", "create", await tx.productInventoryOperation.create({ data: { idempotencyKey: d.idempotencyKey, fingerprint, adjustmentId: documento.id } }));
       return { ok: true, mensaje: "Ajuste registrado y existencias actualizadas.", documentoId: documento.id };
     }, { maxWait: 10000, timeout: 20000 });
   } catch (error) { return fallo(error); }
@@ -143,6 +155,8 @@ export async function registrarAjusteTerminado(entrada: unknown): Promise<Result
 
 /** Vista previa sin escrituras; al confirmar se vuelven a verificar versión y saldo bajo bloqueo. */
 export async function prepararAjusteTerminado(entrada: unknown) {
+  await exigirAcceso("inventario.operar");
+
   const v = ajusteTerminadoSchema.safeParse(entrada);
   if (!v.success) return { ok: false as const, mensaje: v.error.issues[0].message };
   if (v.data.date > hoyChile()) return { ok: false as const, mensaje: "No se permiten fechas futuras." };

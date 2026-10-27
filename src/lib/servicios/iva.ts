@@ -1,3 +1,5 @@
+import { anotarMutacion } from "@/lib/seguridad/autoria";
+import { exigirAcceso, exigirAccesoEnTransaccion } from "@/lib/seguridad/acceso";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
 import { fechaCalendarioValida } from "@/lib/fechas-chile";
@@ -14,6 +16,8 @@ const calendario = (v: Date) => v.toISOString().slice(0, 10);
 const date = (v: string) => new Date(`${v}T00:00:00Z`);
 export function diaAnteriorIva(v: string) { const d = date(v); d.setUTCDate(d.getUTCDate() - 1); return calendario(d); }
 export async function listarPeriodosIva(): Promise<PeriodoIva[]> {
+  await exigirAcceso("configuracion.leer");
+
   return prisma.$transaction(async tx => {
     const filas = await tx.vatRatePeriod.findMany({ orderBy: [{ validFrom: "desc" }, { id: "desc" }] });
     const referencias = await tx.quote.groupBy({ by: ["vatRatePeriodId"], where: { vatRatePeriodId: { not: null } }, _count: { _all: true }, _max: { date: true } });
@@ -30,6 +34,8 @@ export async function ivaParaDocumento(tx: Prisma.TransactionClient, fecha: stri
   return { vatRatePeriodId: filas[0].id, vatRate: filas[0].rate };
 }
 export async function guardarPeriodoIva(entrada: unknown, referencia?: unknown, abiertaEsperada?: unknown): Promise<ResultadoIva> {
+  await exigirAcceso("configuracion.operar");
+
   const v = periodoIvaSchema.safeParse(entrada);
   if (!v.success) return { ok: false, mensaje: v.error.issues[0].message };
   const r = referencia === undefined ? undefined : referenciaIvaSchema.safeParse(referencia);
@@ -39,6 +45,8 @@ export async function guardarPeriodoIva(entrada: unknown, referencia?: unknown, 
   const d = v.data;
   try {
     return await prisma.$transaction(async tx => {
+      await exigirAccesoEnTransaccion(tx, "configuracion.operar");
+
       // Exclusivo antes de bloquear filas: documentos toman el mismo bloqueo compartido.
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(73119)`;
       const filas = await tx.vatRatePeriod.findMany({ orderBy: { id: "asc" } });
@@ -66,27 +74,31 @@ export async function guardarPeriodoIva(entrada: unknown, referencia?: unknown, 
       }
       for (const cierre of cierres) {
         exigir(!await tx.quote.findFirst({ where: { vatRatePeriodId: cierre.id, date: { gte: date(d.validFrom) } }, select: { id: true } }), "El nuevo inicio dejaría documentos del período anterior fuera de su rango.");
-        await tx.vatRatePeriod.update({ where: { id: cierre.id }, data: { validTo: date(cierre.hasta), version: { increment: 1 } } });
+        await anotarMutacion(tx, "vatRatePeriod", "update", await tx.vatRatePeriod.update({ where: { id: cierre.id }, data: { validTo: date(cierre.hasta), version: { increment: 1 } } }));
       }
       const data = { rate: new Prisma.Decimal(d.rate), validFrom: date(d.validFrom), validTo: d.validTo ? date(d.validTo) : null };
-      if (actual) await tx.vatRatePeriod.update({ where: { id: actual.id }, data: { ...data, version: { increment: 1 } } });
-      else await tx.vatRatePeriod.create({ data });
+      if (actual) await anotarMutacion(tx, "vatRatePeriod", "update", await tx.vatRatePeriod.update({ where: { id: actual.id }, data: { ...data, version: { increment: 1 } } }));
+      else await anotarMutacion(tx, "vatRatePeriod", "create", await tx.vatRatePeriod.create({ data }));
       return { ok: true, mensaje: "Período de IVA guardado." };
     }, { timeout: 20000 });
   } catch (error) { return fallo(error); }
 }
 function diaSiguiente(v: string) { const d = date(v); d.setUTCDate(d.getUTCDate() + 1); return d; }
 export async function eliminarPeriodoIva(entrada: unknown): Promise<ResultadoIva> {
+  await exigirAcceso("configuracion.operar");
+
   const r = referenciaIvaSchema.safeParse(entrada);
   if (!r.success) return { ok: false, mensaje: "La referencia no es válida." };
   try {
     return await prisma.$transaction(async tx => {
+      await exigirAccesoEnTransaccion(tx, "configuracion.operar");
+
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(73119)`;
       const fila = await tx.vatRatePeriod.findUnique({ where: { id: r.data.id } });
       exigir(fila?.version === r.data.version, "El período cambió. Actualiza el listado.");
       exigir(fila.validTo !== null, "No se puede eliminar el período abierto.");
       exigir(!await tx.quote.findFirst({ where: { vatRatePeriodId: fila.id }, select: { id: true } }), "No se puede eliminar un período con documentos asociados.");
-      await tx.vatRatePeriod.delete({ where: { id: fila.id } });
+      await anotarMutacion(tx, "vatRatePeriod", "delete", await tx.vatRatePeriod.delete({ where: { id: fila.id } }));
       return { ok: true, mensaje: "Período cerrado sin uso eliminado. Las fechas sin cobertura no permitirán guardar documentos." };
     });
   } catch (error) { return fallo(error); }

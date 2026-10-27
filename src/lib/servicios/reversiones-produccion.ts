@@ -1,3 +1,5 @@
+import { anotarMutacion } from "@/lib/seguridad/autoria";
+import { exigirAcceso, exigirAccesoEnTransaccion } from "@/lib/seguridad/acceso";
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import { Prisma } from "@/generated/prisma/client";
@@ -53,6 +55,8 @@ async function efectos(tx:Prisma.TransactionClient,s:Awaited<ReturnType<typeof c
  return {materials,product,quantity:s.r.quantity.toFixed(3),type:s.r.type};
 }
 export async function previsualizarReversionProduccion(input:unknown){
+  await exigirAcceso("trabajos.operar");
+
  const parsed=reversionProduccionSchema.safeParse(input);if(!parsed.success)return {ok:false as const,mensaje:parsed.error.issues[0].message};
  try{return await prisma.$transaction(async tx=>({ok:true as const,preview:await efectos(tx,await cargar(tx,parsed.data))}),{isolationLevel:"RepeatableRead",timeout:30000});}catch(e){return fallo(e)??{ok:false as const,mensaje:"No se pudo consultar la previsualización de reversión."};}
 }
@@ -70,12 +74,16 @@ async function reconstruirReservas(tx:Prisma.TransactionClient,s:Awaited<ReturnT
 async function operacion(tx:Prisma.TransactionClient,workOrderId:number,version:number,key:string,fingerprint:string,type:"REVERTIR_PRODUCCION"|"ANULAR",reason:string,productionReversalId:number|null){
  const previous=await tx.workOrderOperation.findUniqueOrThrow({where:{workOrderId_version:{workOrderId,version}}});
  const [s]=await tx.$queryRaw<{plan:Prisma.InputJsonValue;reservations:Prisma.InputJsonValue}[]>`SELECT public.snapshot_plan_trabajo(${workOrderId}) AS plan,public.snapshot_reservas_trabajo(${workOrderId}) AS reservations`;
- await tx.workOrderOperation.create({data:{workOrderId,version:version+1,idempotencyKey:key,fingerprint,type,reason,productionReversalId,beforeSnapshot:previous.afterSnapshot as Prisma.InputJsonValue,afterSnapshot:s.plan,reservationSnapshot:s.reservations}});
+ await anotarMutacion(tx, "workOrderOperation", "create", await tx.workOrderOperation.create({data:{workOrderId,version:version+1,idempotencyKey:key,fingerprint,type,reason,productionReversalId,beforeSnapshot:previous.afterSnapshot as Prisma.InputJsonValue,afterSnapshot:s.plan,reservationSnapshot:s.reservations}}));
 }
 export async function revertirProduccion(input:unknown,clave:unknown){
+  await exigirAcceso("trabajos.operar");
+
  const parsed=reversionProduccionSchema.safeParse(input),k=z.uuid().safeParse(clave);if(!parsed.success||!k.success)return {ok:false as const,mensaje:!parsed.success?parsed.error.issues[0].message:"UUID inválido."};
  const d=parsed.data,key=k.data.toLowerCase(),fingerprint=createHash("sha256").update(JSON.stringify({type:"REVERTIR_PRODUCCION",...d})).digest("hex");
  try{return await prisma.$transaction(async tx=>{
+      await exigirAccesoEnTransaccion(tx, "trabajos.operar");
+
   await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${key},91357))`;
   const previous=await tx.workOrderOperation.findUnique({where:{idempotencyKey:key}});if(previous){exigir(previous.type==="REVERTIR_PRODUCCION"&&previous.workOrderId===d.workOrderId&&previous.fingerprint===fingerprint,"El UUID ya pertenece a otra solicitud.");return {ok:true as const,id:previous.workOrderId,version:previous.version,productionReversalId:previous.productionReversalId!};}
   exigir(!await tx.documentFolio.findUnique({where:{idempotencyKey:key}}),"La clave pertenece a otro documento.");
@@ -113,9 +121,13 @@ export async function revertirProduccion(input:unknown,clave:unknown){
 }
 
 export async function anularTrabajoPropio(input:unknown,clave:unknown){
+  await exigirAcceso("trabajos.operar");
+
  const parsed=anulacionTrabajoSchema.safeParse(input),k=z.uuid().safeParse(clave);if(!parsed.success||!k.success)return {ok:false as const,mensaje:!parsed.success?parsed.error.issues[0].message:"UUID inválido."};
  const d=parsed.data,key=k.data.toLowerCase(),fingerprint=createHash("sha256").update(JSON.stringify({type:"ANULAR",...d})).digest("hex");
  try{return await prisma.$transaction(async tx=>{
+      await exigirAccesoEnTransaccion(tx, "trabajos.operar");
+
   await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${key},91357))`;
   const previous=await tx.workOrderOperation.findUnique({where:{idempotencyKey:key}});if(previous){exigir(previous.type==="ANULAR"&&previous.workOrderId===d.workOrderId&&previous.fingerprint===fingerprint,"El UUID ya pertenece a otra solicitud.");return {ok:true as const,id:previous.workOrderId,version:previous.version};}
   exigir(!await tx.documentFolio.findUnique({where:{idempotencyKey:key}}),"La clave pertenece a otro documento.");

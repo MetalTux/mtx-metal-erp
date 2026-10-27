@@ -1,8 +1,9 @@
 import { formatearCantidad } from "@/lib/formato";
 import { validarTextoCotizacion, type NodoCotizacion } from "@/lib/validaciones/texto-cotizacion";
 import { formatearRut } from "@/lib/validaciones/rut";
-export const VERSION_PLANTILLA_PDF = 1;
+export const VERSION_PLANTILLA_PDF = 2;
 export interface DocumentoPdfCotizacion {
+  pricesIncludeVat?: boolean;
   folio: string; version: number; status: string; date: string; validUntil: string | null;
   company: Record<string, string | null>; client: Record<string, string | null>;
   bank: Record<string, string | null>; paymentCondition: string; paymentDays: number | null;
@@ -74,8 +75,8 @@ export function htmlCotizacionPdf(d: DocumentoPdfCotizacion, recursos: Record<st
   .tecnico th { color:#222; background:#eee; } .tecnico td,.tecnico th { border:1px solid #bbb; } blockquote { border-left:3px solid #777; margin-left:0; padding-left:10px; }
   </style></head><body><header><div>${logo ? `<img src="${e(logo)}" alt="Logo de empresa">` : ""}<h2>${e(d.company.legalName)}</h2><p>RUT: ${e(formatearRut(d.company.rut!))}</p><p>${e(d.company.businessActivity)}</p><p>${e(d.company.address)}, ${e(d.company.city)}</p><p>${e(d.company.phone)} ${e(d.company.email)}</p></div><div class="identidad"><h1>COTIZACIÓN</h1><p>N° ${e(d.folio)} · Revisión ${d.version}</p><p>Fecha: ${e(fecha(d.date))}</p>${d.validUntil ? `<p>Vigencia: ${e(fecha(d.validUntil))}</p>` : ""}<p class="estado">${e(d.status === "PENDIENTE" ? "Pendiente" : d.status === "APROBADA" ? "Aprobada" : "Rechazada")}</p></div></header>
   <section class="cliente"><h2>Información del cliente</h2><p><strong>${e(d.client.name)}</strong> · RUT: ${e(d.client.rut ? formatearRut(d.client.rut) : "")}</p><p>Sucursal: ${e(d.client.branchName)}</p><p>${e(d.client.address)}, ${e(d.client.city)}</p><p>Contacto: ${e(d.client.contact)} · ${e(d.client.phone)} · ${e(d.client.email)}</p></section>
-  <table><colgroup><col style="width:48%"><col style="width:16%"><col style="width:18%"><col style="width:18%"></colgroup><thead><tr><th>Descripción</th><th class="numero">Cantidad</th><th class="numero">Precio final</th><th class="numero">Importe</th></tr></thead><tbody>${filas}</tbody></table>
-  <table class="totales"><tbody><tr><td>Subtotal con IVA</td><td class="numero">${e(pesos(d.subtotal))}</td></tr>${BigInt(d.discountAmount) ? `<tr><td>Descuento global</td><td class="numero">−${e(pesos(d.discountAmount))}</td></tr>` : ""}<tr><td>Neto</td><td class="numero">${e(pesos(d.netAmount))}</td></tr><tr><td>IVA (${e(formatearCantidad(d.vatRate))}%)</td><td class="numero">${e(pesos(d.vatAmount))}</td></tr><tr class="total"><td>TOTAL</td><td class="numero">${e(pesos(d.totalAmount))}</td></tr></tbody></table>
+  <table><colgroup><col style="width:48%"><col style="width:16%"><col style="width:18%"><col style="width:18%"></colgroup><thead><tr><th>Descripción</th><th class="numero">Cantidad</th><th class="numero">${d.pricesIncludeVat === false ? "Precio neto" : "Precio con IVA"}</th><th class="numero">${d.pricesIncludeVat === false ? "Importe neto" : "Importe con IVA"}</th></tr></thead><tbody>${filas}</tbody></table>
+  <table class="totales"><tbody><tr><td>${d.pricesIncludeVat === false ? "Subtotal neto" : "Subtotal con IVA"}</td><td class="numero">${e(pesos(d.subtotal))}</td></tr>${BigInt(d.discountAmount) ? `<tr><td>Descuento global</td><td class="numero">−${e(pesos(d.discountAmount))}</td></tr>` : ""}<tr><td>Neto</td><td class="numero">${e(pesos(d.netAmount))}</td></tr><tr><td>IVA (${e(formatearCantidad(d.vatRate))}%)</td><td class="numero">${e(pesos(d.vatAmount))}</td></tr><tr class="total"><td>TOTAL</td><td class="numero">${e(pesos(d.totalAmount))}</td></tr></tbody></table>
   <section class="pagos"><h2>Condiciones de pago</h2><p>${e(d.paymentCondition)}${d.paymentDays !== null ? ` · Plazo acordado: ${d.paymentDays} días` : ""}</p>${d.commercialTerms ? `<p class="condiciones">${e(d.commercialTerms)}</p>` : ""}${d.bank.name ? `<h3>Datos para transferencia</h3><p>${e(d.bank.name)} · ${e(d.bank.type)} · ${e(d.bank.number)}</p><p>${e(d.bank.holder)} · RUT: ${e(d.bank.rut ? formatearRut(d.bank.rut) : "")}</p><p>${e(d.bank.email)}</p>` : ""}</section>
   ${tieneDetalle ? `<section class="tecnico"><h1>Descripción de trabajos</h1>${texto}</section>` : ""}</body></html>`;
 }

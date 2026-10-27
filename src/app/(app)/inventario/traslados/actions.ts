@@ -1,4 +1,6 @@
 "use server";
+import { exigirAcceso, exigirOrigenAccion } from "@/lib/seguridad/acceso";
+
 import { revalidatePath } from "next/cache";
 import { Prisma } from "@/generated/prisma/client";
 import { trasladoSchema } from "@/lib/validaciones/traslado";
@@ -8,10 +10,16 @@ import {
 } from "@/lib/servicios/traslados-inventario";
 import { inicioDiaChile } from "@/lib/fechas-chile";
 export async function obtenerSaldosTraslado(entrada: unknown) {
+  await exigirOrigenAccion();
+  await exigirAcceso("traslados.leer", true);
+
   return consultarSaldosTraslado(entrada);
 }
 /** Previsión con Decimal en servidor; registrar vuelve a comprobar referencias y saldos bajo bloqueo. */
 export async function prepararConfirmacionTraslado(entrada: unknown) {
+  await exigirOrigenAccion();
+  await exigirAcceso("traslados.operar", true);
+
   const v = trasladoSchema.safeParse(entrada);
   if (!v.success)
     return {
@@ -38,6 +46,9 @@ export async function prepararConfirmacionTraslado(entrada: unknown) {
   };
 }
 export async function guardarDatosTraslado(entrada: unknown) {
+  await exigirOrigenAccion();
+  await exigirAcceso("traslados.operar", true);
+
   const r = await registrarTrasladoInventario(entrada);
   if (r.ok)
     for (const ruta of [

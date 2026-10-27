@@ -1,3 +1,5 @@
+import { anotarMutacion } from "@/lib/seguridad/autoria";
+import { exigirAcceso, exigirAccesoEnTransaccion } from "@/lib/seguridad/acceso";
 import { normalizarRut } from "@/lib/validaciones/rut";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
@@ -33,10 +35,14 @@ function errorOperacion(error: unknown): ResultadoCliente {
 }
 
 export async function listarClientes(): Promise<Cliente[]> {
+  await exigirAcceso("clientes.leer");
+
   return (await prisma.client.findMany({ select: seleccion, orderBy: [{ name: "asc" }, { id: "asc" }] })).map(serializar);
 }
 
 export async function consultarCliente(id: unknown): Promise<ResultadoCliente> {
+  await exigirAcceso("clientes.leer");
+
   if (typeof id !== "number" || !Number.isSafeInteger(id) || id <= 0) return { ok: false, mensaje: "El cliente indicado no es válido." };
   try {
     const cliente = await prisma.client.findUnique({ where: { id }, select: seleccion });
@@ -45,6 +51,8 @@ export async function consultarCliente(id: unknown): Promise<ResultadoCliente> {
 }
 
 export async function guardarCliente(datos: unknown, referencia?: unknown): Promise<ResultadoCliente> {
+  await exigirAcceso("clientes.operar");
+
   const validacion = clienteSchema.safeParse(datos);
   if (!validacion.success) return { ok: false, mensaje: "Revisa los campos del formulario.", campos: validacion.error.flatten().fieldErrors };
   const registro = referencia === undefined ? undefined : referenciaClienteSchema.safeParse(referencia);
@@ -57,6 +65,8 @@ export async function guardarCliente(datos: unknown, referencia?: unknown): Prom
       return { ok: false, mensaje: "Ya existe un cliente con este RUT.", campos: { rut: ["Este RUT ya está registrado."] } };
     }
     const cliente = await prisma.$transaction(async tx => {
+      await exigirAccesoEnTransaccion(tx, "clientes.operar");
+
       let id: number;
       if (registro?.success) {
         // Todas las sucursales se guardan junto con el cliente; el bloqueo serializa editores.
@@ -71,10 +81,10 @@ export async function guardarCliente(datos: unknown, referencia?: unknown): Prom
         if (central && !validacion.data.branches.some(b => b.id === central.id && b.isHeadOffice)) throw new ReglaCliente("Casa Central no se puede eliminar ni reemplazar.");
         await tx.clientBranch.deleteMany({ where: { clientId: id, id: { notIn: ids } } });
         // Timestamp monotónico: no aceptar dos ediciones con la misma versión temporal.
-        await tx.client.update({ where: { id }, data: { ...data, updatedAt: new Date(Math.max(Date.now(), anterior.updatedAt.getTime() + 1)) } });
+        await anotarMutacion(tx, "client", "update", await tx.client.update({ where: { id }, data: { ...data, updatedAt: new Date(Math.max(Date.now(), anterior.updatedAt.getTime() + 1)) } }));
       } else {
         if (validacion.data.branches.some(b => b.id !== undefined)) throw new ReglaCliente("Una sucursal nueva no puede tener un identificador existente.");
-        id = (await tx.client.create({ data })).id;
+        id = (await anotarMutacion(tx, "client", "create", await tx.client.create({ data }))).id;
       }
       for (const b of validacion.data.branches) {
         const { id: branchId, ...campos } = b;
@@ -93,11 +103,13 @@ export async function guardarCliente(datos: unknown, referencia?: unknown): Prom
 }
 
 export async function eliminarCliente(referencia: unknown): Promise<ResultadoCliente> {
+  await exigirAcceso("clientes.operar");
+
   const validacion = referenciaClienteSchema.safeParse(referencia);
   if (!validacion.success) return { ok: false, mensaje: "La referencia del registro no es válida. Actualiza el listado." };
   try {
     // La FK protege también frente a cotizaciones asociadas después de abrir la confirmación.
-    await prisma.client.delete({ where: { id: validacion.data.id, updatedAt: new Date(validacion.data.updatedAt) } });
+    await prisma.$transaction(async tx => { await exigirAccesoEnTransaccion(tx, "clientes.operar"); return anotarMutacion(tx, "client", "delete", await tx.client.delete({ where: { id: validacion.data.id, updatedAt: new Date(validacion.data.updatedAt) } })); });
     return { ok: true, mensaje: "Cliente eliminado." };
   } catch (error) { return errorOperacion(error); }
 }

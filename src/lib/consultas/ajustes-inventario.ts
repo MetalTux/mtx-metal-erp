@@ -1,3 +1,4 @@
+import { exigirAcceso } from "@/lib/seguridad/acceso";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
 import { filtrosAjustesSchema } from "@/lib/validaciones/ajuste";
@@ -20,6 +21,8 @@ export type FilaAjuste = {
   unitMeasureId: number;
 };
 export async function consultarAjustes(entrada: unknown) {
+  await exigirAcceso("ajustes.leer");
+
   const v = filtrosAjustesSchema.safeParse(entrada);
   if (!v.success)
     return {

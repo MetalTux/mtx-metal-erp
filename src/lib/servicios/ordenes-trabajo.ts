@@ -1,3 +1,5 @@
+import { anotarMutacion } from "@/lib/seguridad/autoria";
+import { exigirAcceso, exigirAccesoEnTransaccion } from "@/lib/seguridad/acceso";
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import { Prisma, type WorkOrderLine } from "@/generated/prisma/client";
@@ -16,11 +18,15 @@ export type ResultadoTrabajo = { ok: true; id: number; version: number; mensaje:
 
 /** Cambia únicamente estado/fecha y registra su revisión, sin consumir ni ampliar reservas. */
 export async function iniciarTrabajo(input: unknown, clave: unknown): Promise<ResultadoTrabajo> {
+  await exigirAcceso("trabajos.operar");
+
   const parsed = inicioTrabajoSchema.safeParse(input), k = z.uuid().safeParse(clave);
   if (!parsed.success || !k.success) return { ok: false, mensaje: !parsed.success ? parsed.error.issues[0].message : "UUID inválido." };
   const d = parsed.data, key = k.data.toLowerCase(), fingerprint = hash({ type: "INICIAR", ...d });
   try {
     return await prisma.$transaction(async tx => {
+      await exigirAccesoEnTransaccion(tx, "trabajos.operar");
+
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${key},91357))`;
       const previa = await tx.workOrderOperation.findUnique({ where: { idempotencyKey: key } });
       if (previa) {
@@ -38,8 +44,8 @@ export async function iniciarTrabajo(input: unknown, clave: unknown): Promise<Re
       const anterior = await tx.workOrderOperation.findUniqueOrThrow({ where: { workOrderId_version: { workOrderId: work.id, version: work.version } } });
       await tx.workOrder.update({ where: { id: work.id }, data: { status: "EN_PROCESO", startedDate: fecha(d.startedDate), version: { increment: 1 } } });
       const [snap] = await tx.$queryRaw<{ plan: Prisma.InputJsonValue; reservations: Prisma.InputJsonValue }[]>`SELECT public.snapshot_plan_trabajo(${work.id}) AS plan,public.snapshot_reservas_trabajo(${work.id}) AS reservations`;
-      await tx.workOrderOperation.create({ data: { workOrderId: work.id, idempotencyKey: key, fingerprint, type: "INICIAR", version: work.version + 1,
-        beforeSnapshot: anterior.afterSnapshot as Prisma.InputJsonValue, afterSnapshot: snap.plan, reservationSnapshot: snap.reservations } });
+      await anotarMutacion(tx, "workOrderOperation", "create", await tx.workOrderOperation.create({ data: { workOrderId: work.id, idempotencyKey: key, fingerprint, type: "INICIAR", version: work.version + 1,
+        beforeSnapshot: anterior.afterSnapshot as Prisma.InputJsonValue, afterSnapshot: snap.plan, reservationSnapshot: snap.reservations } }));
       return { ok: true as const, id: work.id, version: work.version + 1, mensaje: "OT iniciada sin modificar existencias ni reservas." };
     }, { maxWait: 10000, timeout: 30000 });
   } catch (e) {
@@ -184,10 +190,14 @@ async function conciliarReservas(tx: Prisma.TransactionClient, id:number, key:st
 }
 
 export async function guardarPlanTrabajo(input: unknown, clave: unknown): Promise<ResultadoTrabajo> {
+  await exigirAcceso("trabajos.operar");
+
   const parsed=planTrabajoSchema.safeParse(input), k=z.uuid().safeParse(clave);
   if(!parsed.success || !k.success) return {ok:false,mensaje:!parsed.success ? parsed.error.issues[0].message : "UUID inválido."};
   const d=parsed.data,key=k.data.toLowerCase(),type=d.id ? "EDITAR_PLAN" : "CREAR",fingerprint=hash({type,plan:d});
   try{return await prisma.$transaction(async tx=>{
+      await exigirAccesoEnTransaccion(tx, "trabajos.operar");
+
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${key},91357))`;
     const previa=await tx.workOrderOperation.findUnique({where:{idempotencyKey:key}});
     if(previa){exigir(previa.type===type && previa.fingerprint===fingerprint && (!d.id||previa.workOrderId===d.id),"El UUID ya pertenece a otra solicitud.");return {ok:true as const,id:previa.workOrderId,version:previa.version,mensaje:"La operación ya se confirmó."};}
@@ -227,8 +237,8 @@ export async function guardarPlanTrabajo(input: unknown, clave: unknown): Promis
     await conciliarReservas(tx,w.id,key,d.confirmPlan,d.reason||"Confirmación inicial del plan");
     if(d.confirmPlan) await reservarPlanTrabajoEnTransaccion(tx,w.id,key);
     const [snap]=await tx.$queryRaw<{plan:Prisma.InputJsonValue;reservations:Prisma.InputJsonValue}[]>`SELECT public.snapshot_plan_trabajo(${w.id}) AS plan,public.snapshot_reservas_trabajo(${w.id}) AS reservations`;
-    await tx.workOrderOperation.create({data:{workOrderId:w.id,idempotencyKey:key,fingerprint,type,version:w.version,beforeSnapshot:before as Prisma.InputJsonValue | undefined,
-      afterSnapshot:snap.plan,reservationSnapshot:snap.reservations,planConfirmed:d.confirmPlan,reason:d.reason||null}});
+    await anotarMutacion(tx, "workOrderOperation", "create", await tx.workOrderOperation.create({data:{workOrderId:w.id,idempotencyKey:key,fingerprint,type,version:w.version,beforeSnapshot:before as Prisma.InputJsonValue | undefined,
+      afterSnapshot:snap.plan,reservationSnapshot:snap.reservations,planConfirmed:d.confirmPlan,reason:d.reason||null}}));
     return {ok:true as const,id:w.id,version:w.version,mensaje:d.confirmPlan ? "Plan confirmado y stock disponible reservado; revisa faltantes." : "Borrador guardado sin reservas activas."};
   },{maxWait:10000,timeout:60000});}catch(e){if(e instanceof ReglaTrabajo || (e instanceof Error && e.name==="ReglaOrden"))return {ok:false,mensaje:e.message};
     console.error("Error al guardar planificación de OT:",e);return {ok:false,mensaje:"No se pudo confirmar la OT. Conserva la solicitud y reintenta con el mismo UUID.",incierto:true};}

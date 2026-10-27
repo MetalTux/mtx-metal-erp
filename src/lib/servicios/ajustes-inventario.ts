@@ -1,3 +1,5 @@
+import { anotarMutacion } from "@/lib/seguridad/autoria";
+import { exigirAcceso, exigirAccesoEnTransaccion } from "@/lib/seguridad/acceso";
 import { cantidadReservadaRecurso } from "./reservas-stock";
 import { createHash } from "node:crypto";
 import { prisma } from "@/lib/prisma";
@@ -29,6 +31,8 @@ export type ReferenciaAjuste = {
 };
 /** Lectura consistente y sin crear stock. El último ID detecta cambios aunque el saldo vuelva al mismo valor. */
 export async function consultarSaldoAjuste(entrada: unknown) {
+  await exigirAcceso("ajustes.leer");
+
   const v = combinacionAjusteSchema.safeParse(entrada);
   if (!v.success)
     return {
@@ -85,6 +89,8 @@ export async function consultarSaldoAjuste(entrada: unknown) {
 }
 /** Cuenta física, no reversión ciega. Todo efecto y UUID se confirman o revierten juntos. */
 export async function registrarAjusteInventario(entrada: unknown) {
+  await exigirAcceso("ajustes.operar");
+
   const v = ajusteSchema.safeParse(entrada);
   if (!v.success)
     return {
@@ -109,6 +115,8 @@ export async function registrarAjusteInventario(entrada: unknown) {
   try {
     return await prisma.$transaction(
       async (tx) => {
+      await exigirAccesoEnTransaccion(tx, "ajustes.operar");
+
         // Serializa el mismo UUID incluso si dos solicitudes intentan combinaciones distintas.
         await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${d.idempotencyKey}, 0))::text`;
         const previa = await tx.inventoryOperation.findUnique({
@@ -243,7 +251,7 @@ export async function registrarAjusteInventario(entrada: unknown) {
             date: inicioDiaChile(d.date),
           },
         });
-        await tx.inventoryOperation.create({
+        await anotarMutacion(tx, "inventoryOperation", "create", await tx.inventoryOperation.create({
           data: {
             idempotencyKey: d.idempotencyKey,
             requestHash: hash,
@@ -254,7 +262,7 @@ export async function registrarAjusteInventario(entrada: unknown) {
                 ? "CORREGIR"
                 : "AJUSTAR",
           },
-        });
+        }));
         return {
           ok: true as const,
           mensaje: "Ajuste registrado y existencias actualizadas.",

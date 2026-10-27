@@ -1,3 +1,5 @@
+import { anotarMutacion } from "@/lib/seguridad/autoria";
+import { exigirAcceso, exigirAccesoEnTransaccion } from "@/lib/seguridad/acceso";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
 import {
@@ -38,6 +40,8 @@ export async function consultarConfiguracionMinimo(
   | { ok: true; configuracion: ConfiguracionMinimo }
   | { ok: false; mensaje: string }
 > {
+  await exigirAcceso("inventario.leer");
+
   const v = combinacionMinimoSchema.safeParse(entrada);
   if (!v.success)
     return { ok: false, mensaje: "Selecciona material y bodega válidos." };
@@ -93,6 +97,8 @@ export async function guardarMinimoInventario(
   entrada: unknown,
   referencia: unknown,
 ): Promise<ResultadoMinimo> {
+  await exigirAcceso("inventario.operar");
+
   const v = minimoInventarioSchema.safeParse(entrada),
     ref = referenciaMinimoSchema.nullable().safeParse(referencia);
   if (!v.success || !ref.success)
@@ -106,6 +112,8 @@ export async function guardarMinimoInventario(
   try {
     await prisma.$transaction(
       async (tx) => {
+      await exigirAccesoEnTransaccion(tx, "inventario.operar");
+
         await tx.$queryRaw`SELECT id FROM "RawMaterial" WHERE id=${v.data.rawMaterialId} FOR UPDATE`;
         const m = await tx.rawMaterial.findUnique({
           where: { id: v.data.rawMaterialId },
@@ -158,14 +166,14 @@ export async function guardarMinimoInventario(
           );
         }
         if (actual)
-          await tx.warehouseStock.update({
+          await anotarMutacion(tx, "warehouseStock", "update", await tx.warehouseStock.update({
             where: { id: actual.id },
             data: { minStock: deseado },
-          });
+          }));
         else if (deseado !== null)
-          await tx.warehouseStock.create({
+          await anotarMutacion(tx, "warehouseStock", "create", await tx.warehouseStock.create({
             data: { ...combinacion, quantity: "0", minStock: deseado },
-          });
+          }));
         // Quitar mínimo sin una fila previa es un no-op. No generar combinaciones ni movimientos innecesarios.
       },
       { maxWait: 10000, timeout: 15000 },

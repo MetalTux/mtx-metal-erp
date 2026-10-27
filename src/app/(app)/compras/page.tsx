@@ -1,3 +1,4 @@
+import { exigirAcceso } from "@/lib/seguridad/acceso";
 import { Compras } from "@/components/compras/compras";
 import { catalogosCompra, listarCompras } from "@/lib/servicios/compras";
 import { filtrosCompraSchema } from "@/lib/validaciones/compra";
@@ -6,6 +7,8 @@ export default async function Page({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  await exigirAcceso("compras.leer");
+
   const raw = await searchParams;
   const valid = filtrosCompraSchema.safeParse(raw);
   const filtros = valid.success ? valid.data : filtrosCompraSchema.parse({});

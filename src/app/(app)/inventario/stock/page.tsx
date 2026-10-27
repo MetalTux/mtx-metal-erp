@@ -1,8 +1,11 @@
+import { exigirAcceso } from "@/lib/seguridad/acceso";
 import { consultarStock, listarCatalogosInventario } from "@/lib/consultas/inventario";
 import { filtrosStockSchema, borradorFiltrosInventario } from "@/lib/validaciones/inventario";
 import { ConsultaInventario } from "@/components/inventario/consulta-inventario";
 
 export default async function Page({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  await exigirAcceso("inventario.leer");
+
   const entrada = await searchParams;
   const validacion = filtrosStockSchema.safeParse(entrada);
   const [consulta, catalogos] = await Promise.all([consultarStock(entrada), listarCatalogosInventario()]);

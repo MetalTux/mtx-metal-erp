@@ -1,7 +1,10 @@
+import { exigirAcceso } from "@/lib/seguridad/acceso";
 import { catalogosTrabajo, listarTrabajos, consultarTrabajo, prepararTrabajoComercial } from "@/lib/consultas/ordenes-trabajo";
 import { OrdenesTrabajo } from "@/components/ordenes-trabajo/ordenes";
 import { hoyOrden } from "@/lib/servicios/ordenes-compra-cliente";
 export default async function Page({searchParams}:{searchParams:Promise<Record<string,string|string[]|undefined>>}){
+  await exigirAcceso("trabajos.leer");
+
  const params=await searchParams;
  const [listado,catalogos]=await Promise.all([listarTrabajos(params),catalogosTrabajo()]);
  let inicial,errorInicial;

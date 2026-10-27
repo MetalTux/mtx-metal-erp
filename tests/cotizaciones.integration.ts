@@ -39,7 +39,7 @@ async function main() {
   assert(mixta.ok);
   const mixtos = await prisma.quoteDetail.findMany({ where: { quoteId: mixta.id }, orderBy: { position: "asc" } });
   assert.deepEqual(mixtos.map(l => l.kind), ["SERVICIO", "MATERIA_PRIMA", "PRODUCTO"]); assert.equal(mixtos[1].rawMaterialCode, material.code); assert.equal(mixtos[2].productCode, producto.code);
-  assert.equal((await obtenerCotizacion(mixta.id)).historico.totalAmount, "4802051");
+  assert.equal((await obtenerCotizacion(mixta.id)).historico.totalAmount, "5714441");
   const paralelas = await Promise.all([guardarCotizacion({ ...dato, lines: [{ kind: "PRODUCTO", rawMaterialId: null, productId: producto.id, unitMeasureId: producto.unitMeasureId, description: producto.name, quantity: "1", unitPrice: "100" }] }, randomUUID()), guardarCotizacion({ ...dato, lines: [{ kind: "PRODUCTO", rawMaterialId: null, productId: producto.id, unitMeasureId: producto.unitMeasureId, description: producto.name, quantity: "2", unitPrice: "100" }] }, randomUUID())]);
   assert(paralelas.every(r => r.ok), "Dos cotizaciones del mismo producto deben serializar sin ascender bloqueos SHARE.");
   // SQL bloquea cambios incompletos de importe/versión y líneas incompatibles.
@@ -60,7 +60,7 @@ async function main() {
   dato.technicalDescription = { type: "doc", content: [{ type: "heading", attrs: { level: 2 }, content: [{ type: "text", text: "Especificaciones" }] }, { type: "bulletList", content: [{ type: "listItem", content: [{ type: "paragraph", content: [{ type: "text", text: "Acero inoxidable", marks: [{ type: "bold" }] }] }] }] }, { type: "paragraph", attrs: { textAlign: "right" }, content: [{ type: "text", text: "Formato copiado", marks: [{ type: "textStyle", attrs: { color: "rgb(204, 0, 0)", fontFamily: "Calibri", fontSize: "18pt" } }] }] }, { type: "table", content: [{ type: "tableRow", content: [{ type: "tableHeader", attrs: { colspan: 1, rowspan: 1, colwidth: null, align: null, backgroundColor: "rgb(220, 220, 220)" }, content: [{ type: "paragraph", content: [{ type: "text", text: "Encabezado" }] }] }, { type: "tableCell", content: [{ type: "paragraph", content: [{ type: "text", text: "Celda" }] }] }] }] }, { type: "image", attrs: { src: imagen.src, alt: "Referencia", placement: "izquierda", width: 33 } }] };
   const altas = await Promise.all([guardarCotizacion(dato, clave), guardarCotizacion(dato, clave)]);
   assert(altas.every(r => r.ok)); const alta = altas[0]; assert(alta.ok); assert.equal(altas[1].ok && altas[1].id, alta.id);
-  const q = await obtenerCotizacion(alta.id); assert.equal(q.historico.totalAmount, "4800000"); assert.equal(q.historico.netAmount, "4033613"); assert.equal(q.historico.vatAmount, "766387"); assert.deepEqual(q.datos.technicalDescription, validarTextoCotizacion(dato.technicalDescription));
+  const q = await obtenerCotizacion(alta.id); assert.equal(q.historico.totalAmount, "5712000"); assert.equal(q.historico.netAmount, "4800000"); assert.equal(q.historico.vatAmount, "912000"); assert.deepEqual(q.datos.technicalDescription, validarTextoCotizacion(dato.technicalDescription));
   assert.equal((await consultarCotizaciones({ q: q.folio, desde: "2026-10-10", hasta: "2026-10-10" })).filas.length, 1);
   assert.equal((await consultarCotizaciones({ q: q.folio, desde: "2026-10-11" })).filas.length, 0);
   assert.equal((await guardarCotizacion({ ...dato, validUntil: "2026-10-30" }, clave)).ok, false);

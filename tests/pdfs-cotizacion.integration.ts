@@ -18,6 +18,7 @@ const ok = <T extends {ok:boolean}>(r:T): Extract<T,{ok:true}> => { assert(r.ok,
 const hoy = new Intl.DateTimeFormat("en-CA",{timeZone:"America/Santiago"}).format(new Date());
 async function main() {
   const emisionesPrevias = await prisma.quotePdfEmission.count();
+  const archivosPrevios = (await readdir(directorio)).length;
   const cl = await prisma.clientBranch.findFirstOrThrow({where:{legacyIncomplete:false}}), unit = await prisma.unitMeasure.findFirstOrThrow(), pc = await prisma.paymentCondition.findFirstOrThrow();
   await prisma.companyProfile.upsert({where:{id:1},create:{id:1,legalName:"Empresa de validación PDF",rut:"76086428-5",address:"Dirección de prueba 123",city:"Curicó"},update:{legalName:"Empresa de validación PDF",rut:"76086428-5",address:"Dirección de prueba 123",city:"Curicó",logoUrl:null}});
   const datos = {date:hoy,validUntil:null,clientId:cl.clientId,clientBranchId:cl.id,paymentConditionId:pc.id,bankAccountId:null,discount:{modo:"SIN_DESCUENTO"},commercialTerms:"50% como anticipo y 50% al entregar.\nTexto exclusivo de esta revisión.",technicalDescription:documentoVacioCotizacion,lines:[{kind:"SERVICIO",rawMaterialId:null,productId:null,unitMeasureId:unit.id,description:"Trabajo de prueba PDF",quantity:"1",unitPrice:"4800000"}]};
@@ -26,11 +27,11 @@ async function main() {
   const q = ok(await guardarCotizacion(datos,randomUUID())); const ref = {id:q.id,version:q.version}, clave = randomUUID();
   const e1 = ok(await emitirPdfCotizacion(ref,clave));const primer = await leerPdfCotizacion(e1.id);assert(primer.bytes.subarray(0,5).toString()==="%PDF-");assert.equal((await prisma.quote.findUniqueOrThrow({where:{id:q.id}})).version,1);
   assert.equal(ok(await emitirPdfCotizacion(ref,clave)).id,e1.id);assert.equal(ok(await emitirPdfCotizacion(ref,randomUUID())).id,e1.id);
-  const snapshot = primer.emision.snapshot as {documento:{commercialTerms:string,totalAmount:string};origen:{quote:{commercialTerms:string};details:unknown[]}};assert.equal(snapshot.documento.commercialTerms,datos.commercialTerms);assert.equal(snapshot.origen.quote.commercialTerms,datos.commercialTerms);assert.equal(snapshot.documento.totalAmount,"4800000");assert.equal(snapshot.origen.details.length,1);
+  const snapshot = primer.emision.snapshot as {documento:{commercialTerms:string,totalAmount:string};origen:{quote:{commercialTerms:string};details:unknown[]}};assert.equal(snapshot.documento.commercialTerms,datos.commercialTerms);assert.equal(snapshot.origen.quote.commercialTerms,datos.commercialTerms);assert.equal(snapshot.documento.totalAmount,"5712000");assert.equal(snapshot.origen.details.length,1);
   await assert.rejects(prisma.quotePdfEmission.update({where:{id:e1.id},data:{folio:"ALTERADO"}}));await assert.rejects(prisma.quotePdfEmission.delete({where:{id:e1.id}}));await assert.rejects(prisma.quotePdfRequest.delete({where:{idempotencyKey:clave}}));
   const modificada = ok(await guardarCotizacion({...datos,commercialTerms:"Pago al entregar, segunda revisión.",lines:[{...datos.lines[0],description:"Descripción modificada",unitPrice:"1000"}]},randomUUID(),ref));const ref2={id:q.id,version:modificada.version};
   assert.equal(ok(await emitirPdfCotizacion(ref,clave)).id,e1.id);assert(!(await emitirPdfCotizacion(ref,randomUUID())).ok);assert(!(await emitirPdfCotizacion(ref2,clave)).ok);
-  const dobles=await Promise.all([emitirPdfCotizacion(ref2,randomUUID()),emitirPdfCotizacion(ref2,randomUUID())]);assert.equal(ok(dobles[0]).id,ok(dobles[1]).id);assert.equal((await historialPdfCotizacion(q.id)).length,2);assert.equal((await readdir(directorio)).filter(n=>n.endsWith('.pdf')).length,(await prisma.quotePdfEmission.count())-emisionesPrevias);
+  const dobles=await Promise.all([emitirPdfCotizacion(ref2,randomUUID()),emitirPdfCotizacion(ref2,randomUUID())]);assert.equal(ok(dobles[0]).id,ok(dobles[1]).id);assert.equal((await historialPdfCotizacion(q.id)).length,2);assert.equal((await readdir(directorio)).filter(n=>n.endsWith('.pdf')).length-archivosPrevios,(await prisma.quotePdfEmission.count())-emisionesPrevias);
   assert.deepEqual((await leerPdfCotizacion(e1.id)).bytes,primer.bytes);
   await prisma.companyProfile.update({where:{id:1},data:{legalName:"Empresa actual distinta"}});assert.deepEqual((await leerPdfCotizacion(e1.id)).bytes,primer.bytes);
   const aprobada=ok(await resolverCotizacion(ref2,randomUUID(),"APROBAR"));const e3=ok(await emitirPdfCotizacion({id:q.id,version:aprobada.version},randomUUID()));assert.equal((await leerPdfCotizacion(e3.id)).emision.status,"APROBADA");
@@ -92,7 +93,7 @@ async function main() {
   }
   // Rollback SQL tras guardar archivo: no queda emisión ni PDF huérfano.
   const fallida=ok(await guardarCotizacion(datos,randomUUID()));await prisma.$executeRawUnsafe(`CREATE FUNCTION pdf_fallo_test() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'Fallo PDF de prueba'; END $$`);await prisma.$executeRawUnsafe(`CREATE TRIGGER pdf_fallo_test BEFORE INSERT ON "QuotePdfRequest" FOR EACH ROW EXECUTE FUNCTION pdf_fallo_test()`);
-  const cuenta=await prisma.quotePdfEmission.count();assert(!(await emitirPdfCotizacion({id:fallida.id,version:fallida.version},randomUUID())).ok);assert.equal(await prisma.quotePdfEmission.count(),cuenta);assert.equal((await readdir(directorio)).length,cuenta-emisionesPrevias);await prisma.$executeRawUnsafe(`DROP TRIGGER pdf_fallo_test ON "QuotePdfRequest"`);await prisma.$executeRawUnsafe(`DROP FUNCTION pdf_fallo_test()`);
+  const cuenta=await prisma.quotePdfEmission.count();assert(!(await emitirPdfCotizacion({id:fallida.id,version:fallida.version},randomUUID())).ok);assert.equal(await prisma.quotePdfEmission.count(),cuenta);assert.equal((await readdir(directorio)).length-archivosPrevios,cuenta-emisionesPrevias);await prisma.$executeRawUnsafe(`DROP TRIGGER pdf_fallo_test ON "QuotePdfRequest"`);await prisma.$executeRawUnsafe(`DROP FUNCTION pdf_fallo_test()`);
   // Cambio después de capturar y antes de confirmar: rechazar el PDF obsoleto.
   const carrera=ok(await guardarCotizacion(datos,randomUUID()));
   const buscar=prisma.quotePdfEmission.findUnique.bind(prisma.quotePdfEmission);let cambio=false;
@@ -102,7 +103,7 @@ async function main() {
   }) as unknown as typeof prisma.quotePdfEmission.findUnique;
   try { const r=await emitirPdfCotizacion({id:carrera.id,version:carrera.version},randomUUID());assert(!r.ok&&r.mensaje.includes("durante la generación")); }
   finally { prisma.quotePdfEmission.findUnique=buscar; }
-  assert.equal(await prisma.quotePdfEmission.count({where:{quoteId:carrera.id}}),0);assert.equal((await readdir(directorio)).length,(await prisma.quotePdfEmission.count())-emisionesPrevias);
+  assert.equal(await prisma.quotePdfEmission.count({where:{quoteId:carrera.id}}),0);assert.equal((await readdir(directorio)).length-archivosPrevios,(await prisma.quotePdfEmission.count())-emisionesPrevias);
   // Simular pérdida de confirmación después del commit; mismo UUID recupera resultado.
   const incierta=ok(await guardarCotizacion(datos,randomUUID())), requestKey=randomUUID();
   const transaccion=prisma.$transaction.bind(prisma);let perder=true;

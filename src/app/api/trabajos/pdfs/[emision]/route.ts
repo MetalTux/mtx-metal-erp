@@ -1,7 +1,10 @@
+import { accesoArchivo } from "@/lib/seguridad/archivos";
 import { NextResponse } from "next/server";
 import { leerPdfTrabajo } from "@/lib/servicios/pdfs-trabajo";
 export const runtime = "nodejs";
 export async function GET(request: Request, { params }: { params: Promise<{ emision: string }> }) {
+  const acceso = await accesoArchivo("trabajos.leer");
+  if (acceso.respuesta) return acceso.respuesta;
   try {
     const { bytes, emision } = await leerPdfTrabajo((await params).emision);
     const nombre = `ot-${emision.folio.replace(/[^a-zA-Z0-9_-]/g, "_")}-r${emision.workOrderVersion}-p${emision.templateVersion}.pdf`;

@@ -1,3 +1,5 @@
+import { anotarMutacion } from "@/lib/seguridad/autoria";
+import { exigirAcceso, exigirAccesoEnTransaccion } from "@/lib/seguridad/acceso";
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
@@ -49,19 +51,27 @@ function error(e:unknown){
  return null;
 }
 export async function previsualizarProduccion(input:unknown){
+  await exigirAcceso("trabajos.operar");
+
  const p=produccionSchema.safeParse(input);if(!p.success)return {ok:false as const,mensaje:p.error.issues[0].message};
- try{return await prisma.$transaction(async tx=>{const s=await cargar(tx,p.data),rows=await disponibilidad(tx,p.data);let destination=null;
+ try{return await prisma.$transaction(async tx=>{
+      await exigirAccesoEnTransaccion(tx, "trabajos.operar");
+const s=await cargar(tx,p.data),rows=await disponibilidad(tx,p.data);let destination=null;
   if(p.data.warehouseId){const w=await tx.warehouse.findUnique({where:{id:p.data.warehouseId}});exigir(w&&["PRODUCTO_TERMINADO","MIXTA"].includes(w.classification??""),"Selecciona bodega compatible con terminado.");destination=w.name;}
   return {ok:true as const,preview:{expected:s.expected,consumptions:rows,previous:s.done.toFixed(3),next:s.done.plus(p.data.quantity).toFixed(3),limit:s.limit.toFixed(3),destination,reserveOutput:s.w.salesOrderId!==null&&s.line.executionMode==="CATALOGO"}};
  },{isolationLevel:"RepeatableRead",timeout:30000});}catch(e){return error(e)??{ok:false as const,mensaje:"No se pudo consultar la previsualización de producción."};}
 }
 export async function registrarProduccion(input:unknown,clave:unknown){
+  await exigirAcceso("trabajos.operar");
+
  const p=produccionSchema.safeParse(input),k=z.uuid().safeParse(clave);if(!p.success||!k.success)return {ok:false as const,mensaje:!p.success?p.error.issues[0].message:"UUID inválido."};
  const d=p.data,key=k.data.toLowerCase();
  // Conservar huellas de M2 cuando no hay vínculo de corrección.
  const {correctsProductionRecordId,...original}=d;
  const fingerprint=createHash("sha256").update(JSON.stringify({type:"REGISTRAR_PRODUCCION",...original,...(correctsProductionRecordId!==null?{correctsProductionRecordId}:{})})).digest("hex");
  try{return await prisma.$transaction(async tx=>{
+      await exigirAccesoEnTransaccion(tx, "trabajos.operar");
+
   await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${key},91357))`;
   const old=await tx.workOrderOperation.findUnique({where:{idempotencyKey:key}});if(old){exigir(old.type==="REGISTRAR_PRODUCCION"&&old.workOrderId===d.workOrderId&&old.fingerprint===fingerprint,"El UUID ya pertenece a otra solicitud.");return {ok:true as const,id:old.workOrderId,version:old.version,productionRecordId:old.productionRecordId!};}
   exigir(!await tx.documentFolio.findUnique({where:{idempotencyKey:key}}),"La clave pertenece a otro documento.");
@@ -105,13 +115,15 @@ export async function registrarProduccion(input:unknown,clave:unknown){
   }
   await tx.workOrder.update({where:{id:s.w.id},data:{version:{increment:1}}});
   const [snap]=await tx.$queryRaw<{plan:Prisma.InputJsonValue;reservations:Prisma.InputJsonValue}[]>`SELECT public.snapshot_plan_trabajo(${s.w.id}) AS plan,public.snapshot_reservas_trabajo(${s.w.id}) AS reservations`;
-  await tx.workOrderOperation.create({data:{workOrderId:s.w.id,type:"REGISTRAR_PRODUCCION",version:s.w.version+1,idempotencyKey:key,fingerprint,productionRecordId:record.id,beforeSnapshot:anterior.afterSnapshot as Prisma.InputJsonValue,afterSnapshot:snap.plan,reservationSnapshot:snap.reservations}});
+  await anotarMutacion(tx, "workOrderOperation", "create", await tx.workOrderOperation.create({data:{workOrderId:s.w.id,type:"REGISTRAR_PRODUCCION",version:s.w.version+1,idempotencyKey:key,fingerprint,productionRecordId:record.id,beforeSnapshot:anterior.afterSnapshot as Prisma.InputJsonValue,afterSnapshot:snap.plan,reservationSnapshot:snap.reservations}}));
   return {ok:true as const,id:s.w.id,version:s.w.version+1,productionRecordId:record.id};
  },{maxWait:10000,timeout:60000});}catch(e){const known=error(e);if(known)return known;console.error("Error al registrar producción:",e);return {ok:false as const,mensaje:"No se pudo comprobar el resultado. Reintenta sin cambiar los datos ni el UUID.",incierto:true};}
 }
 
 
 export async function prepararLoteProduccion(input:unknown){
+  await exigirAcceso("trabajos.operar");
+
  const p=produccionSchema.safeParse(input);if(!p.success)return {ok:false as const,mensaje:p.error.issues[0].message};
  try{return await prisma.$transaction(async tx=>({ok:true as const,expected:(await cargar(tx,p.data,true)).expected}),{isolationLevel:"RepeatableRead"});}catch(e){return error(e)??{ok:false as const,mensaje:"No se pudo calcular la previsión del lote."};}
 }

@@ -43,12 +43,12 @@ async function main() {
   }
   const antes = await prisma.documentFolio.count();
   const p = ok(await previsualizarOrdenCompraCliente(q.id, q.version, d.lines));
-  assert.equal(p.totalAmount, "360000"); assert.equal(await prisma.documentFolio.count(), antes);
+  assert.equal(p.totalAmount, "428400"); assert.equal(await prisma.documentFolio.count(), antes);
   assert.equal((await prisma.quote.findUniqueOrThrow({ where: { id: q.id } })).status, "PENDIENTE");
   const resultados = await Promise.all([registrarOrdenCompraCliente(d, clave), registrarOrdenCompraCliente({ ...d, lines: [{ ...d.lines[0], quantity: "04.000" }] }, clave)]);
   const alta = ok(resultados[0]); assert.equal(ok(resultados[1]).id, alta.id);
   const vista = await obtenerOrdenCompraCliente(alta.id);
-  assert.equal(vista.totalAmount, "360000"); assert.equal(vista.cuenta.amount, "360000"); assert.equal(vista.cuenta.dueDate, null);
+  assert.equal(vista.totalAmount, "428400"); assert.equal(vista.cuenta!.amount, "428400"); assert.equal(vista.cuenta!.dueDate, null);
   assert.equal(vista.customerOrderNumber, d.customerOrderNumber); assert.equal(vista.workOrderId, null);
   assert.deepEqual(vista.lines.map(l => l.acceptedQuantity), ["4", "0"]); assert.deepEqual(vista.lines.map(l => l.excludedQuantity), ["6", "1"]);
   assert.equal(vista.quoteVersion, q.version); assert.equal(vista.approvedQuoteVersion, q.version + 1);
@@ -61,13 +61,13 @@ async function main() {
   await assert.rejects(prisma.salesOrderDetail.update({ where: { id: linea.id }, data: { quantity: "2" } }));
   await assert.rejects(prisma.salesOrderDetail.delete({ where: { id: linea.id } }));
   await assert.rejects(prisma.salesOrderOperation.delete({ where: { idempotencyKey: clave } }));
-  await assert.rejects(prisma.accountReceivable.delete({ where: { id: vista.cuenta.id } }));
+  await assert.rejects(prisma.accountReceivable.delete({ where: { id: vista.cuenta!.id } }));
   const otra = await nueva(), equivalente = await entrada(otra, `OC${sufijo.toUpperCase()}0001`);
   assert.equal((await registrarOrdenCompraCliente(equivalente, randomUUID())).ok, false);
   assert.equal((await prisma.quote.findUniqueOrThrow({ where: { id: otra.id } })).status, "PENDIENTE");
   for (const invalido of [{ ...equivalente, lines: [] }, { ...equivalente, lines: [{ quoteDetailId: d.lines[0].quoteDetailId, quantity: "1" }] }, { ...equivalente, lines: [{ ...equivalente.lines[0], quantity: "11" }] }, { ...equivalente, date: "9999-12-29" }, { ...equivalente, date: "1900-01-01" }, { ...equivalente, scopeReviewed: false }, { ...equivalente, totalAmount: "1" }]) assert.equal((await registrarOrdenCompraCliente(invalido, randomUUID())).ok, false);
   const cancelar = await anularOrdenCompraCliente({ referencia: { id: alta.id, version: alta.version }, motivo: "Cancelación por el cliente" }, randomUUID());
-  ok(cancelar); assert.equal((await obtenerOrdenCompraCliente(alta.id)).cuenta.anulada, true);
+  ok(cancelar); assert.equal((await obtenerOrdenCompraCliente(alta.id)).cuenta!.anulada, true);
   assert.equal((await registrarOrdenCompraCliente(equivalente, randomUUID())).ok, false);
   assert.equal(ok(await registrarOrdenCompraCliente(d, clave)).id, alta.id);
   const carreraQ = await nueva(), carreraD = await entrada(carreraQ);
@@ -87,7 +87,7 @@ async function main() {
     } finally { await prisma.$executeRawUnsafe(`DROP TRIGGER prueba_occ_fallo ON "${tabla}"`); await prisma.$executeRawUnsafe('DROP FUNCTION prueba_occ_fallo()'); }
   }
   const ceroQ = await nueva({ discount: { modo: "SIN_DESCUENTO" }, lines: [{ ...datos.lines[0], unitPrice: "0" }] });
-  const cero = ok(await registrarOrdenCompraCliente(await entrada(ceroQ), randomUUID())); assert.equal((await obtenerOrdenCompraCliente(cero.id)).cuenta.amount, "0");
+  const cero = ok(await registrarOrdenCompraCliente(await entrada(ceroQ), randomUUID())); assert.equal((await obtenerOrdenCompraCliente(cero.id)).cuenta!.amount, "0");
   const previaQ = await nueva(); const aprobada = ok(await resolverCotizacion({ id: previaQ.id, version: previaQ.version }, randomUUID(), "APROBAR"));
   const previa = ok(await registrarOrdenCompraCliente(await entrada(aprobada), randomUUID())); assert.equal((await obtenerOrdenCompraCliente(previa.id)).approvedQuoteVersion, aprobada.version);
   const trabajo = await crearTrabajoComercialDePrueba(previa.id, "Trabajo de prueba");
@@ -95,7 +95,7 @@ async function main() {
   const pagoQ = await nueva(), conPago = ok(await registrarOrdenCompraCliente(await entrada(pagoQ), randomUUID())), cuenta = await prisma.accountReceivable.findUniqueOrThrow({ where: { salesOrderId: conPago.id } });
   await prisma.payment.create({ data: { accountReceivableId: cuenta.id, amount: "1", method: "Transferencia de prueba", idempotencyKey: randomUUID() } });
   assert.equal((await anularOrdenCompraCliente({ referencia: { id: conPago.id, version: conPago.version }, motivo: "Con pago" }, randomUUID())).ok, false);
-  await assert.rejects(prisma.payment.create({ data: { accountReceivableId: vista.cuenta.id, amount: "1", method: "Transferencia", idempotencyKey: randomUUID() } }));
+  await assert.rejects(prisma.payment.create({ data: { accountReceivableId: vista.cuenta!.id, amount: "1", method: "Transferencia", idempotencyKey: randomUUID() } }));
   await assert.rejects(prisma.workOrder.create({ data: { salesOrderId: alta.id, productName: "Orden anulada" } }));
   const filtrada = await consultarOrdenesCompraCliente({ q: vista.folio, estado: "ANULADA", orden: "total", sentido: "asc" }); assert.equal(filtrada.total, 1); assert.equal(filtrada.filas[0].id, alta.id);
   // Cambios de mantenedores no reescriben la identidad ni los importes registrados.

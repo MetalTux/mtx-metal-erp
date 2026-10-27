@@ -21,8 +21,8 @@ function createPrismaClient() {
 
   return new PrismaClient({
     adapter,
-    // Mostrar las consultas SQL solo en desarrollo; en producción, solo errores
-    log: process.env.NODE_ENV === 'production' ? ['error'] : ['query', 'warn', 'error'],
+    // No registrar consultas: seguridad comparte este pool y puede transportar hashes/secretos.
+    log: [],
   });
 }
 

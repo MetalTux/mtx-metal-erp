@@ -52,3 +52,9 @@ next-env.d.ts
 
 # Emisiones PDF históricas: respaldar junto con PostgreSQL.
 /var/cotizaciones/pdfs/
+
+# PDF históricos de guías: respaldar junto con PostgreSQL.
+/var/guias/pdfs/
+
+# Respaldos y evidencias privadas de validación (incluyen configuración y datos).
+/backups/

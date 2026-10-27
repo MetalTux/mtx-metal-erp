@@ -1,3 +1,5 @@
+import { anotarMutacion } from "@/lib/seguridad/autoria";
+import { exigirAcceso, exigirAccesoEnTransaccion } from "@/lib/seguridad/acceso";
 import { formatearCantidad } from "@/lib/formato";
 import { createHash } from "node:crypto";
 import { z } from "zod";
@@ -42,6 +44,7 @@ export async function cargarOfertaOrden(tx: Prisma.TransactionClient, id: number
   exigir(details.length && details.every(l => l.kind && l.position && l.unitMeasureId && l.unitName && l.unitAbbreviation !== null && l.lineAmount !== null), "La oferta tiene detalles legados/incompletos; utiliza una nueva cotización corregida.");
   const folio = await tx.documentFolio.findUniqueOrThrow({ where: { id: q.folioId } });
   const oferta: OfertaParaOrden = {
+    pricesIncludeVat: q.pricesIncludeVat,
     lines: details.map(l => ({ id: l.id, quantity: l.quantity.toString(), unitPrice: l.unitPrice.toString(), lineAmount: l.lineAmount!.toString() })),
     discount: q.discountMode === "SIN_DESCUENTO" ? { modo: "SIN_DESCUENTO" } : { modo: q.discountMode, valor: q.discountValue!.toString() },
     vatRate: q.vatRate.toString(), subtotal: q.subtotal.toString(), discountAmount: q.discountAmount.toString(),
@@ -63,12 +66,17 @@ function claveAprobacion(clave: string) {
   return `${h.slice(0, 8)}-${h.slice(8, 12)}-5${h.slice(13, 16)}-8${h.slice(17, 20)}-${h.slice(20, 32)}`;
 }
 export async function registrarOrdenCompraCliente(entrada: unknown, claveEntrada: unknown): Promise<ResultadoOrden> {
+  await exigirAcceso("ordenes_cliente.operar");
+  await exigirAcceso("precios.leer");
+
   const d = registrarOrdenSchema.safeParse(entrada), c = claveOrdenSchema.safeParse(claveEntrada);
   if (!d.success) return { ok: false, mensaje: d.error.issues[0].message };
   if (!c.success) return { ok: false, mensaje: "Clave de operación inválida." };
   const datos = d.data, fingerprint = huella({ tipo: "CONFIRMAR", datos });
   try {
     return await prisma.$transaction(async tx => {
+      await exigirAccesoEnTransaccion(tx, "ordenes_cliente.operar");
+
       const repetida = await anterior(tx, c.data, fingerprint, "CONFIRMAR"); if (repetida) return repetida;
       exigir(datos.date <= hoyOrden(), "La fecha de aceptación no puede ser futura.");
       await tx.$executeRaw`SELECT pg_advisory_xact_lock_shared(73119)`;
@@ -94,7 +102,7 @@ export async function registrarOrdenCompraCliente(entrada: unknown, claveEntrada
       const aprobada = q.status === "PENDIENTE" ? await aprobarCotizacionEnTransaccion(tx, { id: q.id, version: q.version }, claveAprobacion(c.data)) : q;
       const asignacion = await asignarFolio(tx, "ORDEN_COMPRA_CLIENTE", c.data);
       const orden = await tx.salesOrder.create({ data: {
-        quoteId: q.id, quoteVersion: q.version, approvedQuoteVersion: aprobada.version,
+        pricesIncludeVat: q.pricesIncludeVat, quoteId: q.id, quoteVersion: q.version, approvedQuoteVersion: aprobada.version,
         quoteSnapshot: jsonHistoricoOrden({ schemaVersion: 1, quote: q, details, folio }),
         folioId: asignacion.id, creationKey: c.data, status: "CONFIRMADA", date: fecha(datos.date), acceptanceDate: fecha(datos.date),
         clientId: q.clientId, clientBranchId: q.clientBranchId, clientName: q.clientName, branchName: q.branchName,
@@ -119,7 +127,7 @@ export async function registrarOrdenCompraCliente(entrada: unknown, claveEntrada
         } });
       }
       await tx.accountReceivable.create({ data: { salesOrderId: orden.id, amount: importes.totalAmount, dueDate: null } });
-      await tx.salesOrderOperation.create({ data: { idempotencyKey: c.data, fingerprint, type: "CONFIRMAR", salesOrderId: orden.id, version: orden.version } });
+      await anotarMutacion(tx, "salesOrderOperation", "create", await tx.salesOrderOperation.create({ data: { idempotencyKey: c.data, fingerprint, type: "CONFIRMAR", salesOrderId: orden.id, version: orden.version } }));
       return { ok: true as const, id: orden.id, version: orden.version, mensaje: "Orden de Compra Cliente confirmada; cuenta registrada sin vencimiento ni pagos." };
     }, { timeout: 30_000 });
   } catch (error) { return fallo(error); }
@@ -128,11 +136,16 @@ type ResultadoPrevisualizacionOrden =
   | { ok: false; mensaje: string; erroresLineas?: { id: number; mensaje: string }[] }
   | { ok: true; completa: boolean; subtotal: string; discountAmount: string; netAmount: string; vatAmount: string; totalAmount: string; lineAmounts: { id: number; amount: string }[] };
 export async function previsualizarOrdenCompraCliente(quoteId: number, quoteVersion: number, seleccion: unknown): Promise<ResultadoPrevisualizacionOrden> {
+  await exigirAcceso("ordenes_cliente.operar");
+  await exigirAcceso("precios.leer");
+
   const ids = z.object({ quoteId: z.number().int().positive(), quoteVersion: z.number().int().positive() }).safeParse({ quoteId, quoteVersion });
   const s = seleccionOrdenSchema.safeParse(seleccion);
   if (!ids.success || !s.success) return { ok: false as const, mensaje: "Revisa la referencia y selecciona al menos una cantidad positiva." };
   try {
     return await prisma.$transaction(async tx => {
+      await exigirAccesoEnTransaccion(tx, "ordenes_cliente.operar");
+
       const { oferta } = await cargarOfertaOrden(tx, quoteId, quoteVersion);
       const erroresLineas = s.data.flatMap(l => {
         const origen = oferta.lines.find(o => o.id === l.quoteDetailId);
@@ -146,11 +159,16 @@ export async function previsualizarOrdenCompraCliente(quoteId: number, quoteVers
   } catch (error) { return fallo(error); }
 }
 export async function anularOrdenCompraCliente(entrada: unknown, claveEntrada: unknown): Promise<ResultadoOrden> {
+  await exigirAcceso("ordenes_cliente.operar");
+  await exigirAcceso("precios.leer");
+
   const d = anularOrdenSchema.safeParse(entrada), c = claveOrdenSchema.safeParse(claveEntrada);
   if (!d.success || !c.success) return { ok: false, mensaje: !d.success ? d.error.issues[0].message : "Clave inválida." };
   const { referencia, motivo } = d.data, fingerprint = huella({ tipo: "ANULAR", datos: d.data });
   try {
     return await prisma.$transaction(async tx => {
+      await exigirAccesoEnTransaccion(tx, "ordenes_cliente.operar");
+
       const repetida = await anterior(tx, c.data, fingerprint, "ANULAR"); if (repetida) return repetida;
       // Misma precedencia que confirmar: fuente → orden → cuenta.
       const origen = await tx.salesOrder.findUnique({ where: { id: referencia.id }, select: { quoteId: true } });
@@ -167,7 +185,7 @@ export async function anularOrdenCompraCliente(entrada: unknown, claveEntrada: u
       const instante = new Date();
       await tx.accountReceivable.update({ where: { id: cuenta.id }, data: { voidedAt: instante, voidReason: motivo } });
       const anulada = await tx.salesOrder.update({ where: { id: orden.id }, data: { status: "ANULADA", voidedAt: instante, voidReason: motivo, version: { increment: 1 } } });
-      await tx.salesOrderOperation.create({ data: { idempotencyKey: c.data, fingerprint, type: "ANULAR", salesOrderId: orden.id, version: anulada.version } });
+      await anotarMutacion(tx, "salesOrderOperation", "create", await tx.salesOrderOperation.create({ data: { idempotencyKey: c.data, fingerprint, type: "ANULAR", salesOrderId: orden.id, version: anulada.version } }));
       return { ok: true as const, id: anulada.id, version: anulada.version, mensaje: "Orden y cuenta anuladas; folio, referencia externa y cotización conservados." };
     }, { timeout: 30_000 });
   } catch (error) { return fallo(error); }

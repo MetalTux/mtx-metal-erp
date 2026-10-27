@@ -1,3 +1,5 @@
+import { anotarMutacion } from "@/lib/seguridad/autoria";
+import { exigirAcceso, exigirAccesoEnTransaccion } from "@/lib/seguridad/acceso";
 import { cantidadReservadaRecurso } from "./reservas-stock";
 import { createHash } from "node:crypto";
 import { prisma } from "@/lib/prisma";
@@ -31,7 +33,7 @@ const hash = (datos: unknown) =>
 const limiteCantidad = new Prisma.Decimal("99999999999.999");
 const limiteImporte = new Prisma.Decimal("999999999999.99");
 /** La equivalencia no se redondea: redondear cantidades cambiaría el stock comprado. */
-export function calcularCompra(datos: DatosCompra): CalculoCompra {
+export function calcularCompra(datos: Pick<DatosCompra, "lines">): CalculoCompra {
   let total = new Prisma.Decimal(0);
   const lineas = datos.lines.map((linea) => {
     const cantidad = new Prisma.Decimal(linea.purchasedQuantity),
@@ -118,7 +120,9 @@ function errorCompra(e: unknown): ResultadoCompra {
   };
 }
 export async function catalogosCompra(): Promise<CatalogosCompra> {
-  const [proveedores, bodegas, tipos, materiales, presentaciones] =
+  await exigirAcceso("compras.leer");
+
+  const [proveedores, bodegas, tipos, materiales, presentaciones, unidades] =
     await Promise.all([
       prisma.supplier.findMany({
         select: { id: true, name: true, rut: true },
@@ -149,8 +153,13 @@ export async function catalogosCompra(): Promise<CatalogosCompra> {
         by: ["presentation"],
         orderBy: { presentation: "asc" },
       }),
+      prisma.unitMeasure.findMany({
+        select: { id: true, name: true, abbreviation: true },
+        orderBy: [{ name: "asc" }, { id: "asc" }],
+      }),
     ]);
   return {
+    unidades,
     presentaciones: [
       ...new Map(
         presentaciones.map((p) => [
@@ -294,6 +303,8 @@ async function leerCompras(
   });
 }
 export async function listarCompras(entrada: unknown) {
+  await exigirAcceso("compras.leer");
+
   const v = filtrosCompraSchema.safeParse(entrada);
   if (!v.success)
     return { ok: false as const, mensaje: "Revisa los filtros de compras." };
@@ -348,6 +359,8 @@ export async function listarCompras(entrada: unknown) {
   );
 }
 export async function consultarCompra(id: unknown): Promise<ResultadoCompra> {
+  await exigirAcceso("compras.leer");
+
   if (typeof id !== "number" || !Number.isSafeInteger(id) || id <= 0)
     return { ok: false, mensaje: "Compra inválida." };
   try {
@@ -383,6 +396,8 @@ export async function guardarCompra(
   clave: unknown,
   referencia?: unknown,
 ): Promise<ResultadoCompra> {
+  await exigirAcceso("compras.operar");
+
   const v = compraSchema.safeParse(entrada),
     key = claveCompraSchema.safeParse(clave),
     ref =
@@ -403,6 +418,8 @@ export async function guardarCompra(
       if (previa) return previa;
     }
     const id = await prisma.$transaction(async (tx) => {
+      await exigirAccesoEnTransaccion(tx, "compras.operar");
+
       // Bloquear compra y material coordina ediciones con recepción y cambio de unidad futuros.
       if (ref?.success)
         await tx.$queryRaw`SELECT id FROM "Purchase" WHERE id=${ref.data.id} FOR UPDATE`;
@@ -551,14 +568,14 @@ export async function guardarCompra(
         else await tx.purchaseDetail.create({ data });
       }
       if (!anterior)
-        await tx.purchaseOperation.create({
+        await anotarMutacion(tx, "purchaseOperation", "create", await tx.purchaseOperation.create({
           data: {
             idempotencyKey: key.data,
             type: "CREAR",
             requestHash: huella,
             purchaseId: compra.id,
           },
-        });
+        }));
       return compra.id;
     });
     return {
@@ -585,6 +602,8 @@ export async function eliminarCompra(
   referencia: unknown,
   clave: unknown,
 ): Promise<ResultadoCompra> {
+  await exigirAcceso("compras.operar");
+
   const ref = referenciaCompraSchema.safeParse(referencia),
     key = claveCompraSchema.safeParse(clave);
   if (!ref.success || !key.success)
@@ -602,6 +621,8 @@ export async function eliminarCompra(
             mensaje: "La clave de operación pertenece a otra solicitud.",
           };
     await prisma.$transaction(async (tx) => {
+      await exigirAccesoEnTransaccion(tx, "compras.operar");
+
       await tx.$queryRaw`SELECT id FROM "Purchase" WHERE id=${ref.data.id} FOR UPDATE`;
       const compra = await tx.purchase.findUnique({
         where: { id: ref.data.id },
@@ -618,14 +639,14 @@ export async function eliminarCompra(
         where: { id: ref.data.id, version: ref.data.version },
         data: { deletedAt: new Date(), version: { increment: 1 } },
       });
-      await tx.purchaseOperation.create({
+      await anotarMutacion(tx, "purchaseOperation", "create", await tx.purchaseOperation.create({
         data: {
           idempotencyKey: key.data,
           type: "ELIMINAR",
           requestHash: huella,
           purchaseId: ref.data.id,
         },
-      });
+      }));
     });
     return {
       ok: true,
@@ -652,6 +673,8 @@ export async function recibirCompra(
   referencia: unknown,
   clave: unknown,
 ): Promise<ResultadoCompra> {
+  await exigirAcceso("compras.operar");
+
   const datos = recepcionCompraSchema.safeParse(entrada);
   const ref = referenciaCompraSchema.safeParse(referencia);
   const key = claveCompraSchema.safeParse(clave);
@@ -697,6 +720,8 @@ export async function recibirCompra(
     if (previa) return previa;
     await prisma.$transaction(
       async (tx) => {
+      await exigirAccesoEnTransaccion(tx, "compras.operar");
+
         await tx.$queryRaw`SELECT id FROM "Purchase" WHERE id=${ref.data.id} FOR UPDATE`;
         // Se verifica otra vez tras el bloqueo: un reintento simultáneo puede haber terminado mientras esperábamos.
         const anterior = await tx.purchaseOperation.findUnique({
@@ -850,7 +875,7 @@ export async function recibirCompra(
           where: { id: compra!.id },
           data: { version: { increment: 1 } },
         });
-        await tx.purchaseOperation.create({
+        await anotarMutacion(tx, "purchaseOperation", "create", await tx.purchaseOperation.create({
           data: {
             idempotencyKey: key.data,
             type: "RECIBIR",
@@ -858,7 +883,7 @@ export async function recibirCompra(
             purchaseId: compra!.id,
             receiptId: recepcion.id,
           },
-        });
+        }));
       },
       { maxWait: 10000, timeout: 20000 },
     );
@@ -888,6 +913,8 @@ export async function previsualizarRecepcionCompra(
   entrada: unknown,
   referencia: unknown,
 ) {
+  await exigirAcceso("compras.operar");
+
   const datos = recepcionCompraSchema.safeParse(entrada);
   const ref = referenciaCompraSchema.safeParse(referencia);
   if (!datos.success || !ref.success)
@@ -989,6 +1016,7 @@ async function finalizarCompra(
     if (previa) return previa;
     await prisma.$transaction(
       async (tx) => {
+      await exigirAccesoEnTransaccion(tx, "compras.operar");
         await tx.$queryRaw`SELECT id FROM "Purchase" WHERE id=${ref.data.id} FOR UPDATE`;
         const op = await tx.purchaseOperation.findUnique({
           where: { idempotencyKey: key.data },
@@ -1181,7 +1209,7 @@ async function finalizarCompra(
             },
           });
         }
-        await tx.purchaseOperation.create({
+        await anotarMutacion(tx, "purchaseOperation", "create", await tx.purchaseOperation.create({
           data: {
             idempotencyKey: key.data,
             type: tipo,
@@ -1189,7 +1217,7 @@ async function finalizarCompra(
             purchaseId: compra!.id,
             closureId,
           },
-        });
+        }));
       },
       { maxWait: 10000, timeout: 20000 },
     );
@@ -1221,6 +1249,8 @@ export async function cerrarPendienteCompra(
   referencia: unknown,
   clave: unknown,
 ) {
+  await exigirAcceso("compras.operar");
+
   return finalizarCompra("CERRAR_PENDIENTE", datos, referencia, clave);
 }
 export async function anularCompra(
@@ -1228,6 +1258,8 @@ export async function anularCompra(
   referencia: unknown,
   clave: unknown,
 ) {
+  await exigirAcceso("compras.operar");
+
   return finalizarCompra("ANULAR", datos, referencia, clave);
 }
 

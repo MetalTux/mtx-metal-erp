@@ -1,0 +1,52 @@
+import "dotenv/config";
+import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
+import { prisma } from "../src/lib/prisma";
+import { Prisma } from "../src/generated/prisma/client";
+import { consultarDashboard,consultarAvisosDashboard } from "../src/lib/consultas/dashboard";
+import { consultarResumenCobranza } from "../src/lib/consultas/cobranza";
+import { guardarCotizacion } from "../src/lib/servicios/cotizaciones";
+import { iniciarTrabajo } from "../src/lib/servicios/ordenes-trabajo";
+import { consultarTrabajo } from "../src/lib/consultas/ordenes-trabajo";
+import { finalizarTrabajo,registrarFacturaTrabajo } from "../src/lib/servicios/cierre-trabajo";
+import { liberarReservaTrabajo,completarReservasTrabajo } from "../src/lib/servicios/reservas-stock";
+import { registrarAbono } from "../src/lib/servicios/cobranza";
+import { crearEntornoGuiasG6,exigirCopiaG6,ok,uuid,fechaBase } from "./fixtures/guias-despacho";
+import { crearPlanConMaterial,exigirPlan } from "./fixtures/plan-propio";
+import { documentoVacioCotizacion } from "../src/lib/validaciones/texto-cotizacion";
+import { operarSeguridad } from "../src/lib/seguridad/servicio";
+import { conCredencialSeguridad,credencialServidor } from "../src/lib/seguridad/acceso";
+import { rolesSeguridad,tienePermiso } from "../src/lib/seguridad/permisos";
+import { conServidorValidacion } from "./fixtures/servidor-validacion";
+exigirCopiaG6();
+async function main(){
+ const f=await crearEntornoGuiasG6(),antes=await consultarDashboard(),hoy=antes.hoy,admin=await credencialServidor();assert(admin);
+ const ayer=new Date(hoy+'T12:00:00Z');ayer.setUTCDate(ayer.getUTCDate()-1);
+ const cliente=await prisma.quote.findFirstOrThrow(),contado=await prisma.paymentCondition.create({data:{name:'Contado Dashboard '+uuid(),days:0}});
+ for(const validUntil of [ayer.toISOString().slice(0,10),hoy])ok(await guardarCotizacion({date:fechaBase,validUntil,clientId:cliente.clientId,clientBranchId:cliente.clientBranchId,paymentConditionId:contado.id,bankAccountId:null,discount:{modo:'SIN_DESCUENTO'},technicalDescription:documentoVacioCotizacion,lines:[{kind:'SERVICIO',productId:null,rawMaterialId:null,unitMeasureId:f.hora.id,description:'Servicio Dashboard',quantity:'1',unitPrice:'1000'}]},uuid()));
+ let w=await f.crear(['PRODUCTO'],{fabricar:'2',iniciar:false,condicionPagoId:contado.id});exigirPlan(await crearPlanConMaterial(f.hora.id,f.material.id,f.mp.id));
+ await prisma.warehouseStock.update({where:{warehouseId_rawMaterialId:{warehouseId:f.mp.id,rawMaterialId:f.material.id}},data:{minStock:'1001'}});
+ let d=await consultarDashboard();assert.equal(d.ofertas!.datos!.pendientes,antes.ofertas!.datos!.pendientes+2);assert.equal(d.ofertas!.datos!.vencidas,antes.ofertas!.datos!.vencidas+1);assert.equal(d.ofertas!.datos!.porVencer,antes.ofertas!.datos!.porVencer+1);
+ assert.equal(d.trabajos!.datos!.preparacion,antes.trabajos!.datos!.preparacion+1);assert.equal(d.trabajos!.datos!.borradores,antes.trabajos!.datos!.borradores+1);assert.equal(d.inventario!.datos!.bajo,antes.inventario!.datos!.bajo+1);
+ let r=d.inventario!.datos!.requerimientos.find(r=>r.materialId===f.material.id&&r.bodegaId===f.mp.id)!;assert(r);assert.equal(r.requerido,'4.000');assert.equal(r.reservado,'4.000');assert.equal(r.porReservar,'0.000');
+ for(const minStock of [null,'0']){await prisma.warehouseStock.update({where:{warehouseId_rawMaterialId:{warehouseId:f.mp.id,rawMaterialId:f.material.id}},data:{minStock}});assert.equal((await consultarDashboard()).inventario!.datos!.bajo,antes.inventario!.datos!.bajo);}
+ await prisma.warehouseStock.update({where:{warehouseId_rawMaterialId:{warehouseId:f.mp.id,rawMaterialId:f.material.id}},data:{minStock:'1001'}});
+ ok(await iniciarTrabajo({workOrderId:w.id,version:w.version,startedDate:fechaBase},uuid()));w=await consultarTrabajo(w.id);w=await f.producir(w,'1');d=await consultarDashboard();r=d.inventario!.datos!.requerimientos.find(r=>r.materialId===f.material.id)!;assert.equal(r.requerido,'2.000');assert.equal(r.reservado,'2.000');assert.equal(r.fisico,'998.000');assert.equal(r.libre,'996.000');
+ const reserva=await prisma.stockReservationAllocation.findFirstOrThrow({where:{workOrderId:w.id,plannedDetailId:{not:null}}});
+ await liberarReservaTrabajo({workOrderId:w.id,version:w.version,idempotencyKey:uuid(),allocationId:reserva.id,quantity:'1',reason:'Validar por reservar Dashboard'});w=await consultarTrabajo(w.id);d=await consultarDashboard();r=d.inventario!.datos!.requerimientos.find(r=>r.materialId===f.material.id)!;assert.equal(r.porReservar,'1.000');assert.equal(r.faltante,'0.000');
+ await completarReservasTrabajo({workOrderId:w.id,version:w.version,idempotencyKey:uuid()});w=await consultarTrabajo(w.id);
+ w=await f.producir(w,'1');ok(await finalizarTrabajo({workOrderId:w.id,version:w.version,date:hoy,note:'Finalización Dashboard',preparationConfirmed:true},uuid()));w=await consultarTrabajo(w.id);
+ ok(await registrarFacturaTrabajo({workOrderId:w.id,version:w.version,invoiceNumber:'DASH-'+uuid(),invoiceDate:fechaBase,correctionReason:''},uuid()));
+ const cuenta=await prisma.accountReceivable.findUniqueOrThrow({where:{salesOrderId:w.plan!.salesOrderId!}});assert((await registrarAbono({cuentaId:cuenta.id,importe:'50',fecha:hoy,medio:'Transferencia',referencia:null,clave:uuid()})).ok);
+ d=await consultarDashboard();assert.equal(d.trabajos!.datos!.produccion,antes.trabajos!.datos!.produccion);assert.equal(d.inventario!.datos!.requerimientos.some(r=>r.materialId===f.material.id),false);
+ assert.equal(d.cobranza!.datos!.porCobrar,(await consultarResumenCobranza()).porCobrar);assert(new Prisma.Decimal(d.cobranza!.datos!.vencido).eq(new Prisma.Decimal(antes.cobranza!.datos!.vencido).plus(150)));
+ const mes=fechaBase.slice(0,7),m=d.ofertas!.datos!.meses!.find(m=>m.mes===mes)!,mAntes=antes.ofertas!.datos!.meses!.find(m=>m.mes===mes)!;assert(new Prisma.Decimal(m.cotizado).eq(new Prisma.Decimal(mAntes.cotizado).plus(2200)));assert(new Prisma.Decimal(m.contratado).eq(new Prisma.Decimal(mAntes.contratado).plus(200)));assert.equal(d.ofertas!.datos!.meses!.length,6);
+ const avisos=await consultarAvisosDashboard();assert(avisos.datos);assert.equal(avisos.datos.find(a=>a.ruta.includes('cobranza'))!.cantidad,d.cobranza!.datos!.cuentasVencidas);
+ const actors:{token:string;rol:string}[]=[];
+ for(const rol of rolesSeguridad){const email='dash-'+uuid()+'@ejemplo.invalid',password=uuid(),inv=await operarSeguridad({session:admin},{action:'user-create',name:'Dashboard '+rol,email,roles:[rol]});assert(inv.client.ok);const token=new URLSearchParams(new URL(String(inv.client.link)).hash.slice(1)).get('token');assert((await operarSeguridad({},{action:'activate',token,password})).client.ok);const login=await operarSeguridad({},{action:'login',email,password});assert(login.sessionToken);const x=await conCredencialSeguridad(login.sessionToken,()=>consultarDashboard());assert.equal(x.ofertas!==null,tienePermiso([rol],'cotizaciones.leer'));assert.equal(x.cobranza!==null,tienePermiso([rol],'cobranza.leer')&&tienePermiso([rol],'precios.leer'));assert.equal(x.inventario!==null,tienePermiso([rol],'inventario.leer'));assert.equal(x.trabajos!==null,tienePermiso([rol],'trabajos.leer'));actors.push({token:login.sessionToken,rol});}
+ await prisma.warehouseStock.update({where:{warehouseId_rawMaterialId:{warehouseId:f.mp.id,rawMaterialId:f.material.id}},data:{minStock:"7"}});await f.invariantes();
+ await prisma.warehouseStock.update({where:{warehouseId_rawMaterialId:{warehouseId:f.mp.id,rawMaterialId:f.material.id}},data:{minStock:"1001"}});
+ await conServidorValidacion(()=>{const ui=spawnSync(process.execPath,['--import','tsx','tests/dashboard.ui.ts'],{env:{...process.env,DASH_ACTORES:JSON.stringify(actors)},encoding:'utf8',timeout:90000});process.stdout.write(ui.stdout??'');process.stderr.write(ui.stderr??'');assert.equal(ui.status,0,'Dashboard Chromium');});
+ console.log('Dashboard: fechas, borrador/preparación/producción, mínimos null/cero, consumo parcial/reservas, cohortes/OCC, deuda vencida real, avisos y seis roles correctos.');
+}
+main().catch(e=>{console.error(e);process.exitCode=1;}).finally(()=>prisma.$disconnect());

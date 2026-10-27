@@ -1,5 +1,7 @@
 # Hito: Cotizaciones
 
+> **Regla vigente desde el 26-10-2026:** precios unitarios netos para cotizaciones nuevas; IVA sobre neto descontado y TOTAL = NETO + IVA. La decisión anterior de IVA incluido queda como contexto histórico y para documentos ya guardados. Ver el checkpoint de precios netos al final.
+
 Fecha inicial: 07-10-2026. **Estado vigente: Cotizaciones implementado y validado técnicamente en `/ventas/cotizaciones`. Listado/filtros/paginación, registro/consulta/edición de Pendientes, aprobación/rechazo, eliminación lógica y corrección vinculada con nuevo folio. Detalle técnico general enriquecido con imágenes locales; líneas breves. IVA por períodos, descuento global, copias históricas y numeración integrados. Migración aplicada y datos previos conservados. PDF implementado y validado funcionalmente; envío por correo pendiente de SMTP. Conversión a Orden de Compra Cliente planificada en HITO-ORDEN-COMPRA-CLIENTE; producción continúa como entrega posterior. Checkpoints detallados: C1–C5 y P1–P5 al final.**
 
 Referencias: `AGENTS.md`, [guía de interfaz](GUIA-INTERFAZ.md), [Inventario](HITO-INVENTARIO.md), [Compras](HITO-COMPRAS.md), [propuestas de dominio](PROPUESTAS-DOMINIO.md) y `prisma/schema.prisma`.
@@ -838,3 +840,36 @@ Checkpoint vigente y uso/requisitos: [HITO-PDF-COTIZACIONES.md](HITO-PDF-COTIZAC
 La implementación sustituye la indefinición anterior de cardinalidad. Las cantidades aceptadas y sus importes pertenecen al detalle propio de la orden; se conservan la cotización histórica y sus emisiones. Aprobación, folio, orden y cuenta por total aceptado se registran atómicamente. El checkpoint vigente y las evidencias están en [HITO-ORDEN-COMPRA-CLIENTE.md](HITO-ORDEN-COMPRA-CLIENTE.md).
 
 Pendientes comerciales: Orden de Trabajo y Producción (receta histórica, consumos y terminado), anticipos/abonos y panel de cobranza, finalización/factura/vencimiento y Guías de Despacho. El envío de PDF por correo espera SMTP y contraseña de aplicación. Adjuntos/PDF propio de la orden quedan como ampliación posterior según D10.
+
+
+## 26-10-2026 — Cliente nuevo desde la cotización
+
+- [x] Crear cliente junto al selector en borradores nuevos/editables/correcciones, con permisos cotizaciones.operar/clientes.operar.
+- [x] Reutilizar formulario completo con sucursales, validaciones y guardado de Clientes. Seleccionar cliente y Casa Central conservando líneas, importes y detalle técnico.
+- [x] Mantener bloqueado el cierre del documento padre durante el alta; conservar confirmación de descarte del formulario de Cliente. Actualizar catálogo de Cotizaciones al guardar clientes.
+- [ ] Validación funcional: Casa Central completa, selección inmediata, cancelación con datos, RUT duplicado, consulta sin alta y roles de sólo lectura.
+
+No se cambian identidades históricas de OCC ni documentos aprobados. Sin migraciones ni cambios monetarios.
+
+Validación de las altas internas: `pnpm lint`, `pnpm exec tsc --noEmit`, cobertura S4 (92 acciones, 25 páginas, 7 rutas y 127 entradas) y revisión de diff correctos. `pnpm build` ejecutado y bloqueado por Turbopack al abrir puerto interno (Operation not permitted). No se iniciaron servidores de validación ni se escribieron fixtures en la BD. Prueba funcional de navegador pendiente.
+
+
+## 26-10-2026 — Precios unitarios netos (cambio aprobado por el usuario)
+
+El usuario confirma ingresar precios unitarios netos. Esta regla sustituye el ingreso con IVA incluido para las nuevas ofertas. No se convierten ni reescriben documentos existentes.
+
+- [x] Calcular líneas en pesos enteros con Decimal y redondeo por línea; subtotal neto menos descuento global = NETO; IVA redondeado sobre NETO; TOTAL = NETO + IVA. Descuento fijo o porcentaje sobre base neta, IVA histórico por fecha, validación de límites incluyendo total con IVA.
+- [x] `Quote.pricesIncludeVat` y `SalesOrder.pricesIncludeVat`: true por defecto para documentos previos; los nuevos servicios de cotización guardan false y la OCC copia el modo de su origen. SQL conserva restricciones completas y bloquea cambios de modalidad.
+- [x] Consultar/editar pendientes históricos en su modalidad original, con aviso. Las correcciones son ofertas nuevas netas: el DTO propone precios y descuento fijo convertidos por la tasa histórica, con aviso de revisión y posibles diferencias por redondeo.
+- [x] Formulario/vista previa y PDF identifican precio neto o histórico con IVA. Plantilla PDF v2; emisiones archivadas intactas y reintentos v1 compatibles.
+- [x] OCC completa/parcial usa la base del origen, prorratea descuento fijo sobre subtotal correspondiente y crea deuda por total con IVA. Sin cambios en pagos, stock, OT ni guías previas.
+- [x] El precio sugerido de Productos sigue definido con IVA incluido y no se copia como neto en nuevas líneas; ayuda visible para ingresar el precio neto.
+- [x] Migración local `20261026120000_cotizaciones_precios_netos` probada en copia y aplicada con respaldo. Comparación de 73 tablas de negocio/usuarios sin cambios en sus valores anteriores; columnas nuevas excluidas del hash, sólo cambio de esquema/registro de migración. Las sesiones de seguridad tuvieron actividad normal concurrente del usuario, por lo que no se afirma ausencia de actividad en tablas Security.
+- [x] Pruebas puras históricas y netas, integración nueva, regresiones de Cotizaciones y OCC correctas; detalles de verificación al final de este checkpoint.
+- [ ] Revisión funcional del usuario: crear con $100.000 netos, IVA 19% y total $119.000; descuento 10% → neto $90.000/IVA $17.100/total $107.100; PDF, aceptación parcial y consulta/corrección histórica.
+
+Evidencia privada: `backups/20261026_precios_netos/1793041961801/`, respaldo/restauración, regresiones, y subcarpeta `aplicacion/` con respaldo final, hashes antes/después y registro de migración. La primera prueba detectó una sentencia de restricción duplicada en la migración; se revirtió atómicamente sólo en copia y se corrigió antes de probar/aplicar la versión final. Ningún intento fallido de migración se ejecutó sobre la base original.
+
+Reproducir pruebas puras: `node --import tsx tests/importes-cotizacion-netos.ts`, `tests/importes-cotizacion.ts` y `tests/importes-orden-compra-cliente.ts`. Integración nueva mediante `pnpm seguridad:validar-s6 cotizaciones-netos`, que crea copia/actor y retira sus fixtures; requiere copia local y ausencia de cambios concurrentes para la comparación global del ejecutor. Tests de regresión existentes actualizan los importes esperados de ofertas nuevas a neto + IVA. El manual Markdown está actualizado; su PDF anterior debe regenerarse.
+
+Cierre de verificación: `prisma validate`, `prisma generate`, lint, tipos y cobertura S4 correctos; 39 migraciones locales al día. Pasan pruebas puras históricas/netas, integración nueva con correcciones e idempotencia, regresiones completas de Cotizaciones, OCC y emisión real de PDF Carta con imágenes/versiones/concurrencia. No se iniciaron servidores de aplicación para validar; pruebas de PDF cerraron su navegador. `pnpm build` se ejecutó pero Turbopack quedó bloqueado por el entorno al abrir un puerto interno (Operation not permitted), por lo que no se declara una compilación final exitosa. Se retiran las copias descartables y se conservan respaldo/evidencia privados. Reiniciar desarrollo y recargar el formulario antes de probar.

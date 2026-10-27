@@ -1,3 +1,5 @@
+import { anotarMutacion } from "@/lib/seguridad/autoria";
+import { exigirAcceso, exigirAccesoEnTransaccion } from "@/lib/seguridad/acceso";
 import { rutValido } from "@/lib/validaciones/rut";
 import { createHash } from "node:crypto";
 import { Prisma, type QuoteOperationType } from "@/generated/prisma/client";
@@ -38,6 +40,9 @@ async function editable(tx: Prisma.TransactionClient, id: number, version: numbe
 }
 /** Crear/editar incluye folio, copias, líneas, imágenes e importes en una sola tx. */
 export async function guardarCotizacion(entrada: unknown, claveEntrada: unknown, referencia?: unknown, correccion?: unknown): Promise<ResultadoCotizacion> {
+  await exigirAcceso("cotizaciones.operar");
+  await exigirAcceso("precios.leer");
+
   const v = cotizacionSchema.safeParse(entrada), c = claveCotizacionSchema.safeParse(claveEntrada);
   const r = referencia === undefined ? undefined : referenciaCotizacionSchema.safeParse(referencia);
   const original = correccion === undefined ? undefined : referenciaCotizacionSchema.safeParse(correccion);
@@ -52,6 +57,8 @@ export async function guardarCotizacion(entrada: unknown, claveEntrada: unknown,
   try {
     exigir(d.date <= hoy(), "La fecha de cotización no puede ser futura.");
     return await prisma.$transaction(async tx => {
+      await exigirAccesoEnTransaccion(tx, "cotizaciones.operar");
+
       const repetida = await anterior(tx, c.data, fingerprint, tipo); if (repetida) return repetida;
       // IVA compartido antes de bloquear documento/catálogos; configuración usa exclusivo.
       const iva = await ivaParaDocumento(tx, d.date);
@@ -93,7 +100,8 @@ export async function guardarCotizacion(entrada: unknown, claveEntrada: unknown,
       const raws = await tx.rawMaterial.findMany({ where: { id: { in: materiales } } });
       const products = await tx.product.findMany({ where: { id: { in: productos } } });
       const units = await tx.unitMeasure.findMany({ where: { id: { in: unidades } } });
-      const importes = calcularImportesCotizacion({ lineas: d.lines.map(l => ({ quantity: l.quantity, unitPrice: l.unitPrice })), descuento: d.discount, tasaIva: iva.vatRate.toString() });
+      const pricesIncludeVat = actual?.pricesIncludeVat ?? false;
+      const importes = calcularImportesCotizacion({ pricesIncludeVat, lineas: d.lines.map(l => ({ quantity: l.quantity, unitPrice: l.unitPrice })), descuento: d.discount, tasaIva: iva.vatRate.toString() });
       const lineas = d.lines.map((l, i) => {
         const unidad = units.find(u => u.id === l.unitMeasureId), material = raws.find(m => m.id === l.rawMaterialId), producto = products.find(p => p.id === l.productId);
         exigir(unidad, "La unidad de una línea ya no está disponible.");
@@ -108,7 +116,7 @@ export async function guardarCotizacion(entrada: unknown, claveEntrada: unknown,
       exigir(archivos.length === claves.length && archivos.every(a => a.draftKey === c.data || vinculados.some(v => v.imageId === a.id)), "Una imagen no pertenece a este borrador o documento.");
       const { lineAmounts: _lineAmounts, ...totales } = importes;
       void _lineAmounts;
-      const data = { ...totales, ...iva, ...banco, date: fecha(d.date), validUntil: d.validUntil ? fecha(d.validUntil) : null,
+      const data = { pricesIncludeVat, ...totales, ...iva, ...banco, date: fecha(d.date), validUntil: d.validUntil ? fecha(d.validUntil) : null,
         clientId: d.clientId, clientBranchId: d.clientBranchId,
         clientName: actual?.clientId === d.clientId ? actual.clientName : cliente.name, clientRut: actual?.clientId === d.clientId ? actual.clientRut : cliente.rut,
         clientContact: actual?.clientId === d.clientId ? actual.clientContact : cliente.contact, clientPhone: actual?.clientId === d.clientId ? actual.clientPhone : cliente.phone, clientEmail: actual?.clientId === d.clientId ? actual.clientEmail : cliente.email,
@@ -127,7 +135,7 @@ export async function guardarCotizacion(entrada: unknown, claveEntrada: unknown,
       }
       await tx.quoteDetail.createMany({ data: lineas.map(l => ({ ...l, quoteId: documento.id })) });
       if (archivos.length) await tx.quoteImageLink.createMany({ data: archivos.map(a => ({ quoteId: documento.id, imageId: a.id })) });
-      await tx.quoteOperation.create({ data: { idempotencyKey: c.data, fingerprint, type: tipo, quoteId: documento.id, version: documento.version } });
+      await anotarMutacion(tx, "quoteOperation", "create", await tx.quoteOperation.create({ data: { idempotencyKey: c.data, fingerprint, type: tipo, quoteId: documento.id, version: documento.version } }));
       return { ok: true as const, mensaje: actual ? "Cotización actualizada." : "Cotización pendiente registrada; no modifica inventario.", id: documento.id, version: documento.version };
     }, { timeout: 30000 });
   } catch (error) { return fallo(error); }
@@ -138,16 +146,21 @@ export async function aprobarCotizacionEnTransaccion(tx: Prisma.TransactionClien
   const actual = await editable(tx, referencia.id, referencia.version);
   exigir(!actual.validUntil || actual.validUntil.toISOString().slice(0, 10) >= hoy(), "La cotización venció. Corrige la vigencia antes de aprobarla.");
   const q = await tx.quote.update({ where: { id: actual.id }, data: { version: { increment: 1 }, status: "APROBADA" } });
-  await tx.quoteOperation.create({ data: { idempotencyKey: clave, fingerprint: huella({ tipo: "APROBAR", referencia }), type: "APROBAR", quoteId: q.id, version: q.version } });
+  await anotarMutacion(tx, "quoteOperation", "create", await tx.quoteOperation.create({ data: { idempotencyKey: clave, fingerprint: huella({ tipo: "APROBAR", referencia }), type: "APROBAR", quoteId: q.id, version: q.version } }));
   return q;
 }
 
 export async function resolverCotizacion(referencia: unknown, claveEntrada: unknown, accion: unknown): Promise<ResultadoCotizacion> {
+  await exigirAcceso("cotizaciones.operar");
+  await exigirAcceso("precios.leer");
+
   const r = referenciaCotizacionSchema.safeParse(referencia), c = claveCotizacionSchema.safeParse(claveEntrada);
   if (!r.success || !c.success || !["APROBAR", "RECHAZAR", "ELIMINAR"].includes(String(accion))) return { ok: false, mensaje: "La acción o referencia no es válida." };
   const tipo = accion as "APROBAR" | "RECHAZAR" | "ELIMINAR", fingerprint = huella({ tipo, referencia: r.data });
   try {
     return await prisma.$transaction(async tx => {
+      await exigirAccesoEnTransaccion(tx, "cotizaciones.operar");
+
       const repetida = await anterior(tx, c.data, fingerprint, tipo); if (repetida) return repetida;
       await tx.$executeRaw`SELECT pg_advisory_xact_lock_shared(73119)`;
       if (tipo === "APROBAR") {
@@ -156,7 +169,7 @@ export async function resolverCotizacion(referencia: unknown, claveEntrada: unkn
       }
       const actual = await editable(tx, r.data.id, r.data.version);
       const q = await tx.quote.update({ where: { id: actual.id }, data: { version: { increment: 1 }, ...(tipo === "ELIMINAR" ? { deletedAt: new Date() } : { status: "RECHAZADA" }) } });
-      await tx.quoteOperation.create({ data: { idempotencyKey: c.data, fingerprint, type: tipo, quoteId: q.id, version: q.version } });
+      await anotarMutacion(tx, "quoteOperation", "create", await tx.quoteOperation.create({ data: { idempotencyKey: c.data, fingerprint, type: tipo, quoteId: q.id, version: q.version } }));
       return { ok: true as const, mensaje: tipo === "ELIMINAR" ? "Cotización ocultada; folio e historial conservados." : "Cotización rechazada; su contenido queda protegido.", id: q.id, version: q.version };
     });
   } catch (error) { return fallo(error); }
@@ -168,11 +181,16 @@ export type { DatosCotizacion };
  * reintento recupere su resultado aunque el perfil o la cotización hayan cambiado.
  */
 export async function actualizarEmisorCotizacion(referencia: unknown, clave: unknown): Promise<ResultadoCotizacion> {
+  await exigirAcceso("cotizaciones.operar");
+  await exigirAcceso("precios.leer");
+
   const r = referenciaCotizacionSchema.safeParse(referencia), c = claveCotizacionSchema.safeParse(clave);
   if (!r.success || !c.success) return { ok: false, mensaje: "La referencia de la operación no es válida." };
   const fingerprint = huella({ accion: "ACTUALIZAR_EMISOR", referencia: r.data });
   try {
     return await prisma.$transaction(async tx => {
+      await exigirAccesoEnTransaccion(tx, "cotizaciones.operar");
+
       const repetida = await anterior(tx, c.data, fingerprint, "EDITAR");
       if (repetida) return repetida;
       await tx.$executeRaw`SELECT pg_advisory_xact_lock_shared(73119)`;
@@ -188,7 +206,7 @@ export async function actualizarEmisorCotizacion(referencia: unknown, clave: unk
       };
       const documento = await tx.quote.update({ where: { id: q.id }, data: { companySnapshot, version: { increment: 1 } } });
       // El registro de operación satisface también la protección diferida en SQL.
-      await tx.quoteOperation.create({ data: { idempotencyKey: c.data, fingerprint, type: "EDITAR", quoteId: q.id, version: documento.version } });
+      await anotarMutacion(tx, "quoteOperation", "create", await tx.quoteOperation.create({ data: { idempotencyKey: c.data, fingerprint, type: "EDITAR", quoteId: q.id, version: documento.version } }));
       return { ok: true as const, mensaje: "Emisor actualizado desde Empresa; se creó una nueva revisión.", id: q.id, version: documento.version };
     });
   } catch (error) { return fallo(error); }

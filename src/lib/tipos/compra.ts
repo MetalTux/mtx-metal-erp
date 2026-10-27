@@ -47,6 +47,7 @@ export type Compra = {
   }[];
 };
 export type CatalogosCompra = {
+  unidades: import("@/lib/tipos/material").UnidadMaterial[];
   presentaciones: string[];
   proveedores: {
     id: number;

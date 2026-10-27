@@ -1,4 +1,5 @@
 "use client";
+import { Permiso } from "@/components/seguridad/permisos";
 import { useRef, useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { CatalogosInventario } from "@/lib/tipos/inventario";
@@ -115,14 +116,14 @@ export function AjustesInventario({
           >
             Ver
           </Button>
-          <Button
+          <Permiso permiso="ajustes.operar"><Button
             size="sm"
             variant="outline"
             disabled={pendiente}
             onClick={(e) => abrir(e, false, a)}
           >
             Corregir
-          </Button>
+          </Button></Permiso>
         </div>
       ),
     },
@@ -152,16 +153,16 @@ export function AjustesInventario({
           >
             Actualizar
           </Button>
-          <Button
+          <Permiso permiso="ajustes.operar"><Button
             variant="outline"
             disabled={pendiente}
             onClick={(e) => abrir(e, true)}
           >
             Inventario inicial
-          </Button>
-          <Button disabled={pendiente} onClick={(e) => abrir(e, false)}>
+          </Button></Permiso>
+          <Permiso permiso="ajustes.operar"><Button disabled={pendiente} onClick={(e) => abrir(e, false)}>
             Registrar ajuste
-          </Button>
+          </Button></Permiso>
         </div>
       </div>
       <form

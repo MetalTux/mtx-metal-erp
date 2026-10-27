@@ -29,6 +29,7 @@ export const descuentoCotizacionSchema = z.discriminatedUnion("modo", [
 
 /** La tasa proviene del período seleccionado por el servidor, nunca del formulario. */
 export const importesCotizacionSchema = z.object({
+  pricesIncludeVat: z.boolean().default(true),
   lineas: z.array(z.object({ quantity: cantidad, unitPrice: pesos }).strict()).min(1, "Agrega al menos una línea."),
   descuento: descuentoCotizacionSchema,
   tasaIva: porcentaje(4),

@@ -479,3 +479,44 @@ El usuario confirmó que el resto de Compras está validado y funciona correctam
 - [ ] Revisión visual del usuario de las nuevas ayudas.
 
 Sin cambios de Prisma, migraciones, reglas de negocio ni escrituras en PostgreSQL.
+
+
+## 26-10-2026 — Alta de materia prima desde la compra
+
+- [x] Botón visible Crear materia prima por detalle editable, con permisos compras.operar y catalogos.operar.
+- [x] Diálogo con formulario compartido del mantenedor: código, nombre, unidad buscable y descripción opcional; conserva validaciones y autorización de servidor.
+- [x] Seleccionar inmediatamente el material nuevo y mostrar su unidad en equivalencias, conservando proveedor, documento, bodega y todas las líneas sin recargar el editor.
+- [x] Mantener bloqueo de líneas tras recepción/cierre y consulta de sólo lectura; crear catálogo no modifica stock ni registra compra.
+- [x] Refrescar rutas de Materiales y Compras tras guardar el catálogo. Sin cambios de esquema ni migraciones.
+- [x] Cobertura S4 correcta: 92 acciones, 25 páginas, 7 rutas de archivos y 127 entradas de servicios/consultas.
+- [ ] Revisión funcional: completar factura, crear material en su detalle, comprobar selección/datos conservados, cancelar creación sin perder factura, código duplicado y compra bloqueada.
+
+El manual Markdown incluye este flujo; el PDF anterior conserva su edición previa hasta su próxima regeneración. No se crearon materiales de prueba en la base real ni se iniciaron servidores de validación.
+
+Validación técnica del cambio: `pnpm lint` y cobertura S4 correctos. Primera compilación de producción correcta. Tras añadir revalidación de /compras, la repetición de `pnpm build` quedó bloqueada por el entorno (Turbopack: binding to a port / Operation not permitted, incluso al solicitar ejecución ampliada). Alternativa Webpack falló al interpretar TypeScript --showConfig. No se afirma una compilación final completa posterior a ese último ajuste.
+
+Comprobación final independiente `pnpm exec tsc --noEmit`: correcta.
+
+
+## 26-10-2026 — Proveedor nuevo desde la compra
+
+- [x] Crear proveedor junto al selector, usando formulario y acción del mantenedor existente.
+- [x] Añadirlo y seleccionarlo sin perder documento, bodega o líneas; controles de permiso compras.operar/proveedores.operar y bloqueo de consulta/estructura conservados.
+- [x] Actualizar el catálogo de Compras al guardar proveedores; sin migraciones ni escrituras de stock.
+- [ ] Validación funcional del usuario: alta, selección, conservación del borrador, cancelación, RUT duplicado y compra bloqueada.
+
+Validación de las altas internas: `pnpm lint`, `pnpm exec tsc --noEmit`, cobertura S4 (92 acciones, 25 páginas, 7 rutas y 127 entradas) y revisión de diff correctos. `pnpm build` ejecutado y bloqueado por Turbopack al abrir puerto interno (Operation not permitted). No se iniciaron servidores de validación ni se escribieron fixtures en la BD. Prueba funcional de navegador pendiente.
+
+
+## 27-10-2026 — Grilla de detalles y editor en diálogo
+
+- [x] Reemplazar bloques de campos por grilla de materiales, presentación, cantidad, contenido, cantidad de inventario, precio, importe y acciones Ver/Editar/Quitar.
+- [x] Compra nueva sin fila vacía inicial; Agregar detalle de compra abre borrador independiente y Aceptar detalle lo valida en servidor antes de agregar/actualizar una fila. La cabecera puede seguir incompleta al agregar detalles.
+- [x] Mantener catálogo y alta de materia prima dentro del editor; cancelar conserva la fila anterior, con confirmación de descarte cuando hay cambios.
+- [x] Confirmar Quitar, conservar cabecera/otras filas y controlar compra sin detalles al revisar el documento completo.
+- [x] Mantener precio inmutable de líneas guardadas, bloqueo por consulta/recepción/cierre y consulta de cantidades históricas/Kardex por ID de detalle (sin depender de índices de filas).
+- [x] Server Action de lectura calcularDetalleCompra con sesión, compras.operar y origen; reutiliza lineaCompraSchema y calcularCompra/Decimal, normaliza coma y no consulta ni escribe documentos/stock. Inventario S4 actualizado: 93 acciones protegidas.
+- [x] Tipos, cobertura S4 y comprobación de cálculo con coma/equivalencia/importe/rechazo de cero e imprecisión correctos. Sin migración, fixtures ni escrituras en BD.
+- [ ] Prueba funcional/visual: agregar dos detalles, editar/cancelar uno, quitar otro, crear material dentro del diálogo, consultar recepción y probar en móvil/teclado.
+
+`pnpm build` ejecutado pero bloqueado por Turbopack al abrir puerto interno (Operation not permitted); no se declara compilación final correcta. No se iniciaron servidores de aplicación para validar. El manual Markdown se actualizó; PDF anterior pendiente de regeneración.

@@ -1,4 +1,5 @@
 "use client";
+import { Permiso } from "@/components/seguridad/permisos";
 
 import { useRef, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -109,7 +110,7 @@ export function SucursalesCliente({ lineas, consulta, pendiente, error, onAplica
               <TableCell className="block min-w-0 sm:col-span-2 md:table-cell"><span className="mb-1 block text-xs font-medium text-muted-foreground md:hidden">Acciones</span><div className="flex flex-wrap gap-1">
                 <BotonConAyuda type="button" variant="ghost" size="icon-sm" aria-label={`Ver sucursal ${linea.name}`} ayuda="Consulta dirección y contacto de esta sucursal." disabled={pendiente} onClick={() => abrir("ver", linea)}><Eye /><span className="sr-only">Ver</span></BotonConAyuda>
                 {!consulta && <>
-                  <BotonConAyuda type="button" variant="ghost" size="icon-sm" aria-label={`Editar sucursal ${linea.name}`} ayuda="Edita esta sucursal sin salir del cliente." disabled={pendiente} onClick={() => abrir("editar", linea)}><Pencil /><span className="sr-only">Editar</span></BotonConAyuda>
+                  <Permiso permiso="clientes.operar"><BotonConAyuda type="button" variant="ghost" size="icon-sm" aria-label={`Editar sucursal ${linea.name}`} ayuda="Edita esta sucursal sin salir del cliente." disabled={pendiente} onClick={() => abrir("editar", linea)}><Pencil /><span className="sr-only">Editar</span></BotonConAyuda></Permiso>
                   {!linea.isHeadOffice && <BotonConAyuda type="button" variant="ghost" size="icon-sm" aria-label={`Quitar sucursal ${linea.name}`} ayuda="Quita la sucursal del borrador con confirmación. Una sucursal con cotizaciones no se podrá eliminar al guardar." disabled={pendiente} onClick={() => { retorno.current = document.activeElement as HTMLElement; onBloqueo(true); setAQuitar(linea); }}><Trash2 /><span className="sr-only">Quitar</span></BotonConAyuda>}
                 </>}
               </div></TableCell>

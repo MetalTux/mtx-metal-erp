@@ -1,3 +1,5 @@
+import { anotarMutacion } from "@/lib/seguridad/autoria";
+import { exigirAcceso, exigirAccesoEnTransaccion } from "@/lib/seguridad/acceso";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
 import { condicionPagoSchema, referenciaCondicionSchema } from "@/lib/validaciones/condicion-pago";
@@ -21,9 +23,13 @@ function errorOperacion(error: unknown): ResultadoCondicion {
   return { ok: false, mensaje: "No se pudo completar la operación. Comprueba la conexión e inténtalo nuevamente." };
 }
 export async function listarCondiciones(): Promise<CondicionPago[]> {
+  await exigirAcceso("configuracion.leer");
+
   return (await prisma.paymentCondition.findMany({ select: seleccion, orderBy: [{ days: "asc" }, { name: "asc" }, { id: "asc" }] })).map(serializar);
 }
 export async function consultarCondicion(id: unknown): Promise<ResultadoCondicion> {
+  await exigirAcceso("configuracion.leer");
+
   if (typeof id !== "number" || !Number.isSafeInteger(id) || id <= 0) return { ok: false, mensaje: "La condición indicada no es válida." };
   try {
     const fila = await prisma.paymentCondition.findUnique({ where: { id }, select: seleccion });
@@ -31,6 +37,8 @@ export async function consultarCondicion(id: unknown): Promise<ResultadoCondicio
   } catch (error) { return errorOperacion(error); }
 }
 export async function guardarCondicion(datos: unknown, referencia?: unknown): Promise<ResultadoCondicion> {
+  await exigirAcceso("configuracion.operar");
+
   const validacion = condicionPagoSchema.safeParse(datos);
   if (!validacion.success) return { ok: false, mensaje: "Revisa los campos del formulario.", campos: validacion.error.flatten().fieldErrors };
   const registro = referencia === undefined ? undefined : referenciaCondicionSchema.safeParse(referencia);
@@ -38,17 +46,19 @@ export async function guardarCondicion(datos: unknown, referencia?: unknown): Pr
   try {
     // Una versión entera impide sobrescribir cambios incluso dentro del mismo milisegundo.
     const fila = registro?.success
-      ? await prisma.paymentCondition.update({ where: registro.data, data: { ...validacion.data, version: { increment: 1 } }, select: seleccion })
-      : await prisma.paymentCondition.create({ data: validacion.data, select: seleccion });
+      ? await prisma.$transaction(async tx => { await exigirAccesoEnTransaccion(tx, "configuracion.operar"); return anotarMutacion(tx, "paymentCondition", "update", await tx.paymentCondition.update({ where: registro.data, data: { ...validacion.data, version: { increment: 1 } }, select: seleccion })); })
+      : await prisma.$transaction(async tx => { await exigirAccesoEnTransaccion(tx, "configuracion.operar"); return anotarMutacion(tx, "paymentCondition", "create", await tx.paymentCondition.create({ data: validacion.data, select: seleccion })); });
     return { ok: true, mensaje: registro ? "Condición de pago actualizada." : "Condición de pago creada.", condicion: serializar(fila) };
   } catch (error) { return errorOperacion(error); }
 }
 export async function eliminarCondicion(referencia: unknown): Promise<ResultadoCondicion> {
+  await exigirAcceso("configuracion.operar");
+
   const validacion = referenciaCondicionSchema.safeParse(referencia);
   if (!validacion.success) return { ok: false, mensaje: "La referencia no es válida. Actualiza el listado." };
   try {
     // La FK Restrict protege también frente a referencias creadas concurrentemente.
-    await prisma.paymentCondition.delete({ where: validacion.data });
+    await prisma.$transaction(async tx => { await exigirAccesoEnTransaccion(tx, "configuracion.operar"); return anotarMutacion(tx, "paymentCondition", "delete", await tx.paymentCondition.delete({ where: validacion.data })); });
     return { ok: true, mensaje: "Condición de pago eliminada." };
   } catch (error) { return errorOperacion(error); }
 }

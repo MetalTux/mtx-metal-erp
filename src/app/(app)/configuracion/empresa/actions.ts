@@ -1,10 +1,18 @@
 "use server";
+import { exigirAcceso, exigirOrigenAccion } from "@/lib/seguridad/acceso";
+
 
 import { revalidatePath } from "next/cache";
 import { guardarEmpresaConLogo, obtenerEmpresa } from "@/lib/servicios/empresa";
 import type { ResultadoEmpresa } from "@/lib/tipos/empresa";
-export async function consultarPerfilEmpresa() { return obtenerEmpresa(); }
+export async function consultarPerfilEmpresa() {
+  await exigirOrigenAccion();
+  await exigirAcceso("configuracion.leer", true);
+ return obtenerEmpresa(); }
 export async function guardarPerfilEmpresa(formulario: FormData): Promise<ResultadoEmpresa> {
+  await exigirOrigenAccion();
+  await exigirAcceso("configuracion.operar", true);
+
   if (!(formulario instanceof FormData)) return { ok: false, mensaje: "El formulario recibido no es válido." };
   let datos: unknown;
   let referencia: unknown;

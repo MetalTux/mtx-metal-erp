@@ -1,4 +1,5 @@
 "use client";
+import { Permiso } from "@/components/seguridad/permisos";
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -504,10 +505,10 @@ export function ConsultaInventario({
               Actualizar
             </Button>
             {!movimientos && (
-              <Button disabled={pendiente} onClick={() => configurarMinimo()}>
+              <Permiso permiso="inventario.operar"><Button disabled={pendiente} onClick={() => configurarMinimo()}>
                 <Plus aria-hidden="true" />
                 Configurar mínimo
-              </Button>
+              </Button></Permiso>
             )}
           </>
         }

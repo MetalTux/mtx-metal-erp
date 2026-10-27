@@ -1,4 +1,5 @@
 "use client";
+import { Permiso } from "@/components/seguridad/permisos";
 import { useState } from "react";
 import { revisarSaldoTerminado } from "@/app/(app)/inventario/productos-terminados/actions";
 import { inicialTerminadoSchema, hoyChile, type DatosInicialTerminado } from "@/lib/validaciones/stock-terminado";
@@ -52,7 +53,7 @@ export function FormularioInicialTerminado({ catalogos, uuid, pendiente, onGuard
       <div className="space-y-2"><Label htmlFor="inicial-fecha">Fecha del inventario *</Label><Input id="inicial-fecha" type="date" max={hoyChile()} disabled={ocupado} value={fecha} onChange={e => { setFecha(e.target.value); onCambio(); }} /></div>
       <div className="space-y-2"><Label htmlFor="inicial-nota">Observación *</Label><Textarea id="inicial-nota" maxLength={2000} rows={3} disabled={ocupado} value={nota} onChange={e => { setNota(e.target.value); onCambio(); }} placeholder="Ej.: Existencias anteriores al inicio del sistema, verificadas físicamente." /></div>
       <p className="text-xs text-muted-foreground">El ingreso conserva un documento histórico. Revisa los datos antes de confirmar: no se edita ni se elimina.</p>
-      <DialogFooter><Button type="button" variant="outline" disabled={ocupado} onClick={onCerrar}>Cancelar</Button><Button type="submit" disabled={ocupado || !saldo?.ok || !saldo.puedeInicial}>{pendiente ? "Registrando…" : "Registrar inventario inicial"}</Button></DialogFooter>
+      <DialogFooter><Button type="button" variant="outline" disabled={ocupado} onClick={onCerrar}>Cancelar</Button><Permiso permiso="inventario.operar"><Button type="submit" disabled={ocupado || !saldo?.ok || !saldo.puedeInicial}>{pendiente ? "Registrando…" : "Registrar inventario inicial"}</Button></Permiso></DialogFooter>
     </form>
     <ConfirmarAccion abierto={Boolean(envio)} onAbiertoChange={v => { if (!v) cerrarConfirmacion(); }} titulo="Confirmar inventario inicial" descripcion={`Se ingresarán ${envio ? formatearCantidad(envio.quantity) : ""} ${producto?.unidad ?? ""} de ${producto?.name ?? ""} en ${bodega?.name ?? ""}. No se consumirá materia prima. El documento no se edita ni se elimina; confirma que corresponde a existencias anteriores.`} accion="Confirmar ingreso" pendiente={pendiente} onConfirmar={async () => {
       if (!envio || pendiente) return;

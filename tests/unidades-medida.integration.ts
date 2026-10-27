@@ -45,7 +45,7 @@ async function main() {
     const relacionada = await consultarUnidad(otra.id);
     assert(relacionada.ok && relacionada.unidad?.materiales === 1);
     const bloqueo = await eliminarUnidad({ id: otra.id, updatedAt: otra.updatedAt });
-    assert(!bloqueo.ok && bloqueo.mensaje.includes("materiales asociados"));
+    assert(!bloqueo.ok && bloqueo.mensaje.includes("materiales o productos asociados"));
     assert(await prisma.unitMeasure.findUnique({ where: { id: otra.id } }));
 
     const carrera = await Promise.all([guardarUnidad({ name: `${nombre} concurrente`, abbreviation: "c" }), guardarUnidad({ name: `${nombre} concurrente`, abbreviation: "c" })]);

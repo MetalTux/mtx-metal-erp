@@ -1,3 +1,5 @@
+import { anotarMutacion } from "@/lib/seguridad/autoria";
+import { exigirAcceso, exigirAccesoEnTransaccion } from "@/lib/seguridad/acceso";
 import { cantidadReservadaRecurso } from "./reservas-stock";
 import { createHash } from "node:crypto";
 import { prisma } from "@/lib/prisma";
@@ -46,6 +48,8 @@ async function leerSaldo(
   return { stock: s, referencia };
 }
 export async function consultarSaldosTraslado(entrada: unknown) {
+  await exigirAcceso("traslados.leer");
+
   const v = combinacionTrasladoSchema.safeParse(entrada);
   if (!v.success || v.data.sourceWarehouseId === v.data.destinationWarehouseId)
     return {
@@ -93,6 +97,8 @@ export async function consultarSaldosTraslado(entrada: unknown) {
 }
 /** Traslado inmediato: nunca queda una salida sin entrada. Las correcciones son otro documento inverso completo. */
 export async function registrarTrasladoInventario(entrada: unknown) {
+  await exigirAcceso("traslados.operar");
+
   const v = trasladoSchema.safeParse(entrada);
   if (!v.success)
     return {
@@ -124,6 +130,8 @@ export async function registrarTrasladoInventario(entrada: unknown) {
   try {
     return await prisma.$transaction(
       async (tx) => {
+      await exigirAccesoEnTransaccion(tx, "traslados.operar");
+
         // Mismo bloqueo de UUID que ajustes: una clave no puede producir efectos en ambos módulos.
         await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${d.idempotencyKey},0))::text`;
         const previa = await tx.inventoryOperation.findUnique({
@@ -300,7 +308,7 @@ export async function registrarTrasladoInventario(entrada: unknown) {
             incomingTransferId: documento.id,
           },
         });
-        await tx.inventoryOperation.create({
+        await anotarMutacion(tx, "inventoryOperation", "create", await tx.inventoryOperation.create({
           data: {
             idempotencyKey: d.idempotencyKey,
             requestHash: hash,
@@ -310,7 +318,7 @@ export async function registrarTrasladoInventario(entrada: unknown) {
                 ? "TRASLADAR"
                 : "REVERTIR_TRASLADO",
           },
-        });
+        }));
         return {
           ok: true as const,
           mensaje: "Traslado registrado en ambas bodegas.",

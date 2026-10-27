@@ -1,7 +1,10 @@
+import { exigirAcceso } from "@/lib/seguridad/acceso";
 import { prisma } from "@/lib/prisma";
 import { filtrosTerminadoSchema } from "@/lib/validaciones/stock-terminado";
 import type { CatalogosTerminado, ConsultaTerminado, FilaTerminado } from "@/lib/tipos/stock-terminado";
 export async function catalogosTerminado(): Promise<CatalogosTerminado> {
+  await exigirAcceso("inventario.leer");
+
   const [productos, bodegas] = await Promise.all([
     prisma.product.findMany({ where: { deletedAt: null }, include: { unitMeasure: true }, orderBy: [{ name: "asc" }, { id: "asc" }] }),
     prisma.warehouse.findMany({ where: { classification: { in: ["MIXTA", "PRODUCTO_TERMINADO"] } }, select: { id: true, name: true }, orderBy: [{ name: "asc" }, { id: "asc" }] }),
@@ -9,6 +12,8 @@ export async function catalogosTerminado(): Promise<CatalogosTerminado> {
   return { productos: productos.map(p => ({ id: p.id, name: p.name, code: p.code, version: p.version, unitMeasureId: p.unitMeasureId, unidad: p.unitMeasure.abbreviation, nombreUnidad: p.unitMeasure.name })), bodegas };
 }
 export async function consultarInventarioTerminado(entrada: unknown = {}): Promise<ConsultaTerminado> {
+  await exigirAcceso("inventario.leer");
+
   const v = filtrosTerminadoSchema.safeParse(entrada);
   if (!v.success) return { ok: false, mensaje: "Los filtros no son válidos. Limpia los filtros para continuar." };
   const f = v.data;

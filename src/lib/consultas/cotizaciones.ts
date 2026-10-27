@@ -1,3 +1,4 @@
+import { exigirAcceso } from "@/lib/seguridad/acceso";
 import { z } from "zod";
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
@@ -12,6 +13,9 @@ const filtrosSchema = z.object({
   desde: fechaFiltro, hasta: fechaFiltro,
 });
 export async function consultarCotizaciones(entrada: unknown) {
+  await exigirAcceso("cotizaciones.leer");
+  await exigirAcceso("precios.leer");
+
   const parsed = filtrosSchema.safeParse(entrada), f = parsed.success ? parsed.data : filtrosSchema.parse({});
   const where: Prisma.QuoteWhereInput = { deletedAt: null, folioId: { not: null }, ...(f.estado !== "TODOS" ? { status: f.estado } : {}), ...(f.desde || f.hasta ? { date: { ...(f.desde ? { gte: new Date(`${f.desde}T00:00:00Z`) } : {}), ...(f.hasta ? { lte: new Date(`${f.hasta}T00:00:00Z`) } : {}) } } : {}), ...(f.q ? { OR: [{ clientName: { contains: f.q, mode: "insensitive" } }, { clientRut: { contains: f.q, mode: "insensitive" } }, { folio: { folio: { contains: f.q, mode: "insensitive" } } }] } : {}) };
   return prisma.$transaction(async tx => {
@@ -25,6 +29,9 @@ export async function consultarCotizaciones(entrada: unknown) {
   }, { isolationLevel: "RepeatableRead" });
 }
 export async function catalogosCotizacion() {
+  await exigirAcceso("cotizaciones.leer");
+  await exigirAcceso("precios.leer");
+
   const [clientes, sucursales, condiciones, cuentas, materiales, productos, unidades] = await Promise.all([
     prisma.client.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true, rut: true } }),
     prisma.clientBranch.findMany({ orderBy: [{ isHeadOffice: "desc" }, { name: "asc" }] }),
@@ -38,6 +45,9 @@ export async function catalogosCotizacion() {
 }
 /** Consulta histórica escalar, sin include de relaciones hermanas en el mismo pg. */
 export async function obtenerCotizacion(id: number) {
+  await exigirAcceso("cotizaciones.leer");
+  await exigirAcceso("precios.leer");
+
   if (!Number.isSafeInteger(id) || id <= 0) throw new Error("Referencia inválida.");
   return prisma.$transaction(async tx => {
     const q = await tx.quote.findFirstOrThrow({ where: { id, deletedAt: null, folioId: { not: null } } });
@@ -51,7 +61,15 @@ export async function obtenerCotizacion(id: number) {
       technicalDescription: q.technicalDescription ? validarTextoCotizacion(q.technicalDescription) : documentoVacioCotizacion,
       lines: detalles.map(l => ({ kind: l.kind!, rawMaterialId: l.rawMaterialId, productId: l.productId, unitMeasureId: l.unitMeasureId!, description: l.description, quantity: l.quantity.toString(), unitPrice: l.unitPrice.toFixed(0) })),
     };
-    return { id: q.id, version: q.version, folio: folio.folio, status: q.status, datos, historico: {
+    // Una corrección crea una oferta neta nueva; no modifica el original.
+    const divisor = new Prisma.Decimal(1).plus(new Prisma.Decimal(q.vatRate ?? 0).dividedBy(100));
+    const aNeto = (valor: string) => new Prisma.Decimal(valor).dividedBy(divisor).toDecimalPlaces(0, Prisma.Decimal.ROUND_HALF_UP).toFixed(0);
+    const datosCorreccion: DatosCotizacion = q.pricesIncludeVat ? {
+      ...datos,
+      lines: datos.lines.map(l => ({ ...l, unitPrice: aNeto(l.unitPrice) })),
+      discount: datos.discount.modo === "MONTO" ? { modo: "MONTO", valor: aNeto(datos.discount.valor) } : datos.discount,
+    } : datos;
+    return { pricesIncludeVat: q.pricesIncludeVat, datosCorreccion, id: q.id, version: q.version, folio: folio.folio, status: q.status, datos, historico: {
       clientName: q.clientName, clientRut: q.clientRut, clientContact: q.clientContact, clientPhone: q.clientPhone, clientEmail: q.clientEmail, branchName: q.branchName, branchAddress: q.branchAddress, branchCity: q.branchCity,
       branchContact: q.branchContact, branchPhone: q.branchPhone, branchEmail: q.branchEmail,
       paymentConditionName: q.paymentConditionName, paymentTermDays: q.paymentTermDays,

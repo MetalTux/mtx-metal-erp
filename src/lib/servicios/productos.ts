@@ -1,3 +1,6 @@
+import { anotarMutacion } from "@/lib/seguridad/autoria";
+import { tienePermiso } from "@/lib/seguridad/permisos";
+import { exigirAcceso, exigirAccesoEnTransaccion } from "@/lib/seguridad/acceso";
 import { createHash } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { tieneReferenciaHistoricaPlan } from "./referencias-plan-trabajo";
@@ -9,6 +12,8 @@ import { almacenImagenesProducto, prepararImagenProducto, URL_IMAGEN_PRODUCTO } 
 const obsoleto: ResultadoProducto = { ok: false, mensaje: "El producto cambió. Actualiza el listado y vuelve a abrirlo." };
 /** Relaciones por lotes secuenciales: no disparar consultas hermanas simultáneas en pg. */
 async function cargar(tx: Prisma.TransactionClient, ids?: number[]): Promise<Producto[]> {
+  const sesion = await exigirAccesoEnTransaccion(tx, "catalogos.leer");
+  const verPrecios = tienePermiso(sesion.roles,"precios.leer");
   const filas = await tx.product.findMany({ where: { deletedAt: null, ...(ids && { id: { in: ids } }) }, orderBy: [{ name: "asc" }, { id: "asc" }] });
   const claves = filas.map(p => p.id);
   const unidades = await tx.unitMeasure.findMany({ where: { id: { in: filas.map(p => p.unitMeasureId) } } });
@@ -18,17 +23,23 @@ async function cargar(tx: Prisma.TransactionClient, ids?: number[]): Promise<Pro
   const imagenes = await tx.productImage.findMany({ where: { productId: { in: claves }, removedAt: null }, orderBy: [{ position: "asc" }, { id: "asc" }] });
   const referencias = await tx.quoteDetail.groupBy({ by: ["productId"], where: { productId: { in: claves } }, _count: { _all: true } });
   const stocks = await tx.productWarehouseStock.groupBy({ by: ["productId"], where: { productId: { in: claves } }, _count: { _all: true } });
-  return filas.map(p => ({ id: p.id, code: p.code, name: p.name, description: p.description, unitMeasureId: p.unitMeasureId, unidad: unidades.map(u => ({ id: u.id, name: u.name, abbreviation: u.abbreviation })).find(u => u.id === p.unitMeasureId)!, suggestedPrice: p.suggestedPrice?.toFixed(0) ?? null, version: p.version, inventario: stocks.find(s => s.productId === p.id)?._count._all ?? 0, cotizaciones: referencias.find(r => r.productId === p.id)?._count._all ?? 0,
+  return filas.map(p => ({ id: p.id, code: p.code, name: p.name, description: p.description, unitMeasureId: p.unitMeasureId, unidad: unidades.map(u => ({ id: u.id, name: u.name, abbreviation: u.abbreviation })).find(u => u.id === p.unitMeasureId)!, suggestedPrice: verPrecios ? p.suggestedPrice?.toFixed(0) ?? null : null, version: p.version, inventario: stocks.find(s => s.productId === p.id)?._count._all ?? 0, cotizaciones: referencias.find(r => r.productId === p.id)?._count._all ?? 0,
     recipes: recetas.filter(r => r.productId === p.id).map(r => { const m = materiales.find(m => m.id === r.rawMaterialId)!, u = unidadesMaterial.find(u => u.id === m.unitMeasureId)!; return { rawMaterialId: m.id, unitMeasureId: m.unitMeasureId, quantity: r.quantity.toString(), name: m.name, code: m.code, unitName: u.name, abbreviation: u.abbreviation }; }),
     images: imagenes.filter(i => i.productId === p.id).map(i => ({ id: i.id, url: URL_IMAGEN_PRODUCTO + i.fileKey })),
   }));
 }
-export async function listarProductos() { return prisma.$transaction(tx => cargar(tx), { isolationLevel: "RepeatableRead" }); }
+export async function listarProductos() {
+  await exigirAcceso("catalogos.leer");
+ return prisma.$transaction(tx => cargar(tx), { isolationLevel: "RepeatableRead" }); }
 export async function listarMaterialesReceta(): Promise<MaterialReceta[]> {
+  await exigirAcceso("catalogos.leer");
+
   const materiales = await prisma.rawMaterial.findMany({ include: { unitMeasure: true }, orderBy: [{ name: "asc" }, { id: "asc" }] });
   return materiales.map(m => ({ id: m.id, name: m.name, code: m.code, unitMeasureId: m.unitMeasureId, unitName: m.unitMeasure.name, abbreviation: m.unitMeasure.abbreviation }));
 }
 export async function consultarProducto(id: unknown): Promise<ResultadoProducto> {
+  await exigirAcceso("catalogos.leer");
+
   if (typeof id !== "number" || !Number.isSafeInteger(id) || id <= 0) return { ok: false, mensaje: "Producto inválido." };
   try { const filas = await prisma.$transaction(tx => cargar(tx, [id]), { isolationLevel: "RepeatableRead" }); return filas[0] ? { ok: true, mensaje: "Producto consultado.", producto: filas[0] } : obsoleto; }
   catch (error) { return errorOperacion(error); }
@@ -39,6 +50,9 @@ function errorOperacion(error: unknown): ResultadoProducto {
   return { ok: false, mensaje: "No se pudo completar la operación. Revisa la conexión e inténtalo nuevamente." };
 }
 export async function guardarProducto(datos: unknown, referencia?: unknown, archivos: File[] = [], clave?: unknown): Promise<ResultadoProducto> {
+  const sesion = await exigirAcceso("catalogos.operar");
+  const verPrecios = tienePermiso(sesion.roles,"precios.leer");
+
   const validacion = productoSchema.safeParse(datos), ref = referencia === undefined ? undefined : referenciaProductoSchema.safeParse(referencia);
   if (!validacion.success) return { ok: false, mensaje: validacion.error.issues[0].message };
   if ((ref && !ref.success) || (!ref && !z.uuid().safeParse(clave).success)) return { ok: false, mensaje: "Referencia o clave de creación inválida." };
@@ -53,6 +67,8 @@ export async function guardarProducto(datos: unknown, referencia?: unknown, arch
   const huella = createHash("sha256").update(JSON.stringify({ ...d, recipes: receta.map(r => ({ ...r, quantity: r.quantity.toFixed(3) })), files: preparadas.map(b => createHash("sha256").update(b).digest("hex")) })).digest("hex");
   try {
     return await prisma.$transaction(async tx => {
+      await exigirAccesoEnTransaccion(tx, "catalogos.operar");
+
       if (!ref) {
         await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${String(clave).toLowerCase()}, 72113))`;
         const anterior = await tx.product.findUnique({ where: { creationKey: String(clave) } });
@@ -78,8 +94,8 @@ export async function guardarProducto(datos: unknown, referencia?: unknown, arch
       if (!await tx.unitMeasure.findUnique({ where: { id: d.unitMeasureId } })) return { ok: false, mensaje: "La unidad seleccionada ya no existe." };
       const propias = ref?.success ? await tx.productImage.findMany({ where: { productId: ref.data.id, removedAt: null } }) : [];
       if (d.images.some(i => "id" in i && !propias.some(p => p.id === i.id))) return { ok: false, mensaje: "Una imagen no pertenece a este producto o ya fue retirada." };
-      const data = { name: d.name, description: d.description || null, unitMeasureId: d.unitMeasureId, suggestedPrice: d.suggestedPrice ? new Prisma.Decimal(d.suggestedPrice) : null };
-      const producto = ref?.success ? await tx.product.update({ where: { id: ref.data.id }, data: { ...data, version: { increment: 1 } } }) : await tx.product.create({ data: { ...data, creationKey: String(clave), creationFingerprint: huella } });
+      const data = { name: d.name, description: d.description || null, unitMeasureId: d.unitMeasureId, ...(verPrecios ? { suggestedPrice: d.suggestedPrice ? new Prisma.Decimal(d.suggestedPrice) : null } : {}) };
+      const producto = ref?.success ? await anotarMutacion(tx, "product", "update", await tx.product.update({ where: { id: ref.data.id }, data: { ...data, version: { increment: 1 } } })) : await anotarMutacion(tx, "product", "create", await tx.product.create({ data: { ...data, creationKey: String(clave), creationFingerprint: huella } }));
       await tx.productRecipe.deleteMany({ where: { productId: producto.id } });
       for (const r of receta) await tx.productRecipe.create({ data: { productId: producto.id, rawMaterialId: r.rawMaterialId, quantity: r.quantity } });
       // Archivos antiguos permanecen en disco; sólo nuevas escrituras se limpian si falla la tx.
@@ -96,17 +112,21 @@ export async function guardarProducto(datos: unknown, referencia?: unknown, arch
   }
 }
 export async function eliminarProducto(referencia: unknown): Promise<ResultadoProducto> {
+  await exigirAcceso("catalogos.operar");
+
   const ref = referenciaProductoSchema.safeParse(referencia);
   if (!ref.success) return { ok: false, mensaje: "Referencia inválida." };
   try {
     return await prisma.$transaction(async tx => {
+      await exigirAccesoEnTransaccion(tx, "catalogos.operar");
+
       await tx.$queryRaw`SELECT id FROM "Product" WHERE id = ${ref.data.id} FOR UPDATE`;
       const actual = await tx.product.findUnique({ where: { ...ref.data, deletedAt: null } });
       if (!actual) return obsoleto;
       if (await tx.quoteDetail.count({ where: { productId: actual.id } })) return { ok: false, mensaje: "No se puede eliminar un producto referenciado en cotizaciones." };
       if (await tx.workOrderLine.count({ where: { productId: actual.id } }) || await tieneReferenciaHistoricaPlan(tx, "Product", actual.id)) return { ok: false, mensaje: "No se puede eliminar un producto referenciado en órdenes de trabajo actuales o históricas." };
       if (await tx.productWarehouseStock.count({ where: { productId: actual.id } })) return { ok: false, mensaje: "No se puede eliminar un producto con stock o historial de inventario, incluso saldo cero." };
-      await tx.product.update({ where: { id: actual.id }, data: { deletedAt: new Date(), version: { increment: 1 } } });
+      await anotarMutacion(tx, "product", "update", await tx.product.update({ where: { id: actual.id }, data: { deletedAt: new Date(), version: { increment: 1 } } }));
       return { ok: true, mensaje: "Producto eliminado del catálogo; código y archivos históricos conservados." };
     });
   } catch (error) { return errorOperacion(error); }

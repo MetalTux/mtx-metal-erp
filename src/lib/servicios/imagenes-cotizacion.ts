@@ -1,3 +1,5 @@
+import { anotarMutacion } from "@/lib/seguridad/autoria";
+import { exigirAcceso, exigirAccesoEnTransaccion } from "@/lib/seguridad/acceso";
 import { createHash } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { almacenImagenesCotizacion, prepararImagenCotizacion } from "@/lib/almacenamiento/imagenes-cotizacion";
@@ -6,6 +8,9 @@ import { URL_IMAGEN_COTIZACION } from "@/lib/validaciones/texto-cotizacion";
 
 /** Subida de borrador idempotente. No crea cotización, folio ni movimientos. */
 export async function cargarImagenCotizacion(form: FormData) {
+  await exigirAcceso("cotizaciones.operar");
+  await exigirAcceso("precios.leer");
+
   const borrador = claveCotizacionSchema.safeParse(form.get("draftKey"));
   const clave = claveCotizacionSchema.safeParse(form.get("uploadKey"));
   if (!borrador.success || !clave.success) return { ok: false as const, mensaje: "La referencia de la imagen no es válida." };
@@ -15,6 +20,8 @@ export async function cargarImagenCotizacion(form: FormData) {
     const contenido = await prepararImagenCotizacion(form.get("archivo") as File);
     const huella = createHash("sha256").update(contenido).digest("hex");
     const resultado = await prisma.$transaction(async tx => {
+      await exigirAccesoEnTransaccion(tx, "cotizaciones.operar");
+
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${clave.data}, 73421))`;
       const anterior = await tx.quoteImageFile.findUnique({ where: { uploadKey: clave.data } });
       if (anterior) {
@@ -23,7 +30,7 @@ export async function cargarImagenCotizacion(form: FormData) {
       }
       // Una imagen permanece como borrador hasta que un guardado la vincula al documento.
       archivoNuevo = await almacen.guardar(contenido);
-      return tx.quoteImageFile.create({ data: { draftKey: borrador.data, uploadKey: clave.data, fileKey: archivoNuevo, fingerprint: huella } });
+      return anotarMutacion(tx, "quoteImageFile", "create", await tx.quoteImageFile.create({ data: { draftKey: borrador.data, uploadKey: clave.data, fileKey: archivoNuevo, fingerprint: huella } }));
     }, { timeout: 20000 });
     return { ok: true as const, src: URL_IMAGEN_COTIZACION + resultado.fileKey };
   } catch (error) {

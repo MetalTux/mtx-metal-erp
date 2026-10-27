@@ -1,3 +1,5 @@
+import { anotarMutacion } from "@/lib/seguridad/autoria";
+import { exigirAcceso, exigirAccesoEnTransaccion } from "@/lib/seguridad/acceso";
 import { createHash, randomUUID } from "node:crypto";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
@@ -44,6 +46,8 @@ async function recursosPdf(snapshot: Awaited<ReturnType<typeof capturar>>) {
  * Los archivos nuevos sólo se limpian tras confirmar que la BD no los referencia.
  */
 export async function emitirPdfTrabajo(referencia: unknown, clave: unknown) {
+  await exigirAcceso("trabajos.operar");
+
   const r = referenciaTrabajoSchema.safeParse(referencia), c = claveTrabajoSchema.safeParse(clave);
   if (!r.success || !c.success) return { ok: false as const, mensaje: "Referencia de emisión inválida." };
   const fingerprint = hashPdf(JSON.stringify({ ...r.data, plantilla: VERSION_PLANTILLA_PDF }));
@@ -54,6 +58,8 @@ export async function emitirPdfTrabajo(referencia: unknown, clave: unknown) {
     const existente=await prisma.workOrderPdfEmission.findUnique({where:{workOrderId_workOrderVersion_templateVersion:{workOrderId:r.data.id,workOrderVersion:r.data.version,templateVersion:VERSION_PLANTILLA_PDF}}});
     if(existente){
       await prisma.$transaction(async tx=>{
+      await exigirAccesoEnTransaccion(tx, "trabajos.operar");
+
         await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${c.data},91425))`;
         const anterior=await tx.workOrderPdfRequest.findUnique({where:{idempotencyKey:c.data}});
         if(anterior){exigir(anterior.fingerprint===fingerprint,"Esta clave ya se utilizó para otra emisión.");return;}
@@ -74,6 +80,8 @@ export async function emitirPdfTrabajo(referencia: unknown, clave: unknown) {
       archivo = `${id}.pdf`; await almacenPdfTrabajo().guardar(archivo, bytes);
     }
     const resultado = await prisma.$transaction(async tx => {
+      await exigirAccesoEnTransaccion(tx, "trabajos.operar");
+
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${c.data}, 91425))`;
       const anterior = await tx.workOrderPdfRequest.findUnique({ where: { idempotencyKey: c.data } });
       if (anterior) { exigir(anterior.fingerprint === fingerprint, "Esta clave ya se utilizó para otra emisión."); return anterior.emissionId; }
@@ -84,7 +92,7 @@ export async function emitirPdfTrabajo(referencia: unknown, clave: unknown) {
       let emision = await tx.workOrderPdfEmission.findUnique({ where: { workOrderId_workOrderVersion_templateVersion: { workOrderId: r.data.id, workOrderVersion: r.data.version, templateVersion: VERSION_PLANTILLA_PDF } } });
       if (!emision) {
         exigir(bytes && archivo, "No se pudo confirmar el archivo generado.");
-        emision = await tx.workOrderPdfEmission.create({ data: { id, workOrderId: r.data.id, workOrderVersion: r.data.version, templateVersion: VERSION_PLANTILLA_PDF, snapshotVersion: 1, status: snapshot.documento.status as "PENDIENTE" | "EN_PROCESO" | "FINALIZADO" | "ANULADO", folio: snapshot.documento.folio, snapshot: serializar(snapshot), fileKey: archivo!, fileSize: bytes!.length, fileHash: hashPdf(bytes!) } });
+        emision = await anotarMutacion(tx, "workOrderPdfEmission", "create", await tx.workOrderPdfEmission.create({ data: { id, workOrderId: r.data.id, workOrderVersion: r.data.version, templateVersion: VERSION_PLANTILLA_PDF, snapshotVersion: 1, status: snapshot.documento.status as "PENDIENTE" | "EN_PROCESO" | "FINALIZADO" | "ANULADO", folio: snapshot.documento.folio, snapshot: serializar(snapshot), fileKey: archivo!, fileSize: bytes!.length, fileHash: hashPdf(bytes!) } }));
       }
       await tx.workOrderPdfRequest.create({ data: { idempotencyKey: c.data, fingerprint, emissionId: emision.id } });
       return emision.id;
@@ -102,11 +110,15 @@ export async function emitirPdfTrabajo(referencia: unknown, clave: unknown) {
   }
 }
 export async function historialPdfTrabajo(id: number) {
+  await exigirAcceso("trabajos.leer");
+
   if (!Number.isSafeInteger(id) || id < 1) throw new Error("Referencia inválida.");
   const filas = await prisma.workOrderPdfEmission.findMany({ where: { workOrderId: id }, orderBy: [{ workOrderVersion: "desc" }, { createdAt: "desc" }], select: { id: true, workOrderVersion: true, status: true, folio: true, templateVersion: true, createdAt: true } });
   return filas.map(f => ({ ...f, createdAt: f.createdAt.toISOString() }));
 }
 export async function leerPdfTrabajo(id: string) {
+  await exigirAcceso("trabajos.leer");
+
   if (!z.string().uuid().safeParse(id).success) throw new Error("Referencia inválida.");
   const emision = await prisma.workOrderPdfEmission.findUniqueOrThrow({ where: { id } });
   const bytes = await almacenPdfTrabajo().leer(emision.fileKey);

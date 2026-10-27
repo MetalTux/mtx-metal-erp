@@ -16,6 +16,8 @@ Instrucciones para Codex y otros agentes que trabajen en este repositorio. Aplic
 
 | Archivo | Cuándo consultarlo |
 | --- | --- |
+| `docs/HITO-INICIO-SESION-SEGURIDAD.md` | Propuesta funcional y etapas S0–S7 para acceso, usuarios, roles, sesiones y auditoría; D01–D03 aprobadas: seis roles combinables por unión de permisos, contraseña + Google opcional y uso por Internet con equipos personales. D04–D06 aprobadas: usuarios sólo por Administrador, recuperación por correo con SMTP/asistida y sesión 60 min/8 h. D07/D08/D10 aprobadas: matriz por empresa, TOTP opcional personal y correcciones por área; D09/D08-R aprobadas: auditoría sólo Administrador, IP/navegador y eventos 12 meses conservando autoría; códigos personales TOTP también para Administradores. Google sin gasto adicional. S1 implementado/validado: 11 tablas, permisos y bibliotecas; migración local 37, sin activar credenciales. Continuidad en sección 18 y docs/SEGURIDAD-S1-DISENO.md; S2 local implementado/validado: login, usuarios y panel propio; continuidad sección 19 y docs/OPERACION-SEGURIDAD.md. S3 Google pospuesto por el usuario el 21-10-2026; S4 implementado/validado técnicamente: páginas, acciones, servicios/DTO y archivos con sesión/permisos, navegación filtrada y revocación coordinada con transacciones. S5 implementado/validado: 61 puntos de autoría atómica, visor sólo Administrador, metadatos sin secretos y retención 12 meses con UI/CLI; sin backfill ni migraciones. Continuidad breve en docs/SEGURIDAD-S5-CONTINUIDAD.md y sección 23 del hito. S6 completado en alcance local aprobado: 48/48, HTTPS/restauración locales y despliegue preparado. No hay servidor definitivo; instalación/timer reales diferidos. Continuidad exacta en docs/SEGURIDAD-S6-CONTINUIDAD.md. CLI de revocación tras restaurar y plantillas de despliegue/retención sin instalar; no marcar HTTPS/timer reales como ejecutados. S7 pendiente; guía funcional preparada en docs/GUIA-PRUEBAS-SEGURIDAD-S7.md con estados e incidencias, sin aprobación del usuario. Contraseña 8–128 centralizada; corrección de provisión/configuración local en sección 20 |
+| `docs/CIERRE-VERSION-1.md` | Auditoría del 20-10-2026: estado real, faltantes y criterios propuestos para V1; acceso/permisos, Cobranza, Dashboard, usabilidad/manual y preparación operativa. Alcance propuesto, sin aprobación automática de reglas nuevas |
 | `prisma/schema.prisma` | Modelos, relaciones, enums, precisión e índices reales |
 | `prisma.config.ts` | Conexión, ubicación de migraciones y comando del seed |
 | `src/lib/prisma.ts` | Instancia compartida del cliente de base de datos |
@@ -27,7 +29,7 @@ Instrucciones para Codex y otros agentes que trabajen en este repositorio. Aplic
 | `docs/HITO-PRODUCTOS.md` | Catálogo/recetas/imágenes implementados; clasificación de bodegas implementada; stock inicial de terminado validado y ajustes/correcciones P6 con revisión funcional pendiente |
 | `docs/HITO-COTIZACIONES.md` | Reglas comerciales aprobadas, Orden de Compra Cliente, catálogo/stock terminado, anticipos y vencimiento por factura; Condiciones de Pago implementadas, demás dependencias pendientes |
 | `docs/HITO-ORDEN-COMPRA-CLIENTE.md` | D1–D10 aprobadas; registro/consulta/anulación implementados, detalle/importes propios y cuenta única; validación funcional aprobada y contratos de Producción posteriores |
-| `docs/HITO-GUIAS-DESPACHO-ENTREGAS.md` | Planificación funcional cerrada el 18-10-2026: OCC/clientes, parciales antes de cierre OT, documento operativo interno, conformidad por línea para servicio/a medida y legado no conciliado |
+| `docs/HITO-GUIAS-DESPACHO-ENTREGAS.md` | G0–G6 completados y aprobación funcional general del usuario el 20-10-2026; hito cerrado. Manual completo del ERP y mejoras de usabilidad/visibilidad de funciones pendientes como trabajo posterior. Operación y respaldo en `docs/OPERACION-GUIAS-DESPACHO.md`. PDF en `var/guias/pdfs/` o `GUIA_PDF_DIR`, respaldar con PostgreSQL/logos. Completar reservas y cierre consideran entrega neta; devolver no desbloquea reversión productiva. |
 | `docs/HITO-ORDEN-TRABAJO-PRODUCCION.md` | OT0–OT9 implementados y validados técnicamente; aprobación funcional general del usuario el 18-10-2026. Hito cerrado; Despacho y servicios de Cobranza son entregas separadas |
 | `docs/HITO-COMPRAS.md` | Consultas de Stock/Kardex implementadas y etapas de Compras; reglas pendientes de respuestas explícitas |
 | `docs/PROPUESTAS-DOMINIO.md` | Alternativas, decisiones y checklists de stock mínimo, empresa y cobranza; consultar antes de implementar esos temas |
@@ -108,7 +110,7 @@ Flujo principal: **Cotización → Orden de venta → Orden de trabajo → Guía
 - **Transición de cobranza:** `DeliveryNote.paymentStatus`, `paymentPromiseDate` y `voucherUrl` son campos heredados conservados. Las nuevas operaciones usarán cuentas y abonos. No deduzcas pagos antiguos solo por el estado de una guía ni retires esos campos sin revisar la transición.
 - **Signo de movimientos:** `ENTRADA` suma, `SALIDA` resta y `AJUSTE` puede sumar o restar. Vincula compras y consumos con sus detalles de origen cuando corresponda. No edites movimientos históricos; corrige errores con un nuevo `AJUSTE`.
 - **Bodega:** Compras tiene una bodega de recepción en `Purchase.warehouseId`; las líneas coinciden mediante FK compuesta. Producción conserva bodega por línea en `WorkOrderDetail.warehouseId`. Traslados entre bodegas aún pendientes.
-- **Cotizaciones:** precios finales en pesos enteros con IVA incluido; redondear cada línea al peso, sumar subtotal y aplicar descuento global antes del desglose neto/IVA con la tasa histórica. Usa calcularImportesCotizacion y Prisma.Decimal. QuoteDetail.kind diferencia MATERIA_PRIMA, PRODUCTO y SERVICIO; rawMaterialId null por sí solo no identifica un servicio.
+- **Cotizaciones:** desde el 26-10-2026 las nuevas usan precios unitarios netos en pesos enteros: redondear líneas al peso, sumar subtotal, aplicar descuento al neto y calcular IVA sobre neto descontado; TOTAL = NETO + IVA. Quote/SalesOrder.pricesIncludeVat conserva modalidad histórica: true para documentos previos, false para nuevos. No recalcular documentos previos; correcciones nuevas proponen conversión neta explícita con aviso de redondeo. Usa calcularImportesCotizacion y Prisma.Decimal. QuoteDetail.kind diferencia MATERIA_PRIMA, PRODUCTO y SERVICIO; rawMaterialId null por sí solo no identifica un servicio.
 - **Obra propia:** `WorkOrder.salesOrderId = null` significa fabricación sin cliente. También consume materiales; no fuerces una orden de venta ni un cliente ficticio.
 - **Fechas:** todos los modelos tienen `createdAt`; todos salvo `StockMovement` tienen `updatedAt`. `date` es la fecha del documento o hecho, que puede indicarse manualmente; `createdAt` es la fecha de registro. `Quote.validUntil` es el vencimiento opcional de la oferta.
 - **Índices:** toda clave foránea nueva debe quedar cubierta por un índice apropiado. Sigue el patrón de `@@index` existente y considera la cobertura de índices compuestos o únicos.
@@ -417,3 +419,70 @@ La fuente detallada es `docs/GUIA-INTERFAZ.md`, cuyas fases de tema y layout ya 
 - `AlmacenPdfTrabajo` local en `var/trabajos/pdfs` o `TRABAJO_PDF_DIR`, futuro proveedor mediante fábrica. Respaldar junto con PostgreSQL/logos/imágenes históricas. GET `/api/trabajos/pdfs/[emision]` verifica tamaño/SHA-256, sin regenerar. Chromium/Node con JS/red deshabilitados al render; `TRABAJO_CHROMIUM_PATH` opcional. Incrementar versión de plantilla publicada si cambia contenido/diseño; no purgar historia.
 - PDF interno Carta con emisor comercial histórico u Empresa capturada al emitir obra propia, plan/receta/ejecución/reversiones/cierre/factura; no sustituye guía, pago ni emisión tributaria. No habilitar uploads/firma. Tests PDF/carreras de catálogos sólo copia local `mtx_validacion_ot_pdf_*` y `TRABAJO_PDF_DIR` con `pdfs-validacion` para archivos. Regresiones que escriben, secuenciales por copia.
 - OT0–OT8 y tareas técnicas OT9 completadas; aprobación funcional general del usuario registrada el 18-10-2026 después de corregir producción. Hito OT cerrado. Despacho, servicios de Cobranza y autenticación/roles son hitos separados.
+
+
+## Continuidad S7 — revisión parcial, 24-10-2026
+
+- Usuario aprobó S7-01/S7-02/S7-03/S7-05/S7-06/S7-07/S7-09. Pendientes S7-04/S7-08/S7-10/S7-11/S7-12. Estados y pasos en `docs/GUIA-PRUEBAS-SEGURIDAD-S7.md`; checkpoint en sección 25 del hito. No cerrar S7 ni marcar los demás bloques aprobados por inferencia.
+- Correcciones: activación/reset vuelven al login con aviso, toasts en acceso/panel/Usuarios y reautenticación administrativa en diálogo dentro de Usuarios. Conserva formulario y requiere confirmar después el cambio; contraseña y factor propio, reutilización cinco minutos. Correcciones S7-02/S7-03/S7-06/S7-07 aprobadas por el usuario el 24-10-2026.
+- Validación técnica de estas correcciones: lint/build/tipos y `pnpm seguridad:validar-s6 seguridad-acceso` correctos, con Chromium/modal/avisos y recuperación. Evidencia privada `backups/20261023_seguridad_s6/1792804026138/`; origen intacto y ensayo retirado. No equivale a repetir los 48 escenarios ni a aprobar S7.
+
+
+## Continuidad Cobranzas — 24-10-2026
+
+- Plan y checkpoint: `docs/HITO-COBRANZAS.md`, C0–C4. Usuario autoriza continuar dejando S7-04/08/10/11/12 pendientes; seguridad no se declara cerrada.
+- C-D01–C-D05 aprobadas: Transferencia/Efectivo/Tarjeta/Cheque/Otro, referencia y comprobante opcionales; pagos hasta hoy Santiago, anticipos sin factura, sin sobrepagos; corregir anulando con motivo y nuevo pago por Cobranza/Administrador; promesa opcional con historial independiente del vencimiento. Cheque sólo reduce deuda al cobro efectivo.
+- C0/C1 implementados/validados técnicamente: ruta Cobranza con consultas de cuenta única, saldos decimales, filtros/totales/paginación SQL y detalle sobre listado con factura/abonos anulados. Consulta protegida y sin escrituras de cuentas/pagos; no hay migración C1 ni servicio de registro/anulación aún. Aprobación funcional C1 pendiente.
+- Lint/build/tipos/cobertura S4 (120 entradas), integración/Chromium C1 y roles S4 correctos. Evidencias exactas y ensayo anterior superado en sección 7 del hito. Copias/servidor propios retirados; servidor previo del usuario en 3030 se conserva.
+- Siguiente C2: operación idempotente con huella, bloqueo de cuenta compatible con OCC/factura, abonos/anulación y autoría; C3 comprobantes/promesas, C4 integración/cierre. No releer todo S1–S6 para continuar.
+
+
+## Continuidad Cobranzas C2 — 24-10-2026
+
+- C1 aprobado expresamente. C2 implementado/validado técnicamente; aprobación funcional pendiente. Fuente vigente: sección 8 de `docs/HITO-COBRANZAS.md`; siguiente C3 adjuntos/promesas.
+- `src/lib/servicios/cobranza.ts`: UUID de Payment + comparación canónica de campos originales para alta; reconocer reintento antes de validar saldo/estado actual, incluso tras anular. Anulación idempotente natural por ID/motivo, sin volver a escribir ni cambiar motivo confirmado. Sin tabla nueva ni migración C2.
+- Bloquear cuenta antes de calcular/sumar/insertar/anular; no adquirir después bloqueos de OCC/OT. Sobrepago rechazado, fecha hasta hoy Santiago con inicio de día chileno, medios aprobados y Cheque sólo cobrado. No editar/borrar importe, medio, fecha, referencia u origen desde el módulo.
+- Nuevas acciones de Cobranza con origen y permiso, formulario con revisión y reintento protegido; autoría Payment en la misma tx. Modelo Payment añadido a cobertura de autoría; referencias en inventario S1. Coberturas actuales: 90 acciones, 122 entradas de servicio/consulta y 63 puntos de autoría.
+- Lint/build/tipos, coberturas S4/S5 y pruebas C1/C2/Chromium correctos. Evidencia `backups/20261024_seguridad_s6/1792819206115/`; base/archivos intactos y ensayo retirado. S7 y aprobación funcional C2 permanecen pendientes. No repetir todo el análisis para continuar C3.
+
+
+## Continuidad Cobranzas C3 — 24-10-2026
+
+- C2 aprobado. C3 implementado y validado en copia, habilitación local pendiente. Fuente exacta: sección 9 de `docs/HITO-COBRANZAS.md`; no declarar disponible localmente hasta aplicar migración autorizada.
+- Aprobados JPG/PNG/PDF hasta 5 MB, adjuntos al registrar o después, conservación de anteriores y descargas con permisos de Cobranza. Promesas hoy/futuras o quitar con motivo, fechas históricas conservadas y autoría.
+- Migración 38 `20261024053000_cobranza_comprobantes_promesas` con PaymentAttachment/PaymentPromiseChange, CHECK/FK/índices e inmutabilidad SQL; generada y aplicada sólo a copias. Cliente generado/Prisma/lint/build/tipos/coberturas correctos (92 acciones, 124 entradas, siete rutas y 65 puntos de autoría).
+- Pago y adjunto usan UUID separados; reutilizar el del pago colisionaba con autoría. Pago se confirma antes de adjunto: fallo de archivo no duplica dinero, UI conserva resultado y reintenta sólo subida. Almacén privado `COBRANZA_COMPROBANTE_DIR` o `var/cobranza/comprobantes/`, incluir en respaldo.
+- Promesa usa versión `updatedAt|cantidad de cambios inmutables`, bloqueo de cuenta y motivo, UUID/huella e historial; no cambia vencimiento/factura. No hay backfill.
+- Regresión C1/C2/C3 y Chromium correcta, evidencia `backups/20261024_seguridad_s6/1792857793317/`; datos/archivos originales intactos. Copias/servidores/archivos de ensayo retirados, 3030/3031 libres al cierre. C1/C2 conservan modo compatible sin migración.
+- Aplicación a `mtx_metal_erp` NO ejecutada: revisión automática rechazó por interpretar restricción de escrituras sólo en copias. Hace falta autorización explícita del usuario antes de reintentar sobre esa base. Verificar `migrate status`, respaldo reciente y datos antes/después al autorizarse. Copia preparatoria C3 ya retirada; no reutilizar conexión antigua. Aprobación funcional C3 y C4 pendientes.
+
+
+## C3 aplicado localmente — actualización del 24-10-2026
+
+El usuario autorizó explícitamente aplicar C3 evitando pérdida de datos. Se aplicó sólo `20261024053000_cobranza_comprobantes_promesas` a `mtx_metal_erp`: 38 migraciones al día y cliente regenerado. Respaldo reciente restaurado/verificado en copia, 80 tablas previas con filas idénticas después y dos tablas nuevas vacías. Copia retirada; evidencia `backups/20261024_cobranza_c3/aplicacion_1792859912558/`. Sin seed/reset ni datos de ejemplo. El bloqueo automático anterior está resuelto; no volver a pedir esa autorización ni presentar C3 como no habilitado. Pendientes aprobación funcional C3 y C4 según sección 9 del hito.
+
+
+## Continuidad Cobranzas C4 — 24-10-2026
+
+- C4 técnico completo, sin cerrar funcionalmente Cobranzas. Usuario mantiene C3 pendiente porque no puede probar ahora; C1/C2 aprobados. Checkpoint vigente: sección 10 de `docs/HITO-COBRANZAS.md`; guía por tareas/respaldo en `docs/OPERACION-COBRANZAS.md`.
+- Enlace compartido `EnlaceCuenta` desde OCC/OT/guías: exige cobranza.leer + precios.leer. `?orden=id` abre la cuenta existente, no crea deuda; obra propia sin enlace. Respetar bloqueos de navegación.
+- `consultarResumenCobranza` protegido y agregado comparte el cálculo del listado, sin cargar filas ni implementar Dashboard. Cobertura S4: 125 entradas de servicio/consulta.
+- Lint/build/tipos/coberturas S4/S5 y escenarios cobranza-consultas/cobranza-cierre correctos 2/2. Recorrido integral anticipo→producción/entrega/factura→cobro/corrección→devolución/reentrega y Chromium con permisos; evidencia `backups/20261024_seguridad_s6/1792860383179/`. Origen/archivos intactos, copias/servidores retirados; sin migración C4.
+- Pendientes aprobación funcional C3/C4, cierre del hito y otros bloques V1 (Dashboard, manual ERP/usabilidad, S7 y operación definitiva). No releer/reimplementar C1–C4 para continuar; revisar los pendientes concretos.
+
+
+## Continuidad Dashboard — 24-10-2026
+
+- Usuario aprobó D-D01–D-D07 en `docs/HITO-DASHBOARD.md`. D0–D4 implementados/validados técnicamente; D5 funcional, volumen representativo y cierre expreso pendientes. Guía `docs/OPERACION-DASHBOARD.md`. No repetir preguntas ni reconstruir bloques.
+- Cotizaciones pendientes vigentes/vencidas; OT con plan confirmado en preparación + EN_PROCESO, borradores y antiguas sin evidencia aparte; deuda desde `consultarResumenCobranza`; mínimo por material/bodega (null/cero distintos).
+- Consumo pendiente por material/bodega con funciones vigentes de producción/reservas; físico, reserva propia, libre global y faltante por reservar, sin sumar unidades diferentes. Cotizado vs contratado en OCC vigente de cohortes de cotizaciones de seis meses; tabla accesible. Movimientos MP/terminado por registro.
+- `src/lib/consultas/dashboard.ts`: bloques agregados/limitados y DTO por permisos; errores separados de cero. Campana interna en layout con stock bajo/cotizaciones próximas/cuentas vencidas por permisos; sin correo, leído/no leído ni tiempo real. Sin migraciones/seed/dependencias nuevas.
+- Lint/build/tipos, escenario Dashboard 1/1 y regresión S4 1/1 correctos; cobertura 127 entradas. Evidencia exacta en sección 6 del hito. Copias/servidores retirados y origen/archivos intactos. C3/C4 de Cobranzas y S7 conservan aprobaciones pendientes.
+
+
+## Continuidad Manual/usabilidad — 24-10-2026
+
+- Primera edición textual transversal de 18 capítulos en `docs/MANUAL-USUARIO.md`; README orientado al ERP y enlaces a guías. Hito `docs/HITO-MANUAL-USABILIDAD.md`, revisión priorizada `docs/REVISION-USABILIDAD-V1.md` (U01–U12).
+- U01: OCC Crear trabajo depende de trabajos.operar; Ver trabajo existente de trabajos.leer. U02: Preparar otra entrega depende de guias.operar. Reglas/permisos de servidor intactos. Guías OT/Guías ya no afirman ausencia de autenticación y distinguen contratos técnicos históricos.
+- Lint/build/cobertura S4 y cobranza-cierre ampliado/Chromium correctos 1/1 (`backups/20261024_seguridad_s6/1792883623974/`); 65 enlaces/anclas locales correctos, datos/archivos intactos y ensayo retirado. Sin migraciones ni datos ficticios en base real.
+- Siguiente M2: ayuda integrada dentro del ERP y hallazgos de descubrimiento/mensajes/teclado/móvil; capturas sólo con datos totalmente ficticios/anonimizados. No reescribir todo el manual para retomar. Revisión con usuarios y aprobación pendientes; C3/C4, Dashboard y S7 continúan abiertos funcionalmente.

@@ -1,4 +1,5 @@
 "use client";
+import { Permiso } from "@/components/seguridad/permisos";
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -31,7 +32,7 @@ const fecha = (valor: string) => new Intl.DateTimeFormat("es-CL", { dateStyle: "
 const sucursalNueva = (central = false) => ({ name: central ? "Casa Central" : "", isHeadOffice: central, address: "", city: "", contact: "", phone: "", email: "" });
 
 /** Cliente y sucursales son un único borrador: cancelar no escribe cambios parciales. */
-function FormularioCliente({ editor, pendiente, onCerrar, onGuardar }: { editor: Editor; pendiente: boolean; onCerrar: () => void; onGuardar: (datos: DatosCliente) => Promise<ResultadoCliente> }) {
+export function FormularioCliente({ editor, pendiente, onCerrar, onGuardar }: { editor: Editor; pendiente: boolean; onCerrar: () => void; onGuardar: (datos: DatosCliente) => Promise<ResultadoCliente> }) {
   const consulta = editor.modo === "ver";
   const cabeceraSoloLectura = consulta || editor.modo === "sucursales";
   const [error, setError] = useState<string>();
@@ -84,7 +85,7 @@ function FormularioCliente({ editor, pendiente, onCerrar, onGuardar }: { editor:
         onQuitar={uid => { const i = fields.findIndex(b => b.claveFormulario === uid); if (i >= 0 && !branches[i].isHeadOffice) remove(i); }}
       />
       {editor.cliente && <p className="text-xs text-muted-foreground">Cotizaciones: {editor.cliente.cotizaciones} · Última actualización: {fecha(editor.cliente.updatedAt)}</p>}
-      <DialogFooter><Button type="button" variant="outline" disabled={pendiente} id="cliente-cancelar" onClick={cerrar}>{consulta ? "Cerrar" : "Cancelar"}</Button>{!consulta && <Button type="submit" disabled={pendiente}>{pendiente ? "Guardando…" : editor.modo === "crear" ? "Crear cliente" : "Guardar cambios"}</Button>}</DialogFooter>
+      <DialogFooter><Button type="button" variant="outline" disabled={pendiente} id="cliente-cancelar" onClick={cerrar}>{consulta ? "Cerrar" : "Cancelar"}</Button>{!consulta && <Permiso permiso="clientes.operar"><Button type="submit" disabled={pendiente}>{pendiente ? "Guardando…" : editor.modo === "crear" ? "Crear cliente" : "Guardar cambios"}</Button></Permiso>}</DialogFooter>
     </form>
     <ConfirmarDescarte abierto={descarte} onAbiertoChange={setDescarte} onConfirmar={onCerrar} onDevolverFoco={() => document.getElementById("cliente-rut")?.focus()} />
 
@@ -143,13 +144,13 @@ export function Clientes({ clientes }: { clientes: Cliente[] }) {
     { id: "sucursales", header: "Sucursales", cell: ({ row }) => row.original.branches.length },
     { id: "acciones", header: "Acciones", enableSorting: false, cell: ({ row }) => <div className="flex items-center gap-1">
       <Button variant="ghost" size="sm" disabled={pendiente} aria-label={`Ver ${row.original.name}`} onClick={() => abrir("ver", row.original.id)}><Eye aria-hidden="true" />Ver</Button>
-      <Button variant="ghost" size="sm" disabled={pendiente} aria-label={`Editar ${row.original.name}`} onClick={() => abrir("editar", row.original.id)}><Pencil aria-hidden="true" />Editar</Button>
+      <Permiso permiso="clientes.operar"><Button variant="ghost" size="sm" disabled={pendiente} aria-label={`Editar ${row.original.name}`} onClick={() => abrir("editar", row.original.id)}><Pencil aria-hidden="true" />Editar</Button></Permiso>
       <BotonConAyuda ayuda="Administra las sucursales y sus contactos sin salir de Clientes." variant="ghost" size="sm" disabled={pendiente} aria-label={`Sucursales de ${row.original.name}`} onClick={() => abrir("sucursales", row.original.id)}><Building2 />Sucursales</BotonConAyuda>
-      <Button variant="ghost" size="sm" disabled={pendiente} className="hover:bg-destructive/15" aria-label={`Eliminar ${row.original.name}`} onClick={() => { recordarFoco(); setErrorEliminar(undefined); setAEliminar(row.original); }}><Trash2 className="text-destructive" aria-hidden="true" />Eliminar</Button>
+      <Permiso permiso="clientes.operar"><Button variant="ghost" size="sm" disabled={pendiente} className="hover:bg-destructive/15" aria-label={`Eliminar ${row.original.name}`} onClick={() => { recordarFoco(); setErrorEliminar(undefined); setAEliminar(row.original); }}><Trash2 className="text-destructive" aria-hidden="true" />Eliminar</Button></Permiso>
     </div> },
   ];
   return <div className="space-y-6">
-    <PageHeader titulo="Clientes" descripcion="Administra tus clientes y sus datos de contacto." acciones={<Button ref={crearBoton} disabled={pendiente} className="h-9" onClick={() => { recordarFoco(); setEditor({ modo: "crear" }); }}><Plus aria-hidden="true" />Crear cliente</Button>} />
+    <PageHeader titulo="Clientes" descripcion="Administra tus clientes y sus datos de contacto." acciones={<Permiso permiso="clientes.operar"><Button ref={crearBoton} disabled={pendiente} className="h-9" onClick={() => { recordarFoco(); setEditor({ modo: "crear" }); }}><Plus aria-hidden="true" />Crear cliente</Button></Permiso>} />
     <SectionCard titulo="Catálogo de clientes" descripcion="Consulta el RUT, los datos de contacto y las cotizaciones asociadas." contentClassName="p-0">
       <DataTable datos={clientes} columnas={columnas} textoBusqueda={buscarCliente} filtroPlaceholder="Buscar por nombre, RUT o contacto…" nombre="clientes" acciones={<Button variant="outline" size="sm" disabled={pendiente} onClick={() => router.refresh()}><RefreshCw aria-hidden="true" />Actualizar</Button>} vacio={<EmptyState icono={Users} titulo="Todavía no hay clientes" descripcion="Crea el primer cliente para preparar tus cotizaciones." />} />
     </SectionCard>

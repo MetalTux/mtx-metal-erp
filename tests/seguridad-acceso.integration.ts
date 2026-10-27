@@ -1,0 +1,90 @@
+import "dotenv/config";
+import assert from "node:assert/strict";
+import { randomUUID } from "node:crypto";
+import { writeFile } from "node:fs/promises";
+import { generate } from "otplib";
+import { prisma } from "../src/lib/prisma";
+import { operarSeguridad, provisionarAdministrador, consultarSesionSeguridad, type RespuestaSeguridad } from "../src/lib/seguridad/servicio";
+const url=new URL(process.env.DATABASE_URL!);assert(["localhost","127.0.0.1"].includes(url.hostname)&&/^\/mtx_validacion_seguridad_s2_\d{8}$/.test(url.pathname),"Sólo copia local descartable S2");
+const password=`Prueba privada S2 ${randomUUID()}`,email=`s2-${randomUUID()}@ejemplo.invalid`;
+const ok=(r:RespuestaSeguridad)=>{assert.equal(r.client.ok,true,String(r.client.message));return r;};
+const call=(session:string|undefined,data:Record<string,unknown>)=>operarSeguridad({session},data);
+function token(link:unknown){assert.equal(typeof link,"string");return new URLSearchParams(new URL(String(link)).hash.slice(1)).get("token")!;}
+async function main(){
+ const a=await provisionarAdministrador({name:"Administrador S2",email,password});
+ await assert.rejects(()=>provisionarAdministrador({name:"Otro Admin",email:`otro-${email}`,password}));
+ assert(!(await call(undefined,{action:"login",email,password:"incorrecta"})).client.ok);
+ const original=await prisma.userSecurity.findUniqueOrThrow({where:{userId:a.id}});assert(original.passwordHash?.startsWith("$argon2id$"));
+ assert.equal((await prisma.user.findUniqueOrThrow({where:{id:a.id}})).password,"!INUTILIZABLE");
+ let login=ok(await call(undefined,{action:"login",email,password})),session=login.sessionToken!;
+ assert(await consultarSesionSeguridad(session));assert.equal(await prisma.securitySession.count({where:{tokenHash:session}}),0);
+ const invitacion=ok(await call(session,{action:"user-create",name:"Ventas y Cobranza S2",email:`vc-${email}`,roles:["VENTAS","COBRANZA"]}));
+ assert(invitacion.client.link);const t=token(invitacion.client.link);
+ const act=await Promise.all([call(undefined,{action:"activate",token:t,password}),call(undefined,{action:"activate",token:t,password})]);assert.equal(act.filter(r=>r.client.ok).length,1);
+ const usuario=await prisma.userSecurity.findUniqueOrThrow({where:{normalizedEmail:`vc-${email}`}});
+ const local=ok(await call(undefined,{action:"login",email:`vc-${email}`,password})).sessionToken!;
+ assert(!(await call(local,{action:"users"})).client.ok);
+ assert(!(await call(local,{action:"user-create",name:"Intruso",email:`intruso-${email}`,roles:["ADMINISTRADOR"]})).client.ok);
+ assert(!(await call(local,{action:"factor-disable",id:a.id})).client.ok,"No acepta titular ajeno");
+ const self=ok(await call(local,{action:"self"}));assert.deepEqual((self.client.user as {roles:string[]}).roles,["VENTAS","COBRANZA"]);
+ assert(!(await call(session,{action:"user-update",id:a.id,version:original.securityVersion,name:"Sin Admin",roles:["VENTAS"],status:"ACTIVO"})).client.ok);
+ assert(await consultarSesionSeguridad(session),"Rollback conserva último Administrador");
+ const prep=ok(await call(session,{action:"factor-setup"})),secret=String(prep.client.secret);
+ assert.equal(await prisma.securitySecondFactor.count({where:{userId:a.id}}),0,"Preparar no activa ni reemplaza");
+ const enabled=ok(await call(session,{action:"factor-enable",setup:prep.client.setup,code:await generate({secret})}));
+ session=enabled.sessionToken!;const codes=enabled.client.codes as string[];assert.equal(codes.length,10);assert.equal(await consultarSesionSeguridad(login.sessionToken!),null);
+ assert(!(await call(local,{action:"factor-enable",setup:prep.client.setup,code:await generate({secret})})).client.ok,"Setup ligado al titular");
+ login=ok(await call(undefined,{action:"login",email,password}));assert(login.challengeToken&&!login.sessionToken);
+ assert.equal(await consultarSesionSeguridad(login.challengeToken),null,"Desafío no es sesión");
+ assert(!(await operarSeguridad({challenge:login.challengeToken},{action:"factor-login",code:await generate({secret})})).client.ok,"No reutiliza paso usado al activar");
+ const nextCode=await generate({secret,epoch:Math.floor(Date.now()/1000)+30});
+ ok(await operarSeguridad({challenge:login.challengeToken},{action:"factor-login",code:nextCode}));
+ assert(!(await operarSeguridad({challenge:login.challengeToken},{action:"factor-login",code:codes[0]})).client.ok,"Desafío consumido");
+ assert.equal(await prisma.securityRecoveryCode.count({where:{codeHash:(await import('../src/lib/seguridad/configuracion')).huellaToken(codes[0]),consumedAt:{not:null}}}),0);
+ const nuevoDesafio=ok(await call(undefined,{action:"login",email,password}));
+ const race=await Promise.all([operarSeguridad({challenge:nuevoDesafio.challengeToken},{action:"factor-login",code:codes[0]}),operarSeguridad({challenge:nuevoDesafio.challengeToken},{action:"factor-login",code:codes[0]})]);assert.equal(race.filter(r=>r.client.ok).length,1);
+ const recoveredSession=race.find(r=>r.client.ok)!.sessionToken!;
+ ok(await call(recoveredSession,{action:"reauth",password,code:codes[1]}));
+ const regen=ok(await call(recoveredSession,{action:"factor-codes"}));session=regen.sessionToken!;const newCodes=regen.client.codes as string[];
+ assert.equal(await consultarSesionSeguridad(recoveredSession),null);
+ const oldCodeChallenge=ok(await call(undefined,{action:"login",email,password}));assert(!(await operarSeguridad({challenge:oldCodeChallenge.challengeToken},{action:"factor-login",code:codes[2]})).client.ok);
+ const reset=ok(await call(session,{action:"user-token",id:a.id,version:(await prisma.userSecurity.findUniqueOrThrow({where:{userId:a.id}})).securityVersion}));
+ ok(await call(undefined,{action:"reset",token:token(reset.client.link),password}));
+ assert((await prisma.securitySecondFactor.findUniqueOrThrow({where:{userId:a.id}})).enabledAt,"Recuperar contraseña no elimina factor");
+ assert.equal(await consultarSesionSeguridad(session),null);
+ const resetLogin=ok(await call(undefined,{action:"login",email,password}));session=ok(await operarSeguridad({challenge:resetLogin.challengeToken},{action:"factor-login",code:newCodes[0]})).sessionToken!;
+ // Reconfigurar mantiene el autenticador anterior hasta confirmar el nuevo.
+ const replace=ok(await call(session,{action:"factor-setup"}));assert.equal((await prisma.securitySecondFactor.findUniqueOrThrow({where:{userId:a.id}})).lastUsedStep!==null,true);
+ const replaced=ok(await call(session,{action:"factor-enable",setup:replace.client.setup,code:await generate({secret:String(replace.client.secret)})}));session=replaced.sessionToken!;
+ const replacedCodes=replaced.client.codes as string[];
+ const expired=await prisma.securitySession.findFirstOrThrow({where:{userId:a.id,revokedAt:null}});
+ await prisma.securitySession.update({where:{id:expired.id},data:{lastActivityAt:new Date(expired.authenticatedAt.getTime()-1)}}).then(()=>assert.fail("CHECK temporal debe rechazar")).catch(e=>assert.notEqual(e.code,undefined));
+ // Actor administra cuenta ajena pero no puede tocar su factor; su propia baja protegida.
+ ok(await call(session,{action:"user-update",id:usuario.userId,version:usuario.securityVersion,name:"Ventas inactivo",roles:["VENTAS","COBRANZA"],status:"INACTIVO"}));assert.equal(await consultarSesionSeguridad(local),null);
+ assert(!(await call(session,{action:"user-update",id:usuario.userId,version:usuario.securityVersion,name:"Obsoleto",roles:["VENTAS"],status:"ACTIVO"})).client.ok);
+ const nowUsuario=await prisma.userSecurity.findUniqueOrThrow({where:{userId:usuario.userId}});ok(await call(session,{action:"user-update",id:usuario.userId,version:nowUsuario.securityVersion,name:"Ventas activo",roles:["VENTAS","COBRANZA"],status:"ACTIVO"}));
+ // Fallo inducido después del cambio de hash demuestra rollback de credencial/revisión/sesión.
+ const before=await prisma.userSecurity.findUniqueOrThrow({where:{userId:a.id}});
+ await prisma.$executeRawUnsafe(`CREATE FUNCTION public.fallo_s2() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.action='CLAVE_CAMBIADA' THEN RAISE EXCEPTION 'Fallo S2'; END IF; RETURN NEW; END $$`);
+ await prisma.$executeRawUnsafe(`CREATE TRIGGER fallo_s2 BEFORE INSERT ON "SecurityAuditEvent" FOR EACH ROW EXECUTE FUNCTION public.fallo_s2()`);
+ try{assert(!(await call(session,{action:"password",password:`Nueva fallida ${randomUUID()}`})).client.ok);assert.deepEqual(await prisma.userSecurity.findUniqueOrThrow({where:{userId:a.id}}),before);assert(await consultarSesionSeguridad(session));}finally{await prisma.$executeRawUnsafe('DROP TRIGGER fallo_s2 ON "SecurityAuditEvent"');await prisma.$executeRawUnsafe('DROP FUNCTION public.fallo_s2()');}
+ ok(await call(session,{action:"reauth",password,code:replacedCodes[0]}));
+ const disabled=ok(await call(session,{action:"factor-disable"}));session=disabled.sessionToken!;assert.equal(await prisma.securitySecondFactor.count({where:{userId:a.id}}),0);
+ // Crear otro Administrador y probar retiro concurrente: siempre queda uno utilizable.
+ const admin2Email=`admin2-${email}`,iv=ok(await call(session,{action:"user-create",name:"Segundo Admin S2",email:admin2Email,roles:["ADMINISTRADOR"]}));ok(await call(undefined,{action:"activate",token:token(iv.client.link),password}));
+ const admin2=await prisma.userSecurity.findUniqueOrThrow({where:{normalizedEmail:admin2Email}}),ss2=ok(await call(undefined,{action:"login",email:admin2Email,password})).sessionToken!;
+ const va=(await prisma.userSecurity.findUniqueOrThrow({where:{userId:a.id}})).securityVersion;
+ const lastRace=await Promise.all([call(session,{action:"user-update",id:a.id,version:va,name:"Administrador S2",roles:["VENTAS"],status:"ACTIVO"}),call(ss2,{action:"user-update",id:admin2.userId,version:admin2.securityVersion,name:"Segundo Admin S2",roles:["VENTAS"],status:"ACTIVO"})]);assert.equal(lastRace.filter(r=>r.client.ok).length,1);
+ const surviving=await prisma.userSecurityRole.findFirstOrThrow({where:{role:"ADMINISTRADOR",user:{status:"ACTIVO"}}});
+ const survivor=await prisma.userSecurity.findUniqueOrThrow({where:{userId:surviving.userId}});
+ const activeSession=ok(await call(undefined,{action:"login",email:survivor.normalizedEmail,password})).sessionToken!;
+ const raw=await prisma.securitySession.findUniqueOrThrow({where:{tokenHash:(await import('../src/lib/seguridad/configuracion')).huellaToken(activeSession)}});
+ await prisma.securitySession.update({where:{id:raw.id},data:{authenticatedAt:new Date(Date.now()-2*3600000),expiresAt:new Date(Date.now()+6*3600000-1000),reauthenticatedAt:new Date(Date.now()-360000),lastActivityAt:new Date(Date.now()-3600001)}});
+ assert.equal(await consultarSesionSeguridad(activeSession),null,"Expira por 60 minutos de inactividad");
+ const fresh=ok(await call(undefined,{action:"login",email:survivor.normalizedEmail,password})).sessionToken!;ok(await call(fresh,{action:"logout"}));assert.equal(await consultarSesionSeguridad(fresh),null);
+ for(let i=0;i<10;i++)await call(undefined,{action:"login",email:`bloqueado-${email}`,password});
+ assert.match(String((await call(undefined,{action:"login",email:`bloqueado-${email}`,password})).client.message),/Demasiados/);
+ await writeFile('/tmp/mtx-s2-ui.json',JSON.stringify({email:survivor.normalizedEmail,password,otherEmail:`vc-${email}`}),{mode:0o600});
+ console.log(JSON.stringify({ok:true,message:"S2: provisión, activación única, contraseña, TOTP/replay/códigos, recuperación sin bypass, baja/versiones, último Administrador concurrente, rollback, expiración y límites correctos"}));
+}
+main().catch(e=>{console.error(e);process.exitCode=1;}).finally(()=>prisma.$disconnect());

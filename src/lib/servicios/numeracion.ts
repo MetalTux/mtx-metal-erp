@@ -1,17 +1,25 @@
+import { anotarMutacion } from "@/lib/seguridad/autoria";
+import { exigirAcceso, exigirAccesoEnTransaccion } from "@/lib/seguridad/acceso";
 import { prisma } from "@/lib/prisma";
 import { Prisma, type DocumentNumberType } from "@/generated/prisma/client";
 import { MAX_NUMERO_DOCUMENTAL, vistaPreviaFolio } from "@/config/numeracion-documental";
 import { numeracionSchema } from "@/lib/validaciones/numeracion";
 import type { Numeracion, ResultadoNumeracion } from "@/lib/tipos/numeracion";
 export async function listarNumeraciones(): Promise<Numeracion[]> {
+  await exigirAcceso("configuracion.leer");
+
   const filas = await prisma.documentNumbering.findMany({ orderBy: { id: "asc" }, include: { _count: { select: { assignments: true } } } });
   return filas.map(({ id, type, prefix, padding, nextNumber, version, _count }) => ({ id, type, prefix, padding, nextNumber: nextNumber?.toString() ?? null, version, usada: _count.assignments > 0 }));
 }
 export async function configurarNumeracion(datos: unknown): Promise<ResultadoNumeracion> {
+  await exigirAcceso("configuracion.operar");
+
   const validacion = numeracionSchema.safeParse(datos);
   if (!validacion.success) return { ok: false, mensaje: validacion.error.issues[0].message };
   try {
     return await prisma.$transaction(async tx => {
+      await exigirAccesoEnTransaccion(tx, "configuracion.operar");
+
       const { id, version, prefix, padding, nextNumber } = validacion.data;
       await tx.$queryRaw`SELECT id FROM "DocumentNumbering" WHERE id = ${id} FOR UPDATE`;
       const actual = await tx.documentNumbering.findUniqueOrThrow({ where: { id } });
@@ -19,7 +27,7 @@ export async function configurarNumeracion(datos: unknown): Promise<ResultadoNum
       const usada = await tx.documentFolio.count({ where: { numberingId: id } });
       const numero = BigInt(nextNumber);
       if (usada && (prefix !== actual.prefix || padding !== actual.padding || numero < actual.nextNumber!)) return { ok: false, mensaje: "La numeración utilizada conserva su formato y sólo permite adelantar el próximo número." };
-      await tx.documentNumbering.update({ where: { id }, data: { prefix, padding, nextNumber: numero, version: { increment: 1 } } });
+      await anotarMutacion(tx, "documentNumbering", "update", await tx.documentNumbering.update({ where: { id }, data: { prefix, padding, nextNumber: numero, version: { increment: 1 } } }));
       return { ok: true, mensaje: "Numeración guardada. La vista previa no consume números." };
     });
   } catch (error) {

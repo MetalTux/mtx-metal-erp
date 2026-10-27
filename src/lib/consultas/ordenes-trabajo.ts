@@ -1,3 +1,5 @@
+import { tienePermiso } from "@/lib/seguridad/permisos";
+import { exigirAcceso, exigirAccesoEnTransaccion } from "@/lib/seguridad/acceso";
 import type { NecesidadesProduccion } from "@/lib/servicios/produccion";
 import { z } from "zod";
 import { Prisma } from "@/generated/prisma/client";
@@ -10,6 +12,8 @@ const filtros = z.object({ q:z.string().trim().max(150).default(""), estado:z.en
   origen:z.enum(["TODOS","COMERCIAL","PROPIA"]).default("TODOS"),pagina:z.coerce.number().int().positive().max(1000000).default(1),orden:z.enum(["fecha","titulo"]).default("fecha"),sentido:z.enum(["asc","desc"]).default("desc"),
   desde:z.string().default("").refine(v=>!v||fechaCalendarioValida(v)),hasta:z.string().default("").refine(v=>!v||fechaCalendarioValida(v)) }).refine(v=>!v.desde||!v.hasta||v.desde<=v.hasta);
 export async function listarTrabajos(input:unknown){
+  await exigirAcceso("trabajos.leer");
+
   const p=filtros.safeParse(input),f=p.success?p.data:filtros.parse({});
   const where:Prisma.WorkOrderWhereInput={...(f.estado!=="TODOS"?{status:f.estado}:{}),...(f.origen==="PROPIA"?{salesOrderId:null}:f.origen==="COMERCIAL"?{salesOrderId:{not:null}}:{}),
     ...(f.desde||f.hasta?{date:{...(f.desde?{gte:new Date(`${f.desde}T00:00:00Z`)}:{}),...(f.hasta?{lte:new Date(`${f.hasta}T00:00:00Z`)}:{})}}:{}),
@@ -26,6 +30,8 @@ export async function listarTrabajos(input:unknown){
   },{isolationLevel:"RepeatableRead"});
 }
 export async function catalogosTrabajo(){
+  await exigirAcceso("trabajos.leer");
+
   return prisma.$transaction(async tx=>{
     const units=await tx.unitMeasure.findMany({orderBy:{name:"asc"}}),raws=await tx.rawMaterial.findMany({orderBy:{name:"asc"}}),products=await tx.product.findMany({where:{deletedAt:null},orderBy:{name:"asc"}});
     const recipes=await tx.productRecipe.findMany({where:{productId:{in:products.map(p=>p.id)}},orderBy:{rawMaterialId:"asc"}});
@@ -47,6 +53,9 @@ function revision(v:Prisma.JsonValue|null):PlanTrabajo["lines"][number]["roundin
   return Object.entries(v).flatMap(([id,r])=>r&&typeof r==="object"&&!Array.isArray(r)&&typeof r.quantity==="string"&&typeof r.reason==="string"?[{rawMaterialId:Number(id),quantity:r.quantity,reason:r.reason}]:[]);
 }
 export async function consultarTrabajo(id:number){
+  const sesion = await exigirAcceso("trabajos.leer");
+  const verPrecios = tienePermiso(sesion.roles,"precios.leer");
+
   if(!Number.isSafeInteger(id)||id<=0)throw new Error("Referencia inválida.");
   return prisma.$transaction(async tx=>{
     const w=await tx.workOrder.findUniqueOrThrow({where:{id}}),folio=w.folioId?await tx.documentFolio.findUniqueOrThrow({where:{id:w.folioId}}):null;
@@ -69,6 +78,10 @@ export async function consultarTrabajo(id:number){
     const reversals=await tx.productionReversal.findMany({where:{workOrderId:id},orderBy:{id:"asc"}});
     const productionConsumptions=await tx.productionConsumption.findMany({where:{productionRecordId:{in:productionRecords.map(r=>r.id)}},orderBy:{id:"asc"}});
     const productionOutputs=await tx.productionOutput.findMany({where:{workOrderId:id},orderBy:{id:"asc"}});
+    const entregasOrigen = await tx.$queryRaw<{supplyPlanId:number|null;productionOutputId:number|null;quantity:string}[]>`
+      SELECT id AS "supplyPlanId",NULL::integer AS "productionOutputId",public.entrega_neta_origen_reserva(id,NULL)::text AS quantity FROM "WorkOrderSupplyPlan" WHERE "workOrderId"=${id}
+      UNION ALL
+      SELECT NULL::integer,id,public.entrega_neta_origen_reserva(NULL,id)::text FROM "ProductionOutput" WHERE "workOrderId"=${id}`;
     const pending=await tx.$queryRaw<{id:number;quantity:string}[]>`SELECT id,public.demanda_pendiente_requerimiento(id)::text AS quantity FROM "WorkOrderDetail" WHERE "workOrderId"=${id} AND "retiredAt" IS NULL`;
     const completion=await tx.workOrderCompletion.findUnique({where:{workOrderId:id}});
     const invoices=await tx.workOrderInvoiceReference.findMany({where:{workOrderId:id},orderBy:{revision:"desc"}});
@@ -80,23 +93,27 @@ export async function consultarTrabajo(id:number){
       lines:lines.map(l=>({id:l.id,sourceDetailId:l.salesOrderDetailId,kind:l.kind,executionMode:l.executionMode,productId:l.productId,rawMaterialId:l.rawMaterialId,unitMeasureId:l.unitMeasureId,description:l.description,quantity:l.quantity.toFixed(3),quantityToProduce:l.quantityToProduce?.toFixed(3)??"0.000",productVersion:l.productVersion,refreshRecipe:false,
         supplies:supplies.filter(s=>s.workOrderLineId===l.id&&!s.retiredAt).map(s=>({warehouseId:s.warehouseId,quantity:s.quantity.toFixed(3)})),materials:materials.filter(m=>m.workOrderLineId===l.id&&!m.retiredAt).map(m=>({rawMaterialId:m.rawMaterialId,warehouseId:m.warehouseId,quantity:m.quantityNeeded.toFixed(3)})),roundingReviews:revision(l.roundingReview)}))};
     return {completion:completion?{date:completion.date.toISOString().slice(0,10),note:completion.note,createdAt:completion.createdAt.toISOString()}:null,
-      invoices:invoices.map(f=>({id:f.id,current:f.id===w.currentInvoiceReferenceId,revision:f.revision,issuerRut:f.issuerRut,invoiceNumber:f.invoiceNumber,invoiceDate:f.invoiceDate.toISOString().slice(0,10),dueDate:f.dueDate.toISOString().slice(0,10),paymentTermDays:f.paymentTermDays,correctionReason:f.correctionReason,createdAt:f.createdAt.toISOString()})),
-      finance:account?{amount:account.amount.toFixed(2),paid:paid.toFixed(2),balance:account.amount.minus(paid).toFixed(2),voided:Boolean(account.voidedAt),dueDate:account.dueDate?.toISOString().slice(0,10)??null,paymentPromiseDate:account.paymentPromiseDate?.toISOString().slice(0,10)??null,
+      invoices:(verPrecios ? invoices : []).map(f=>({id:f.id,current:f.id===w.currentInvoiceReferenceId,revision:f.revision,issuerRut:f.issuerRut,invoiceNumber:f.invoiceNumber,invoiceDate:f.invoiceDate.toISOString().slice(0,10),dueDate:f.dueDate.toISOString().slice(0,10),paymentTermDays:f.paymentTermDays,correctionReason:f.correctionReason,createdAt:f.createdAt.toISOString()})),
+      finance:verPrecios&&account?{amount:account.amount.toFixed(2),paid:paid.toFixed(2),balance:account.amount.minus(paid).toFixed(2),voided:Boolean(account.voidedAt),dueDate:account.dueDate?.toISOString().slice(0,10)??null,paymentPromiseDate:account.paymentPromiseDate?.toISOString().slice(0,10)??null,
         payments:payments.map(p=>({id:p.id,amount:p.amount.toFixed(2),paidAt:p.paidAt.toISOString(),method:p.method,reference:p.reference,voided:Boolean(p.voidedAt)}))}:null,
       id:w.id,version:w.version,folio:folio?.folio??`Histórica #${id}`,status:w.status,voidedAt:w.voidedAt?.toISOString()??null,voidReason:w.voidReason,startedDate:w.startedDate?.toISOString().slice(0,10)??null,legada:w.schemaVersion===null,plan,clientName:source?.clientName??null,salesFolio:sf?.folio??null,
       technicalDescription:w.technicalDescription?validarTextoCotizacion(w.technicalDescription):documentoVacioCotizacion,
       historicalRecipes:recipe.filter(r=>!r.retiredAt).map(r=>({workOrderLineId:r.workOrderLineId,rawMaterialId:r.rawMaterialId,unitMeasureId:r.unitMeasureId,quantityPerUnit:r.quantityPerUnit.toFixed(3),materialName:r.materialName,unitName:r.unitName})),
       materials:materials.map(m=>({id:m.id,workOrderLineId:m.workOrderLineId,rawMaterialId:m.rawMaterialId,warehouseId:m.warehouseId,quantity:m.quantityNeeded.toFixed(3),pendingQuantity:pending.find(p=>p.id===m.id)?.quantity??"0.000",retired:Boolean(m.retiredAt),name:m.materialName??"Material histórico"})),
-      stock:stock.map(s=>({...s,free:new Prisma.Decimal(s.quantity).minus(s.reserved).toFixed(3)})),supplies:supplies.map(s=>({id:s.id,workOrderLineId:s.workOrderLineId,warehouseId:s.warehouseId,quantity:s.quantity.toFixed(3),retired:Boolean(s.retiredAt)})),reservas,
+      stock:stock.map(s=>({...s,free:new Prisma.Decimal(s.quantity).minus(s.reserved).toFixed(3)})),supplies:supplies.map(s=>({id:s.id,workOrderLineId:s.workOrderLineId,warehouseId:s.warehouseId,quantity:s.quantity.toFixed(3),pendingQuantity:s.quantity.minus(entregasOrigen.find(e=>e.supplyPlanId===s.id)?.quantity??"0").toFixed(3),retired:Boolean(s.retiredAt)})),reservas,
       productionRecords:productionRecords.map(r=>({id:r.id,correctsProductionRecordId:r.correctsProductionRecordId,reversal:(()=>{const v=reversals.find(v=>v.productionRecordId===r.id);return v?{id:v.id,date:v.date.toISOString().slice(0,10),reason:v.reason,createdAt:v.createdAt.toISOString()}:null;})(),workOrderLineId:r.workOrderLineId,type:r.type,unit:lines.find(l=>l.id===r.workOrderLineId)?.unitAbbreviation??"",date:r.date.toISOString().slice(0,10),quantity:r.quantity.toFixed(3),note:r.note,deviationReason:r.deviationReason,planVersion:r.planVersion,createdAt:r.createdAt.toISOString(),expected:r.expectedSnapshot as unknown as NecesidadesProduccion,
         consumptions:productionConsumptions.filter(c=>c.productionRecordId===r.id).map(c=>({id:c.id,rawMaterialId:c.rawMaterialId,warehouseId:c.warehouseId,quantity:c.quantity.toFixed(3),expectedQuantity:c.expectedQuantity.toFixed(3),name:c.materialName,unit:c.unitAbbreviation}))})),
-      productionOutputs:productionOutputs.map(o=>({id:o.id,reversed:reversals.some(v=>v.productionRecordId===o.productionRecordId),productionRecordId:o.productionRecordId,workOrderLineId:o.workOrderLineId,warehouseId:o.warehouseId,productId:o.productId,name:o.productName,quantity:o.quantity.toFixed(3),unit:o.unitAbbreviation})),
+      productionOutputs:productionOutputs.map(o=>({id:o.id,reversed:reversals.some(v=>v.productionRecordId===o.productionRecordId),productionRecordId:o.productionRecordId,workOrderLineId:o.workOrderLineId,warehouseId:o.warehouseId,productId:o.productId,name:o.productName,quantity:o.quantity.toFixed(3),pendingQuantity:o.quantity.minus(entregasOrigen.find(e=>e.productionOutputId===o.id)?.quantity??"0").toFixed(3),unit:o.unitAbbreviation})),
       eventos:eventos.map(e=>({id:e.id,allocationId:e.allocationId,type:e.type,quantity:e.quantity.toFixed(3),reason:e.reason,createdAt:e.createdAt.toISOString()})),
       operations:operations.map(o=>({...o,createdAt:o.createdAt.toISOString()})),legacyTitle:w.productName,legacyDescription:w.description};
   },{isolationLevel:"RepeatableRead"});
 }
 export async function prepararTrabajoComercial(id:number){
+  await exigirAcceso("trabajos.operar");
+
   return prisma.$transaction(async tx=>{
+      await exigirAccesoEnTransaccion(tx, "trabajos.operar");
+
     const s=await tx.salesOrder.findUniqueOrThrow({where:{id}});
     if(s.status!=="CONFIRMADA"||!s.folioId||await tx.workOrder.findUnique({where:{salesOrderId:id}}))throw new Error("La orden no está disponible para crear su trabajo.");
     const details=await tx.salesOrderDetail.findMany({where:{salesOrderId:id},orderBy:{position:"asc"}});

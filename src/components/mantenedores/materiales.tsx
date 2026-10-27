@@ -1,4 +1,5 @@
 "use client";
+import { Permiso } from "@/components/seguridad/permisos";
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -26,7 +27,7 @@ type Editor = { modo: "crear" | "ver" | "editar"; material?: Material };
 const buscarMaterial = (material: Material) => `${material.code} ${material.name} ${material.unidad.name} ${material.unidad.abbreviation}`;
 const fecha = (valor: string) => new Intl.DateTimeFormat("es-CL", { dateStyle: "short", timeStyle: "short", timeZone: "America/Santiago" }).format(new Date(valor));
 
-function FormularioMaterial({ editor, unidades, pendiente, onCerrar, onGuardar }: { editor: Editor; unidades: UnidadMaterial[]; pendiente: boolean; onCerrar: () => void; onGuardar: (datos: DatosMaterial) => Promise<ResultadoMaterial> }) {
+export function FormularioMaterial({ editor, unidades, pendiente, onCerrar, onGuardar }: { editor: Editor; unidades: UnidadMaterial[]; pendiente: boolean; onCerrar: () => void; onGuardar: (datos: DatosMaterial) => Promise<ResultadoMaterial> }) {
   const consulta = editor.modo === "ver";
   const unidadBloqueada = editor.modo === "editar" && Boolean(editor.material && materialEnUso(editor.material));
   const [error, setError] = useState<string>();
@@ -67,7 +68,7 @@ function FormularioMaterial({ editor, unidades, pendiente, onCerrar, onGuardar }
       <p>Registro: {fecha(editor.material.createdAt)}</p>
       <p>Última actualización: {fecha(editor.material.updatedAt)}</p>
     </div>}
-    <DialogFooter><Button type="button" variant="outline" disabled={pendiente} onClick={onCerrar}>{consulta ? "Cerrar" : "Cancelar"}</Button>{!consulta && <Button type="submit" disabled={pendiente || unidades.length === 0}>{pendiente && <LoaderCircle className="animate-spin" aria-hidden="true" />}{pendiente ? "Guardando…" : editor.modo === "crear" ? "Crear material" : "Guardar cambios"}</Button>}</DialogFooter>
+    <DialogFooter><Button type="button" variant="outline" disabled={pendiente} onClick={onCerrar}>{consulta ? "Cerrar" : "Cancelar"}</Button>{!consulta && <Permiso permiso="catalogos.operar"><Button type="submit" disabled={pendiente || unidades.length === 0}>{pendiente && <LoaderCircle className="animate-spin" aria-hidden="true" />}{pendiente ? "Guardando…" : editor.modo === "crear" ? "Crear material" : "Guardar cambios"}</Button></Permiso>}</DialogFooter>
   </form>;
 }
 
@@ -120,12 +121,12 @@ export function Materiales({ materiales, unidades }: { materiales: Material[]; u
     { id: "referencias", header: "Referencias", enableSorting: false, cell: ({ row }) => <span className="text-muted-foreground">{materialEnUso(row.original) ? "En uso" : "Sin referencias"}</span> },
     { id: "acciones", header: "Acciones", enableSorting: false, cell: ({ row }) => <div className="flex items-center gap-1">
       <Button variant="ghost" size="sm" disabled={pendiente} aria-label={`Ver ${row.original.name}`} onClick={() => abrir("ver", row.original.id)}><Eye aria-hidden="true" />Ver</Button>
-      <Button variant="ghost" size="sm" disabled={pendiente} aria-label={`Editar ${row.original.name}`} onClick={() => abrir("editar", row.original.id)}><Pencil aria-hidden="true" />Editar</Button>
-      <Button variant="ghost" size="sm" disabled={pendiente} className="hover:bg-destructive/15" aria-label={`Eliminar ${row.original.name}`} onClick={() => { recordarFoco(); setErrorEliminar(undefined); setAEliminar(row.original); }}><Trash2 className="text-destructive" aria-hidden="true" />Eliminar</Button>
+      <Permiso permiso="catalogos.operar"><Button variant="ghost" size="sm" disabled={pendiente} aria-label={`Editar ${row.original.name}`} onClick={() => abrir("editar", row.original.id)}><Pencil aria-hidden="true" />Editar</Button></Permiso>
+      <Permiso permiso="catalogos.operar"><Button variant="ghost" size="sm" disabled={pendiente} className="hover:bg-destructive/15" aria-label={`Eliminar ${row.original.name}`} onClick={() => { recordarFoco(); setErrorEliminar(undefined); setAEliminar(row.original); }}><Trash2 className="text-destructive" aria-hidden="true" />Eliminar</Button></Permiso>
     </div> },
   ];
   return <div className="space-y-6">
-    <PageHeader titulo="Materias primas" descripcion="Administra los materiales y sus unidades de medida." acciones={<Button ref={crearBoton} disabled={pendiente} className="h-9" onClick={() => { recordarFoco(); setEditor({ modo: "crear" }); }}><Plus aria-hidden="true" />Crear material</Button>} />
+    <PageHeader titulo="Materias primas" descripcion="Administra los materiales y sus unidades de medida." acciones={<Permiso permiso="catalogos.operar"><Button ref={crearBoton} disabled={pendiente} className="h-9" onClick={() => { recordarFoco(); setEditor({ modo: "crear" }); }}><Plus aria-hidden="true" />Crear material</Button></Permiso>} />
     <SectionCard titulo="Catálogo de materias primas" descripcion="Consulta códigos, unidades y referencias de inventario y documentos." contentClassName="p-0">
       <DataTable datos={materiales} columnas={columnas} textoBusqueda={buscarMaterial} filtroPlaceholder="Buscar por código, nombre o unidad…" nombre="materiales" acciones={<Button variant="outline" size="sm" disabled={pendiente} onClick={() => router.refresh()}><RefreshCw aria-hidden="true" />Actualizar</Button>} vacio={<EmptyState icono={Package} titulo="Todavía no hay materiales" descripcion="Crea el primer material y asigna su unidad de medida." />} />
     </SectionCard>

@@ -43,23 +43,8 @@ async function main() {
   }
   console.log('✅ Unidades de Medida creadas');
 
-  // 3. Crear un Usuario Administrador por defecto
-  // (Nota: Más adelante implementaremos bcrypt para encriptar esta contraseña real)
-  const adminRole = await prisma.role.findUnique({ where: { name: 'Administrador' } });
-  
-  if (adminRole) {
-    await prisma.user.upsert({
-      where: { email: 'jrios.03@hotmail.com' },
-      update: {},
-      create: {
-        name: 'Admin Principal (JR)',
-        email: 'jrios.03@hotmail.com',
-        password: 'A123456z', // Cambiaremos esto cuando veamos Autenticación
-        roleId: adminRole.id
-      }
-    });
-    console.log('✅ Usuario Administrador creado');
-  }
+  // Seguridad S1: no crear usuarios ni contraseñas fijas desde el seed general.
+  // El primer Administrador se provisionará mediante el procedimiento restringido S2.
 
   console.log('🎉 ¡Base de datos poblada exitosamente!');
 }

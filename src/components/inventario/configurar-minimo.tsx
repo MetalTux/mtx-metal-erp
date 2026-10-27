@@ -1,4 +1,5 @@
 "use client";
+import { Permiso } from "@/components/seguridad/permisos";
 import { useEffect, useState } from "react";
 import {
   obtenerConfiguracionMinimo,
@@ -307,9 +308,9 @@ export function ConfigurarMinimo({
               >
                 Cancelar
               </Button>
-              <Button type="submit" disabled={ocupado || !configuracion}>
+              <Permiso permiso="inventario.operar"><Button type="submit" disabled={ocupado || !configuracion}>
                 {ocupado ? "Guardando…" : "Guardar mínimo"}
-              </Button>
+              </Button></Permiso>
             </DialogFooter>
           </form>
         </DialogContent>

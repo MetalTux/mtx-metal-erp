@@ -1,3 +1,5 @@
+import { anotarMutacion } from "@/lib/seguridad/autoria";
+import { exigirAcceso, exigirAccesoEnTransaccion } from "@/lib/seguridad/acceso";
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import { Prisma } from "@/generated/prisma/client";
@@ -32,17 +34,25 @@ async function snapshot(tx:Prisma.TransactionClient,id:number){const [v]=await t
 async function operacion(tx:Prisma.TransactionClient,w:{id:number;version:number},key:string,fingerprint:string,type:"FINALIZAR"|"REGISTRAR_FACTURA"|"CORREGIR_FACTURA",links:{completionId?:number;invoiceReferenceId?:number;reason?:string}){
  const prev=await tx.workOrderOperation.findUniqueOrThrow({where:{workOrderId_version:{workOrderId:w.id,version:w.version}}});
  const [s]=await tx.$queryRaw<{plan:Prisma.InputJsonValue;reservations:Prisma.InputJsonValue}[]>`SELECT public.snapshot_plan_trabajo(${w.id}) AS plan,public.snapshot_reservas_trabajo(${w.id}) AS reservations`;
- await tx.workOrderOperation.create({data:{workOrderId:w.id,version:w.version+1,idempotencyKey:key,fingerprint,type,...links,beforeSnapshot:prev.afterSnapshot as Prisma.InputJsonValue,afterSnapshot:s.plan,reservationSnapshot:s.reservations}});
+ await anotarMutacion(tx, "workOrderOperation", "create", await tx.workOrderOperation.create({data:{workOrderId:w.id,version:w.version+1,idempotencyKey:key,fingerprint,type,...links,beforeSnapshot:prev.afterSnapshot as Prisma.InputJsonValue,afterSnapshot:s.plan,reservationSnapshot:s.reservations}}));
 }
-export async function previsualizarCierreTrabajo(input:unknown){const p=cierreTrabajoSchema.safeParse(input);if(!p.success)return {ok:false as const,mensaje:p.error.issues[0].message};try{return await prisma.$transaction(async tx=>{
+export async function previsualizarCierreTrabajo(input:unknown){
+  await exigirAcceso("trabajos.operar");
+const p=cierreTrabajoSchema.safeParse(input);if(!p.success)return {ok:false as const,mensaje:p.error.issues[0].message};try{return await prisma.$transaction(async tx=>{
+      await exigirAccesoEnTransaccion(tx, "trabajos.operar");
+
  const w=await tx.workOrder.findUnique({where:{id:p.data.workOrderId}});exigir(w?.schemaVersion===1&&w.status==="EN_PROCESO"&&w.version===p.data.version,"Actualiza la OT; el cierre requiere su versión vigente en proceso.");
  await tx.$queryRaw`SELECT public.validar_cierre_trabajo(${w.id},${fecha(p.data.date)}::date)`;
  return {ok:true as const,preview:await snapshot(tx,w.id)};
  },{isolationLevel:"RepeatableRead",timeout:30000});}catch(e){return fallo(e)??{ok:false as const,mensaje:"No se pudo consultar la preparación del cierre."};}}
 export async function finalizarTrabajo(input:unknown,clave:unknown){
+  await exigirAcceso("trabajos.operar");
+
  const p=cierreTrabajoSchema.safeParse(input),k=z.uuid().safeParse(clave);if(!p.success||!k.success)return {ok:false as const,mensaje:!p.success?p.error.issues[0].message:"UUID inválido."};
  const d=p.data,key=k.data.toLowerCase(),fingerprint=createHash("sha256").update(JSON.stringify({type:"FINALIZAR",...d})).digest("hex");
  try{return await prisma.$transaction(async tx=>{
+      await exigirAccesoEnTransaccion(tx, "trabajos.operar");
+
  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${key},91357))`;
  const prev=await tx.workOrderOperation.findUnique({where:{idempotencyKey:key}});if(prev){exigir(prev.type==="FINALIZAR"&&prev.workOrderId===d.workOrderId&&prev.fingerprint===fingerprint,"El UUID ya pertenece a otra solicitud.");return {ok:true as const,id:prev.workOrderId,version:prev.version};}
  exigir(!await tx.documentFolio.findUnique({where:{idempotencyKey:key}}),"La clave pertenece a otro documento.");
@@ -60,9 +70,13 @@ export async function finalizarTrabajo(input:unknown,clave:unknown){
  },{maxWait:10000,timeout:60000});}catch(e){const known=fallo(e);if(known)return known;console.error("Error al finalizar OT:",e);return {ok:false as const,mensaje:"No se pudo comprobar el resultado. Reintenta sin cambiar los datos ni el UUID.",incierto:true};}
 }
 export async function registrarFacturaTrabajo(input:unknown,clave:unknown){
+  await exigirAcceso("facturas.operar");
+
  const p=facturaTrabajoSchema.safeParse(input),k=z.uuid().safeParse(clave);if(!p.success||!k.success)return {ok:false as const,mensaje:!p.success?p.error.issues[0].message:"UUID inválido."};
  const d=p.data,key=k.data.toLowerCase(),fingerprint=createHash("sha256").update(JSON.stringify({type:"FACTURA",...d})).digest("hex");
  try{return await prisma.$transaction(async tx=>{
+      await exigirAccesoEnTransaccion(tx, "facturas.operar");
+
  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${key},91357))`;
  const prev=await tx.workOrderOperation.findUnique({where:{idempotencyKey:key}});if(prev){exigir(["REGISTRAR_FACTURA","CORREGIR_FACTURA"].includes(prev.type)&&prev.workOrderId===d.workOrderId&&prev.fingerprint===fingerprint,"El UUID ya pertenece a otra solicitud.");return {ok:true as const,id:prev.workOrderId,version:prev.version};}
  exigir(!await tx.documentFolio.findUnique({where:{idempotencyKey:key}}),"La clave pertenece a otro documento.");

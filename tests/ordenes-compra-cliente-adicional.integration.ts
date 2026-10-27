@@ -49,7 +49,7 @@ async function main() {
   const ganadora = ok(carrera.find(r => r.ok)!); const k = randomUUID(), anulacion = { referencia: { id: ganadora.id, version: ganadora.version }, motivo: "Cancelación de prueba" };
   ok(await anularOrdenCompraCliente(anulacion, k)); ok(await anularOrdenCompraCliente(anulacion, k));
   assert.equal((await anularOrdenCompraCliente({ ...anulacion, motivo: "Otro motivo" }, k)).ok, false);
-  assert.equal((await obtenerOrdenCompraCliente(ganadora.id)).cuenta.saldo, "0.00");
+  assert.equal((await obtenerOrdenCompraCliente(ganadora.id)).cuenta!.saldo, "0.00");
   const qPago = await nueva(), oPago = ok(await registrarOrdenCompraCliente(await entrada(qPago.id), randomUUID()));
   const cuenta = await prisma.accountReceivable.findUniqueOrThrow({ where: { salesOrderId: oPago.id } });
   const pago = await prisma.payment.create({ data: { accountReceivableId: cuenta.id, amount: "1", method: "Transferencia", idempotencyKey: randomUUID(), voidedAt: new Date(), voidReason: "Abono anulado de prueba" } });

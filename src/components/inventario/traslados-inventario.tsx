@@ -1,4 +1,5 @@
 "use client";
+import { Permiso } from "@/components/seguridad/permisos";
 import { useRef, useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { CatalogosInventario } from "@/lib/tipos/inventario";
@@ -118,14 +119,14 @@ export function TrasladosInventario({
           >
             Ver
           </Button>
-          <Button
+          <Permiso permiso="traslados.operar"><Button
             size="sm"
             variant="outline"
             disabled={pendiente || t.correccionId !== null}
             onClick={(e) => abrir(e, t)}
           >
             Corregir
-          </Button>
+          </Button></Permiso>
         </div>
       ),
     },
@@ -162,9 +163,9 @@ export function TrasladosInventario({
           >
             Actualizar
           </Button>
-          <Button disabled={pendiente} onClick={(e) => abrir(e)}>
+          <Permiso permiso="traslados.operar"><Button disabled={pendiente} onClick={(e) => abrir(e)}>
             Registrar traslado
-          </Button>
+          </Button></Permiso>
         </div>
       </div>
       <form

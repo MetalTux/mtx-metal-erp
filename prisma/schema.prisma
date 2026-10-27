@@ -31,14 +31,219 @@ model User {
   id       Int    @id @default(autoincrement())
   name     String
   email    String @unique
-  password String // Aquí guardaremos la contraseña encriptada (hash)
+  password String // Heredado: no autenticar desde aquí; el hash nuevo vive en UserSecurity.
   roleId   Int
   role     Role   @relation(fields: [roleId], references: [id])
 
   createdAt DateTime @default(now()) // Fecha de registro (no se modifica)
   updatedAt DateTime @updatedAt // Última modificación (automática)
 
+  security UserSecurity?
+  securityAuditActions SecurityAuditEvent[] @relation("SecurityAuditActor")
+  securityAuditTargets SecurityAuditEvent[] @relation("SecurityAuditTarget")
+  operationAuthorships SecurityOperationAuthor[]
+
   @@index([roleId])
+}
+
+// S1: estructura preparada; los servicios de acceso se implementan en S2–S5.
+enum SecurityUserStatus {
+  PENDIENTE_ACTIVACION
+  ACTIVO
+  INACTIVO
+}
+
+enum SecurityRoleCode {
+  ADMINISTRADOR
+  VENTAS
+  COMPRAS_BODEGA
+  PRODUCCION_DESPACHO
+  COBRANZA
+  CONSULTA_GERENCIA
+}
+
+enum SecurityTokenPurpose {
+  ACTIVACION
+  RECUPERACION_CLAVE
+}
+
+enum SecurityChallengePurpose {
+  INGRESO_TOTP
+  REAUTENTICACION
+  VINCULACION_GOOGLE
+}
+
+model UserSecurity {
+  userId             Int                @id
+  user               User               @relation(fields: [userId], references: [id], onDelete: Restrict)
+  normalizedEmail    String             @unique @db.VarChar(254)
+  status             SecurityUserStatus @default(PENDIENTE_ACTIVACION)
+  passwordHash       String?
+  localAllowed       Boolean            @default(true)
+  googleAllowed      Boolean            @default(false)
+  securityVersion    Int                @default(1)
+  passwordChangedAt  DateTime?
+  emailVerifiedAt    DateTime?
+  lastLoginAt        DateTime?
+  roles              UserSecurityRole[]
+  identities         SecurityIdentity[]
+  sessions           SecuritySession[]
+  tokens             SecurityToken[]
+  challenges         SecurityChallenge[]
+  secondFactor       SecuritySecondFactor?
+  recoveryCodes      SecurityRecoveryCode[]
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  @@index([status, userId])
+}
+
+model UserSecurityRole {
+  userId    Int
+  role      SecurityRoleCode
+  user      UserSecurity @relation(fields: [userId], references: [userId], onDelete: Restrict)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  @@id([userId, role])
+  @@index([role, userId])
+}
+
+model SecurityIdentity {
+  id              Int          @id @default(autoincrement())
+  userId          Int
+  user            UserSecurity @relation(fields: [userId], references: [userId], onDelete: Restrict)
+  provider        String       @db.VarChar(30)
+  subject         String       @db.VarChar(255)
+  verifiedEmail   String       @db.VarChar(254)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@unique([provider, subject])
+  @@unique([userId, provider])
+}
+
+model SecuritySession {
+  id                   String       @id @default(uuid()) @db.Uuid
+  tokenHash            String       @unique @db.Char(64)
+  userId               Int
+  user                 UserSecurity @relation(fields: [userId], references: [userId], onDelete: Restrict)
+  securityVersion      Int
+  authenticatedAt      DateTime
+  secondFactorAt       DateTime?
+  reauthenticatedAt    DateTime?
+  lastActivityAt       DateTime
+  expiresAt            DateTime
+  revokedAt            DateTime?
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
+
+  @@index([userId, revokedAt, expiresAt])
+  @@index([expiresAt])
+}
+
+model SecurityToken {
+  id          String               @id @default(uuid()) @db.Uuid
+  userId      Int
+  user        UserSecurity         @relation(fields: [userId], references: [userId], onDelete: Restrict)
+  purpose     SecurityTokenPurpose
+  tokenHash   String               @unique @db.Char(64)
+  expiresAt   DateTime
+  consumedAt  DateTime?
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+
+  @@index([userId, purpose, expiresAt])
+  @@index([expiresAt])
+}
+
+model SecurityChallenge {
+  id                 String                   @id @default(uuid()) @db.Uuid
+  userId             Int
+  user               UserSecurity             @relation(fields: [userId], references: [userId], onDelete: Restrict)
+  purpose            SecurityChallengePurpose
+  tokenHash          String                   @unique @db.Char(64)
+  securityVersion    Int
+  failedAttempts     Int                      @default(0)
+  expiresAt          DateTime
+  consumedAt         DateTime?
+  createdAt          DateTime                 @default(now())
+  updatedAt          DateTime                 @updatedAt
+
+  @@index([userId, purpose, expiresAt])
+  @@index([expiresAt])
+}
+
+model SecuritySecondFactor {
+  userId              Int          @id
+  user                UserSecurity @relation(fields: [userId], references: [userId], onDelete: Restrict)
+  encryptedSecret     String
+  encryptionKeyId     String       @db.VarChar(64)
+  enabledAt           DateTime?
+  setupExpiresAt      DateTime?
+  lastUsedStep        BigInt?
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+}
+
+model SecurityRecoveryCode {
+  id          String       @id @default(uuid()) @db.Uuid
+  userId      Int
+  user        UserSecurity @relation(fields: [userId], references: [userId], onDelete: Restrict)
+  codeHash    String       @unique @db.Char(64)
+  consumedAt  DateTime?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@index([userId, consumedAt])
+}
+
+model SecurityRateLimit {
+  keyHash       String   @id @db.Char(64)
+  attempts      Int      @default(0)
+  windowStart   DateTime
+  blockedUntil  DateTime?
+  expiresAt     DateTime
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([expiresAt])
+}
+
+model SecurityAuditEvent {
+  id               BigInt   @id @default(autoincrement())
+  actorUserId      Int?
+  actor            User?    @relation("SecurityAuditActor", fields: [actorUserId], references: [id], onDelete: Restrict)
+  targetUserId     Int?
+  target           User?    @relation("SecurityAuditTarget", fields: [targetUserId], references: [id], onDelete: Restrict)
+  action           String   @db.VarChar(100)
+  result           String   @db.VarChar(30)
+  ipAddress        String?  @db.Inet
+  browserType      String?  @db.VarChar(200)
+  reference        String?  @db.VarChar(200)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([actorUserId, createdAt])
+  @@index([targetUserId, createdAt])
+  @@index([createdAt])
+}
+
+// Autoría duradera separada de los eventos de seguridad que se depuran a 12 meses.
+model SecurityOperationAuthor {
+  id            BigInt   @id @default(autoincrement())
+  actorUserId   Int
+  actor         User     @relation(fields: [actorUserId], references: [id], onDelete: Restrict)
+  operationKey  String   @db.Uuid
+  resourceType  String   @db.VarChar(80)
+  resourceId    String   @db.VarChar(100)
+  action        String   @db.VarChar(80)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([resourceType, operationKey])
+  @@index([actorUserId, createdAt])
+  @@index([resourceType, resourceId])
 }
 
 // ==========================================
@@ -60,6 +265,7 @@ model UnitMeasure {
   workOrderLines       WorkOrderLine[]
   workOrderRecipes     WorkOrderRecipeMaterial[]
   workOrderMaterials   WorkOrderDetail[]
+  deliveryNoteLines    DeliveryNoteLine[]
 
   createdAt DateTime @default(now()) // Fecha de registro (no se modifica)
   updatedAt DateTime @updatedAt // Última modificación (automática)
@@ -89,6 +295,7 @@ model RawMaterial {
   workOrderLines       WorkOrderLine[]
   workOrderRecipes     WorkOrderRecipeMaterial[]
   workOrderSupplies    WorkOrderSupplyPlan[]
+  deliveryNoteLines    DeliveryNoteLine[]
 
   createdAt DateTime @default(now()) // Fecha de registro (no se modifica)
   updatedAt DateTime @updatedAt // Última modificación (automática)
@@ -128,6 +335,7 @@ model Warehouse {
   purchases            Purchase[]
   workOrderDetails     WorkOrderDetail[]
   workOrderSupplies    WorkOrderSupplyPlan[]
+  deliveryNoteLines    DeliveryNoteLine[]
 
   createdAt DateTime @default(now()) // Fecha de registro (no se modifica)
   updatedAt DateTime @updatedAt // Última modificación (automática)
@@ -160,6 +368,8 @@ model WarehouseStock {
 // Historial (kardex) de cada entrada, salida o ajuste de stock.
 // quantity lleva signo: positivo suma al stock, negativo descuenta.
 model StockMovement {
+  deliveryNoteLineId              Int?                           @unique
+  deliveryNoteLine                DeliveryNoteLine?              @relation(fields: [deliveryNoteLineId, rawMaterialId, warehouseId], references: [id, rawMaterialId, warehouseId], onDelete: Restrict)
   productionReversalConsumptionId Int?                           @unique
   productionReversalConsumption   ProductionReversalConsumption? @relation(fields: [productionReversalConsumptionId, rawMaterialId, warehouseId], references: [id, rawMaterialId, warehouseId], onDelete: Restrict)
   productionConsumptionId         Int?                           @unique
@@ -199,6 +409,7 @@ model StockMovement {
   @@unique([inventoryAdjustmentId, warehouseId, rawMaterialId])
   @@unique([productionReversalConsumptionId, rawMaterialId, warehouseId])
   @@unique([productionConsumptionId, rawMaterialId, warehouseId])
+  @@unique([deliveryNoteLineId, rawMaterialId, warehouseId])
   @@index([warehouseId, rawMaterialId, date])
   @@index([rawMaterialId])
   @@index([purchaseDetailId])
@@ -518,6 +729,7 @@ model PaymentCondition {
 }
 
 model Quote {
+  pricesIncludeVat Boolean @default(true)
   // Nullable sólo para compatibilidad con documentos previos; el nuevo servicio
   // exige folio, identidad, copias e importes completos en el primer guardado.
   folioId              Int?                @unique
@@ -635,6 +847,7 @@ enum QuoteStatus {
 }
 
 model SalesOrder {
+  pricesIncludeVat Boolean @default(true)
   // Opcionales sólo para conservar órdenes legadas; SQL exige documento completo al insertar.
   folioId               Int?                  @unique
   folio                 DocumentFolio?        @relation(fields: [folioId], references: [id], onDelete: Restrict)
@@ -687,6 +900,7 @@ model SalesOrder {
   pdfUrl                String? // URL del archivo almacenado (para cuando usemos AWS S3)
   quote                 Quote                 @relation(fields: [quoteId], references: [id], onDelete: Restrict)
   workOrder             WorkOrder?
+  deliveryNotes         DeliveryNote[]
   accountReceivable     AccountReceivable? // Cuenta única creada al confirmar el registro comercial nuevo
 
   createdAt DateTime @default(now()) // Fecha de registro (no se modifica)
@@ -736,6 +950,7 @@ model SalesOrderDetail {
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
   workOrderLine    WorkOrderLine?
+  deliveryNoteLines DeliveryNoteLine[]
 
   @@unique([id, salesOrderId])
   @@unique([salesOrderId, position])
@@ -826,6 +1041,8 @@ enum WorkOrderExecutionMode {
 
 // Tipos iniciales; Producción/Reservas amplían el historial en sus migraciones.
 enum WorkOrderOperationType {
+  DESPACHAR
+  CORREGIR_DESPACHO
   FINALIZAR
   REGISTRAR_FACTURA
   CORREGIR_FACTURA
@@ -841,6 +1058,7 @@ enum WorkOrderOperationType {
 
 model WorkOrderLine {
   productionRecords ProductionRecord[]
+  deliveryNoteLines DeliveryNoteLine[]
 
   roundingReview     Json? // Revisión expresa cuando una necesidad positiva redondea a cero.
   reservations       StockReservationAllocation[]
@@ -933,6 +1151,8 @@ model WorkOrderSupplyPlan {
 }
 
 model WorkOrderOperation {
+  deliveryNoteId Int?          @unique
+  deliveryNote   DeliveryNote? @relation(fields: [deliveryNoteId, workOrderId], references: [id, workOrderId], onDelete: Restrict)
   completionId       Int?                       @unique
   completion         WorkOrderCompletion?       @relation(fields: [completionId, workOrderId], references: [id, workOrderId], onDelete: Restrict)
   invoiceReferenceId Int?                       @unique
@@ -965,6 +1185,7 @@ model WorkOrderOperation {
   @@unique([workOrderId, version])
   @@unique([productionRecordId, workOrderId])
   @@unique([productionReversalId, workOrderId])
+  @@unique([deliveryNoteId, workOrderId])
 }
 
 model WorkOrderDetail {
@@ -1007,19 +1228,101 @@ model WorkOrderDetail {
 }
 
 model DeliveryNote {
-  id                 Int           @id @default(autoincrement())
-  date               DateTime      @default(now())
-  // Campos heredados: se conservan para transición; la nueva cobranza usa AccountReceivable/Payment.
-  paymentStatus      PaymentStatus @default(PENDIENTE)
-  paymentPromiseDate DateTime?
-  voucherUrl         String? // URL del comprobante de pago
-  workOrderId        Int
-  workOrder          WorkOrder     @relation(fields: [workOrderId], references: [id])
+  pdfEmissions DeliveryNotePdfEmission[]
+  id                     Int               @id @default(autoincrement())
+  date                   DateTime?         // Fecha heredada: conservar precisión histórica; null en guías nuevas.
+  paymentStatus          PaymentStatus?    // Sólo legado; null en guías nuevas. Cobranza usa AccountReceivable/Payment.
+  paymentPromiseDate     DateTime?         // Sólo legado.
+  voucherUrl             String?           // Sólo legado.
+  workOrderId            Int
+  workOrder              WorkOrder         @relation(fields: [workOrderId], references: [id], onDelete: Restrict)
+  schemaVersion          Int?              // Null identifica cabecera legada no conciliada.
+  kind                   DeliveryNoteKind?
+  dispatchDate           DateTime?         @db.Date
+  salesOrderId           Int?
+  salesOrder             SalesOrder?       @relation(fields: [salesOrderId], references: [id], onDelete: Restrict)
+  folioId                Int?              @unique
+  folio                  DocumentFolio?    @relation(fields: [folioId], references: [id], onDelete: Restrict)
+  creationKey            String?           @unique @db.Uuid
+  fingerprint            String?           @db.VarChar(64)
+  confirmedAt            DateTime?
+  companySnapshot        Json?
+  clientSnapshot         Json?
+  destinationSnapshot    Json?
+  note                   String?           @db.VarChar(2000)
+  physicalRestitutionConfirmed Boolean @default(false)
+  correctionReason       String?           @db.VarChar(1000)
+  correctsDeliveryNoteId Int?
+  correctsDeliveryNote   DeliveryNote?     @relation("CorreccionGuia", fields: [correctsDeliveryNoteId, workOrderId], references: [id, workOrderId], onDelete: Restrict)
+  corrections            DeliveryNote[]    @relation("CorreccionGuia")
+  lines                  DeliveryNoteLine[]
+  operation              WorkOrderOperation?
 
-  createdAt DateTime @default(now()) // Fecha de registro (no se modifica)
-  updatedAt DateTime @updatedAt // Última modificación (automática)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  @@index([workOrderId])
+  @@unique([id, workOrderId])
+  @@unique([id, workOrderId, salesOrderId])
+  @@index([workOrderId, dispatchDate, id])
+  @@index([salesOrderId, dispatchDate, id])
+  @@index([correctsDeliveryNoteId, workOrderId])
+}
+
+enum DeliveryNoteKind {
+  ENTREGA
+  CORRECCION
+}
+
+// Partida inmutable de guía: permite fraccionar una línea comercial por bodega.
+model DeliveryNoteLine {
+  id                         Int                       @id @default(autoincrement())
+  deliveryNoteId             Int
+  workOrderId                Int
+  salesOrderId               Int
+  deliveryNote               DeliveryNote              @relation(fields: [deliveryNoteId, workOrderId, salesOrderId], references: [id, workOrderId, salesOrderId], onDelete: Restrict)
+  workOrderLineId            Int
+  workOrderLine              WorkOrderLine             @relation(fields: [workOrderLineId, workOrderId], references: [id, workOrderId], onDelete: Restrict)
+  salesOrderDetailId         Int
+  salesOrderDetail           SalesOrderDetail          @relation(fields: [salesOrderDetailId, salesOrderId], references: [id, salesOrderId], onDelete: Restrict)
+  position                   Int
+  executionMode              WorkOrderExecutionMode
+  quantity                   Decimal                   @db.Decimal(14, 3)
+  unitMeasureId              Int
+  unitMeasure                UnitMeasure               @relation(fields: [unitMeasureId], references: [id], onDelete: Restrict)
+  unitName                   String
+  unitAbbreviation           String
+  description                String
+  resourceCode               String?
+  rawMaterialId              Int?
+  rawMaterial                RawMaterial?              @relation(fields: [rawMaterialId], references: [id], onDelete: Restrict)
+  productId                  Int?
+  product                    Product?                  @relation(fields: [productId], references: [id], onDelete: Restrict)
+  warehouseId                Int?
+  warehouse                  Warehouse?                @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  conformityName             String?                   @db.VarChar(150)
+  conformityDate             DateTime?                 @db.Date
+  correctsDeliveryNoteLineId Int?
+  correctsDeliveryNoteLine   DeliveryNoteLine?         @relation("CorreccionLineaGuia", fields: [correctsDeliveryNoteLineId, workOrderLineId, workOrderId], references: [id, workOrderLineId, workOrderId], onDelete: Restrict)
+  corrections                DeliveryNoteLine[]        @relation("CorreccionLineaGuia")
+  rawMovement                StockMovement?
+  productMovement            ProductStockMovement?
+  reservationEvents          StockReservationEvent[]
+  restoredReservations       StockReservationAllocation[] @relation("ReservaDevueltaGuia")
+  createdAt                  DateTime                  @default(now())
+  updatedAt                  DateTime                  @updatedAt
+
+  @@unique([deliveryNoteId, position])
+  @@unique([id, workOrderLineId, workOrderId])
+  @@unique([id, rawMaterialId, warehouseId])
+  @@unique([id, productId, warehouseId])
+  @@index([deliveryNoteId, workOrderId, salesOrderId])
+  @@index([workOrderLineId, workOrderId])
+  @@index([salesOrderDetailId, salesOrderId])
+  @@index([unitMeasureId])
+  @@index([rawMaterialId, warehouseId])
+  @@index([productId, warehouseId])
+  @@index([warehouseId])
+  @@index([correctsDeliveryNoteLineId, workOrderLineId, workOrderId])
 }
 
 enum PaymentStatus {
@@ -1072,6 +1375,7 @@ model AccountReceivable {
 
   salesOrder SalesOrder @relation(fields: [salesOrderId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   payments   Payment[]
+  promiseChanges PaymentPromiseChange[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1094,6 +1398,7 @@ model Payment {
   voidedAt            DateTime?
   voidReason          String? // Fecha y motivo obligatorios juntos al anular: CHECK SQL
 
+  attachments PaymentAttachment[]
   accountReceivable AccountReceivable @relation(fields: [accountReceivableId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   createdAt DateTime @default(now())
@@ -1127,6 +1432,7 @@ model DocumentFolio {
   workOrder      WorkOrder?
   salesOrder     SalesOrder?
   quote          Quote?
+  deliveryNote   DeliveryNote?
   id             Int               @id @default(autoincrement())
   numberingId    Int
   numbering      DocumentNumbering @relation(fields: [numberingId], references: [id], onDelete: Restrict)
@@ -1166,6 +1472,7 @@ model CompanyBankAccount {
 
 model Product {
   productionOutputs ProductionOutput[]
+  deliveryNoteLines DeliveryNoteLine[]
 
   reservations        StockReservationAllocation[]
   workOrderLines      WorkOrderLine[]
@@ -1267,6 +1574,8 @@ model ProductInitialStock {
 }
 
 model ProductStockMovement {
+  deliveryNoteLineId Int?              @unique
+  deliveryNoteLine   DeliveryNoteLine? @relation(fields: [deliveryNoteLineId, productId, warehouseId], references: [id, productId, warehouseId], onDelete: Restrict)
   productionReversalOutputId Int?                      @unique
   productionReversalOutput   ProductionReversalOutput? @relation(fields: [productionReversalOutputId, productId, warehouseId], references: [id, productId, warehouseId], onDelete: Restrict)
   productionOutputId         Int?                      @unique
@@ -1291,6 +1600,7 @@ model ProductStockMovement {
   @@unique([adjustmentId, productId, warehouseId])
   @@unique([productionReversalOutputId, productId, warehouseId])
   @@unique([productionOutputId, productId, warehouseId])
+  @@unique([deliveryNoteLineId, productId, warehouseId])
   @@index([warehouseId, productId, id])
   @@index([productId])
 }
@@ -1470,6 +1780,11 @@ enum StockReservationEventType {
 }
 
 model StockReservationAllocation {
+  correctionDeliveryNoteLineId Int?
+  correctionDeliveryNoteLine DeliveryNoteLine? @relation("ReservaDevueltaGuia", fields: [correctionDeliveryNoteLineId, workOrderLineId, workOrderId], references: [id, workOrderLineId, workOrderId], onDelete: Restrict, map: "Reservation_correction_line_fk")
+  restoresReservationEventId Int?
+  restoresReservationEvent StockReservationEvent? @relation("RestitucionReserva", fields: [restoresReservationEventId], references: [id], onDelete: Restrict, map: "Reservation_restores_event_fk")
+
   productionOutputId Int?
   productionOutput   ProductionOutput? @relation(fields: [productionOutputId], references: [id], onDelete: Restrict)
 
@@ -1512,9 +1827,14 @@ model StockReservationAllocation {
   @@index([supplyPlanId])
   @@index([operationId])
   @@index([productionOutputId])
+  @@index([correctionDeliveryNoteLineId, workOrderLineId, workOrderId], map: "Reservation_correction_line_idx")
+  @@index([restoresReservationEventId], map: "Reservation_restores_event_idx")
 }
 
 model StockReservationEvent {
+  restorations StockReservationAllocation[] @relation("RestitucionReserva")
+  deliveryNoteLineId Int?
+  deliveryNoteLine   DeliveryNoteLine? @relation(fields: [deliveryNoteLineId], references: [id], onDelete: Restrict)
   productionConsumptionId Int?
   productionConsumption   ProductionConsumption? @relation(fields: [productionConsumptionId], references: [id], onDelete: Restrict)
 
@@ -1532,6 +1852,7 @@ model StockReservationEvent {
   @@index([allocationId])
   @@index([operationId])
   @@index([productionConsumptionId])
+  @@index([deliveryNoteLineId])
 }
 
 enum ProductionRecordType {
@@ -1804,4 +2125,65 @@ model WorkOrderPdfRequest {
   updatedAt      DateTime             @updatedAt
 
   @@index([emissionId])
+}
+
+// Guía confirmada inmutable: una emisión por versión de plantilla, sin regenerar al descargar.
+model DeliveryNotePdfEmission {
+  id String @id @db.Uuid
+  deliveryNoteId Int
+  deliveryNote DeliveryNote @relation(fields: [deliveryNoteId], references: [id], onDelete: Restrict)
+  templateVersion Int
+  snapshotVersion Int
+  kind DeliveryNoteKind
+  folio String
+  snapshot Json
+  fileKey String @unique
+  fileSize Int
+  fileHash String
+  requests DeliveryNotePdfRequest[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([deliveryNoteId, templateVersion])
+  @@index([deliveryNoteId, createdAt])
+}
+
+model DeliveryNotePdfRequest {
+  idempotencyKey String @id @db.Uuid
+  fingerprint String
+  emissionId String @db.Uuid
+  emission DeliveryNotePdfEmission @relation(fields: [emissionId], references: [id], onDelete: Restrict)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([emissionId])
+}
+
+
+// Adjuntos privados e inmutables: agregar una corrección conserva el archivo anterior.
+model PaymentAttachment {
+  id String @id @db.Uuid
+  paymentId Int
+  payment Payment @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+  fileKey String @unique
+  fingerprint String @db.VarChar(64)
+  originalName String @db.VarChar(180)
+  mimeType String @db.VarChar(50)
+  size Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([paymentId, createdAt])
+}
+
+model PaymentPromiseChange {
+  id String @id @db.Uuid
+  accountReceivableId Int
+  accountReceivable AccountReceivable @relation(fields: [accountReceivableId], references: [id], onDelete: Restrict)
+  fingerprint String @db.VarChar(64)
+  previousDate DateTime? @db.Date
+  newDate DateTime? @db.Date
+  reason String @db.VarChar(1000)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([accountReceivableId, createdAt])
 }

@@ -1,4 +1,5 @@
 "use client";
+import { Permiso } from "@/components/seguridad/permisos";
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -45,7 +46,7 @@ function FormularioUnidad({ editor, pendiente, onCerrar, onGuardar }: { editor: 
     <div className="space-y-2"><Label htmlFor="unidad-nombre">Nombre{!consulta && " *"}</Label><Input id="unidad-nombre" {...register("name")} readOnly={consulta} disabled={pendiente} maxLength={100} autoComplete="off" placeholder="Ej.: Metros" aria-invalid={Boolean(errors.name)} aria-describedby={errors.name ? "unidad-nombre-error" : undefined} className="h-9" />{errors.name && <p id="unidad-nombre-error" className="text-sm text-foreground" role="alert">{errors.name.message}</p>}</div>
     <div className="space-y-2"><Label htmlFor="unidad-abreviatura">Abreviatura{!consulta && " *"}</Label><Input id="unidad-abreviatura" {...register("abbreviation")} readOnly={consulta} disabled={pendiente} maxLength={20} autoComplete="off" placeholder="Ej.: m" aria-invalid={Boolean(errors.abbreviation)} aria-describedby={errors.abbreviation ? "unidad-abreviatura-error" : "unidad-abreviatura-ayuda"} className="h-9" /><p id="unidad-abreviatura-ayuda" className="text-xs text-muted-foreground">Se utiliza junto a las cantidades de los materiales.</p>{errors.abbreviation && <p id="unidad-abreviatura-error" className="text-sm text-foreground" role="alert">{errors.abbreviation.message}</p>}</div>
     {editor.unidad && <div className="rounded-md border border-border bg-muted/40 p-3 text-xs text-muted-foreground"><p>Materiales asociados: <span className="tabular-nums">{editor.unidad.materiales}</span></p><p className="mt-1">Registro: {fecha(editor.unidad.createdAt)}</p><p className="mt-1">Última actualización: {fecha(editor.unidad.updatedAt)}</p></div>}
-    <DialogFooter><Button type="button" variant="outline" disabled={pendiente} onClick={onCerrar}>{consulta ? "Cerrar" : "Cancelar"}</Button>{!consulta && <Button type="submit" disabled={pendiente}>{pendiente && <LoaderCircle className="animate-spin" aria-hidden="true" />}{pendiente ? "Guardando…" : editor.modo === "crear" ? "Crear unidad" : "Guardar cambios"}</Button>}</DialogFooter>
+    <DialogFooter><Button type="button" variant="outline" disabled={pendiente} onClick={onCerrar}>{consulta ? "Cerrar" : "Cancelar"}</Button>{!consulta && <Permiso permiso="catalogos.operar"><Button type="submit" disabled={pendiente}>{pendiente && <LoaderCircle className="animate-spin" aria-hidden="true" />}{pendiente ? "Guardando…" : editor.modo === "crear" ? "Crear unidad" : "Guardar cambios"}</Button></Permiso>}</DialogFooter>
   </form>;
 }
 
@@ -97,12 +98,12 @@ export function UnidadesMedida({ unidades }: { unidades: UnidadMedida[] }) {
     { accessorKey: "materiales", header: "Materiales", sortFn: (a, b) => a.original.materiales - b.original.materiales },
     { id: "acciones", header: "Acciones", enableSorting: false, cell: ({ row }) => <div className="flex items-center gap-1">
       <Button variant="ghost" size="sm" disabled={pendiente} aria-label={`Ver ${row.original.name}`} onClick={() => abrir("ver", row.original.id)}><Eye aria-hidden="true" />Ver</Button>
-      <Button variant="ghost" size="sm" disabled={pendiente} aria-label={`Editar ${row.original.name}`} onClick={() => abrir("editar", row.original.id)}><Pencil aria-hidden="true" />Editar</Button>
-      <Button variant="ghost" size="sm" disabled={pendiente} className="hover:bg-destructive/15" aria-label={`Eliminar ${row.original.name}`} onClick={() => { recordarFoco(); setErrorEliminar(undefined); setAEliminar(row.original); }}><Trash2 className="text-destructive" aria-hidden="true" />Eliminar</Button>
+      <Permiso permiso="catalogos.operar"><Button variant="ghost" size="sm" disabled={pendiente} aria-label={`Editar ${row.original.name}`} onClick={() => abrir("editar", row.original.id)}><Pencil aria-hidden="true" />Editar</Button></Permiso>
+      <Permiso permiso="catalogos.operar"><Button variant="ghost" size="sm" disabled={pendiente} className="hover:bg-destructive/15" aria-label={`Eliminar ${row.original.name}`} onClick={() => { recordarFoco(); setErrorEliminar(undefined); setAEliminar(row.original); }}><Trash2 className="text-destructive" aria-hidden="true" />Eliminar</Button></Permiso>
     </div> },
   ];
   return <div className="space-y-6">
-    <PageHeader titulo="Unidades de medida" descripcion="Define cómo se miden tus materiales: kilos, metros, unidades y más." acciones={<Button ref={crearBoton} disabled={pendiente} className="h-9" onClick={() => { recordarFoco(); setEditor({ modo: "crear" }); }}><Plus aria-hidden="true" />Crear unidad</Button>} />
+    <PageHeader titulo="Unidades de medida" descripcion="Define cómo se miden tus materiales: kilos, metros, unidades y más." acciones={<Permiso permiso="catalogos.operar"><Button ref={crearBoton} disabled={pendiente} className="h-9" onClick={() => { recordarFoco(); setEditor({ modo: "crear" }); }}><Plus aria-hidden="true" />Crear unidad</Button></Permiso>} />
     <SectionCard titulo="Catálogo de unidades" descripcion="Cada material utiliza una única unidad de medida." contentClassName="p-0">
       <DataTable datos={unidades} columnas={columnas} textoBusqueda={buscarUnidad} filtroPlaceholder="Buscar por nombre o abreviatura…" nombre="unidades de medida" acciones={<Button variant="outline" size="sm" disabled={pendiente} onClick={() => router.refresh()}><RefreshCw aria-hidden="true" />Actualizar</Button>} vacio={<EmptyState icono={Ruler} titulo="Todavía no hay unidades" descripcion="Crea la primera unidad para comenzar a organizar tus materiales." />} />
     </SectionCard>

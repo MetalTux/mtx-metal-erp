@@ -1,3 +1,5 @@
+import { anotarMutacion } from "@/lib/seguridad/autoria";
+import { exigirAcceso, exigirAccesoEnTransaccion } from "@/lib/seguridad/acceso";
 import { normalizarRut } from "@/lib/validaciones/rut";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
@@ -28,10 +30,14 @@ function errorOperacion(error: unknown): ResultadoProveedor {
 }
 
 export async function listarProveedores(): Promise<Proveedor[]> {
+  await exigirAcceso("proveedores.leer");
+
   return (await prisma.supplier.findMany({ select: seleccion, orderBy: [{ name: "asc" }, { id: "asc" }] })).map(serializar);
 }
 
 export async function consultarProveedor(id: unknown): Promise<ResultadoProveedor> {
+  await exigirAcceso("proveedores.leer");
+
   if (typeof id !== "number" || !Number.isSafeInteger(id) || id <= 0) return { ok: false, mensaje: "El proveedor indicado no es válido." };
   try {
     const proveedor = await prisma.supplier.findUnique({ where: { id }, select: seleccion });
@@ -40,6 +46,8 @@ export async function consultarProveedor(id: unknown): Promise<ResultadoProveedo
 }
 
 export async function guardarProveedor(datos: unknown, referencia?: unknown): Promise<ResultadoProveedor> {
+  await exigirAcceso("proveedores.operar");
+
   const validacion = proveedorSchema.safeParse(datos);
   if (!validacion.success) return { ok: false, mensaje: "Revisa los campos del formulario.", campos: validacion.error.flatten().fieldErrors };
   const registro = referencia === undefined ? undefined : referenciaProveedorSchema.safeParse(referencia);
@@ -52,18 +60,20 @@ export async function guardarProveedor(datos: unknown, referencia?: unknown): Pr
       return { ok: false, mensaje: "Ya existe un proveedor con este RUT.", campos: { rut: ["Este RUT ya está registrado."] } };
     }
     const proveedor = registro?.success
-      ? await prisma.supplier.update({ where: { id: registro.data.id, updatedAt: new Date(registro.data.updatedAt) }, data, select: seleccion })
-      : await prisma.supplier.create({ data, select: seleccion });
+      ? await prisma.$transaction(async tx => { await exigirAccesoEnTransaccion(tx, "proveedores.operar"); return anotarMutacion(tx, "supplier", "update", await tx.supplier.update({ where: { id: registro.data.id, updatedAt: new Date(registro.data.updatedAt) }, data, select: seleccion })); })
+      : await prisma.$transaction(async tx => { await exigirAccesoEnTransaccion(tx, "proveedores.operar"); return anotarMutacion(tx, "supplier", "create", await tx.supplier.create({ data, select: seleccion })); });
     return { ok: true, mensaje: registro ? "Proveedor actualizado." : "Proveedor creado.", proveedor: serializar(proveedor) };
   } catch (error) { return errorOperacion(error); }
 }
 
 export async function eliminarProveedor(referencia: unknown): Promise<ResultadoProveedor> {
+  await exigirAcceso("proveedores.operar");
+
   const validacion = referenciaProveedorSchema.safeParse(referencia);
   if (!validacion.success) return { ok: false, mensaje: "La referencia del registro no es válida. Actualiza el listado." };
   try {
     // La FK protege también frente a compras asociadas después de abrir la confirmación.
-    await prisma.supplier.delete({ where: { id: validacion.data.id, updatedAt: new Date(validacion.data.updatedAt) } });
+    await prisma.$transaction(async tx => { await exigirAccesoEnTransaccion(tx, "proveedores.operar"); return anotarMutacion(tx, "supplier", "delete", await tx.supplier.delete({ where: { id: validacion.data.id, updatedAt: new Date(validacion.data.updatedAt) } })); });
     return { ok: true, mensaje: "Proveedor eliminado." };
   } catch (error) { return errorOperacion(error); }
 }

@@ -1,4 +1,5 @@
 "use client";
+import { Permiso } from "@/components/seguridad/permisos";
 import { formatearCantidad } from "@/lib/formato";
 import { useRef, useState } from "react";
 import { Prisma } from "@/generated/prisma/browser";
@@ -73,7 +74,7 @@ export function FormularioTrabajo({initial,catalogos:c,historico,onGuardado,onCe
    {d.id&&<label className="block text-sm">Motivo de revisión<Textarea value={d.reason} maxLength={1000} onChange={e=>cambiar({...d,reason:e.target.value})}/></label>}
   </fieldset>
   <p className="text-sm text-muted-foreground">Guardar borrador conserva el plan sin reservas activas. Confirmar exige distribución completa e intenta reservar lo disponible; muestra faltantes sin mover existencias.</p>
-  <div className="flex flex-wrap justify-end gap-2"><Button variant="outline" disabled={bloqueado} onClick={onCerrar}>Cancelar</Button>{incierto?<Button disabled={busy} onClick={()=>void confirmar()}>Reintentar sin cambiar datos</Button>:<><Button variant="outline" disabled={bloqueado||!d.lines.length} onClick={()=>guardarModal(false)}>Guardar borrador</Button><Button disabled={bloqueado||!d.lines.length} onClick={()=>guardarModal(true)}>Confirmar y reservar plan</Button></>}</div>
+  <div className="flex flex-wrap justify-end gap-2"><Button variant="outline" disabled={bloqueado} onClick={onCerrar}>Cancelar</Button>{incierto?<Button disabled={busy} onClick={()=>void confirmar()}>Reintentar sin cambiar datos</Button>:<><Permiso permiso="trabajos.operar"><Button variant="outline" disabled={bloqueado||!d.lines.length} onClick={()=>guardarModal(false)}>Guardar borrador</Button></Permiso><Button disabled={bloqueado||!d.lines.length} onClick={()=>guardarModal(true)}>Confirmar y reservar plan</Button></>}</div>
   <ConfirmarAccion abierto={Boolean(confirmacion)} titulo={confirmacion?.confirmPlan?"Confirmar plan y reservas":"Guardar borrador de OT"} descripcion={confirmacion?.confirmPlan?"Se guardará el plan y se reservará parcialmente el stock disponible. Los faltantes seguirán pendientes. No se consumen materiales ni se fabrica todavía.":"Se guardará sin reservas activas. Las reservas anteriores se liberarán con el motivo de esta revisión."} accion="Confirmar" pendiente={busy} onConfirmar={()=>void confirmar()} onAbiertoChange={v=>{if(!v&&!busy){setConfirmacion(undefined);onBloqueo(false);}}}/>
  </div>;
 }

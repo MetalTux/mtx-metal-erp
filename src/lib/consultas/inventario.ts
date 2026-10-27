@@ -1,3 +1,4 @@
+import { exigirAcceso } from "@/lib/seguridad/acceso";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
 import {
@@ -117,6 +118,8 @@ async function cargarIdentificaciones(
 }
 
 export async function listarCatalogosInventario(): Promise<CatalogosInventario> {
+  await exigirAcceso("inventario.leer");
+
   const [bodegas, materiales] = await Promise.all([
     prisma.warehouse.findMany({
         // Heredadas sin clasificar siguen operativas; terminado exclusivo no recibe materias primas.
@@ -134,6 +137,8 @@ export async function listarCatalogosInventario(): Promise<CatalogosInventario> 
 export async function consultarStock(
   entrada: unknown = {},
 ): Promise<ResultadoConsulta<StockInventario>> {
+  await exigirAcceso("inventario.leer");
+
   const validacion = filtrosStockSchema.safeParse(entrada);
   if (!validacion.success) return filtrosInvalidos;
   const filtros = validacion.data;
@@ -196,6 +201,8 @@ export async function consultarStock(
 export async function consultarMovimientos(
   entrada: unknown = {},
 ): Promise<ResultadoConsulta<MovimientoInventario>> {
+  await exigirAcceso("inventario.leer");
+
   const validacion = filtrosMovimientosSchema.safeParse(entrada);
   if (!validacion.success) return filtrosInvalidos;
   const filtros = validacion.data;

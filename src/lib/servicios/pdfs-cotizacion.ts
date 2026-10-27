@@ -1,3 +1,5 @@
+import { anotarMutacion } from "@/lib/seguridad/autoria";
+import { exigirAcceso, exigirAccesoEnTransaccion } from "@/lib/seguridad/acceso";
 import { createHash, randomUUID } from "node:crypto";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
@@ -26,6 +28,7 @@ async function capturar(tx: Prisma.TransactionClient, id: number) {
   const folio = await tx.documentFolio.findUniqueOrThrow({ where: { id: q.folioId } });
   exigir(detalles.length && q.subtotal !== null && q.netAmount !== null && q.vatAmount !== null && q.vatRate !== null, "La cotización no tiene los importes históricos necesarios para emitir.");
   const documento: DocumentoPdfCotizacion = {
+    pricesIncludeVat: q.pricesIncludeVat,
     folio: folio.folio, version: q.version, status: q.status, date: q.date.toISOString().slice(0,10), validUntil: q.validUntil?.toISOString().slice(0,10) ?? null,
     company: emisor.data, client: { name: q.clientName, rut: q.clientRut, branchName: q.branchName, address: q.branchAddress, city: q.branchCity, contact: q.branchContact, phone: q.branchPhone, email: q.branchEmail },
     bank: { name: q.bankName, type: q.bankAccountType, number: q.bankAccountNumber, holder: q.bankHolderName, rut: q.bankHolderRut, email: q.bankEmail },
@@ -57,13 +60,18 @@ async function recursosPdf(snapshot: Awaited<ReturnType<typeof capturar>>) {
  * Los archivos nuevos sólo se limpian tras confirmar que la BD no los referencia.
  */
 export async function emitirPdfCotizacion(referencia: unknown, clave: unknown) {
+  await exigirAcceso("cotizaciones.operar");
+  await exigirAcceso("precios.leer");
+
   const r = referenciaCotizacionSchema.safeParse(referencia), c = claveCotizacionSchema.safeParse(clave);
   if (!r.success || !c.success) return { ok: false as const, mensaje: "Referencia de emisión inválida." };
   const fingerprint = hashPdf(JSON.stringify({ ...r.data, plantilla: VERSION_PLANTILLA_PDF }));
+  // Reintentos emitidos con la plantilla anterior conservan su PDF e identidad.
+  const huellasCompatibles = [fingerprint, hashPdf(JSON.stringify({ ...r.data, plantilla: 1 }))];
   let archivo: string | undefined;
   try {
     const repetida = await prisma.quotePdfRequest.findUnique({ where: { idempotencyKey: c.data } });
-    if (repetida) { exigir(repetida.fingerprint === fingerprint, "Esta clave ya se utilizó para otra emisión."); return { ok: true as const, id: repetida.emissionId }; }
+    if (repetida) { exigir(huellasCompatibles.includes(repetida.fingerprint), "Esta clave ya se utilizó para otra emisión."); return { ok: true as const, id: repetida.emissionId }; }
     const snapshot = await prisma.$transaction(tx => capturar(tx, r.data.id), { isolationLevel: "RepeatableRead" });
     exigir(snapshot.documento.version === r.data.version, "La cotización cambió. Actualiza el listado antes de emitir.");
     const origenHash = hashPdf(JSON.stringify(snapshot.origen));
@@ -77,9 +85,11 @@ export async function emitirPdfCotizacion(referencia: unknown, clave: unknown) {
       archivo = `${id}.pdf`; await almacenPdfCotizacion().guardar(archivo, bytes);
     }
     const resultado = await prisma.$transaction(async tx => {
+      await exigirAccesoEnTransaccion(tx, "cotizaciones.operar");
+
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${c.data}, 73425))`;
       const anterior = await tx.quotePdfRequest.findUnique({ where: { idempotencyKey: c.data } });
-      if (anterior) { exigir(anterior.fingerprint === fingerprint, "Esta clave ya se utilizó para otra emisión."); return anterior.emissionId; }
+      if (anterior) { exigir(huellasCompatibles.includes(anterior.fingerprint), "Esta clave ya se utilizó para otra emisión."); return anterior.emissionId; }
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(${r.data.id}, 73426)`;
       await tx.$queryRaw`SELECT id FROM "Quote" WHERE id = ${r.data.id} FOR SHARE`;
       const actual = await capturar(tx, r.data.id);
@@ -87,7 +97,7 @@ export async function emitirPdfCotizacion(referencia: unknown, clave: unknown) {
       let emision = await tx.quotePdfEmission.findUnique({ where: { quoteId_quoteVersion_templateVersion: { quoteId: r.data.id, quoteVersion: r.data.version, templateVersion: VERSION_PLANTILLA_PDF } } });
       if (!emision) {
         exigir(bytes && archivo, "No se pudo confirmar el archivo generado.");
-        emision = await tx.quotePdfEmission.create({ data: { id, quoteId: r.data.id, quoteVersion: r.data.version, templateVersion: VERSION_PLANTILLA_PDF, snapshotVersion: 1, status: snapshot.documento.status as "PENDIENTE" | "APROBADA" | "RECHAZADA", folio: snapshot.documento.folio, snapshot: serializar(snapshot), fileKey: archivo!, fileSize: bytes!.length, fileHash: hashPdf(bytes!) } });
+        emision = await anotarMutacion(tx, "quotePdfEmission", "create", await tx.quotePdfEmission.create({ data: { id, quoteId: r.data.id, quoteVersion: r.data.version, templateVersion: VERSION_PLANTILLA_PDF, snapshotVersion: 1, status: snapshot.documento.status as "PENDIENTE" | "APROBADA" | "RECHAZADA", folio: snapshot.documento.folio, snapshot: serializar(snapshot), fileKey: archivo!, fileSize: bytes!.length, fileHash: hashPdf(bytes!) } }));
       }
       await tx.quotePdfRequest.create({ data: { idempotencyKey: c.data, fingerprint, emissionId: emision.id } });
       return emision.id;
@@ -105,11 +115,17 @@ export async function emitirPdfCotizacion(referencia: unknown, clave: unknown) {
   }
 }
 export async function historialPdfCotizacion(id: number) {
+  await exigirAcceso("cotizaciones.leer");
+  await exigirAcceso("precios.leer");
+
   if (!Number.isSafeInteger(id) || id < 1) throw new Error("Referencia inválida.");
   const filas = await prisma.quotePdfEmission.findMany({ where: { quoteId: id }, orderBy: [{ quoteVersion: "desc" }, { createdAt: "desc" }], select: { id: true, quoteVersion: true, status: true, folio: true, templateVersion: true, createdAt: true } });
   return filas.map(f => ({ ...f, createdAt: f.createdAt.toISOString() }));
 }
 export async function leerPdfCotizacion(id: string) {
+  await exigirAcceso("cotizaciones.leer");
+  await exigirAcceso("precios.leer");
+
   if (!z.string().uuid().safeParse(id).success) throw new Error("Referencia inválida.");
   const emision = await prisma.quotePdfEmission.findUniqueOrThrow({ where: { id } });
   const bytes = await almacenPdfCotizacion().leer(emision.fileKey);

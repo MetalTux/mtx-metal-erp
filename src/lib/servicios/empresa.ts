@@ -1,3 +1,5 @@
+import { anotarMutacion } from "@/lib/seguridad/autoria";
+import { exigirAcceso, exigirAccesoEnTransaccion } from "@/lib/seguridad/acceso";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
 import { normalizarRut } from "@/lib/validaciones/rut";
@@ -18,14 +20,20 @@ function errorOperacion(error: unknown): ResultadoEmpresa {
   return { ok: false, mensaje: "No se pudo completar la operación. Inténtalo nuevamente." };
 }
 export async function consultarEmpresa(): Promise<Empresa | null> {
+  await exigirAcceso("configuracion.leer");
+
   const perfil = await prisma.companyProfile.findUnique({ where: { id: 1 }, select: seleccion });
   return perfil ? serializar(perfil) : null;
 }
 export async function obtenerEmpresa(): Promise<ResultadoEmpresa> {
+  await exigirAcceso("configuracion.leer");
+
   try { return { ok: true, mensaje: "Datos de Empresa consultados.", empresa: await consultarEmpresa() }; }
   catch (error) { return errorOperacion(error); }
 }
 export async function guardarEmpresa(datos: unknown, referencia?: unknown, logoUrl?: string | null): Promise<ResultadoEmpresa> {
+  await exigirAcceso("configuracion.operar");
+
   const validacion = empresaSchema.safeParse(datos);
   if (!validacion.success) return { ok: false, mensaje: "Revisa los campos del formulario.", campos: validacion.error.flatten().fieldErrors };
   const version = referencia === undefined ? undefined : referenciaEmpresaSchema.safeParse(referencia);
@@ -35,13 +43,15 @@ export async function guardarEmpresa(datos: unknown, referencia?: unknown, logoU
   try {
     // Crear explícitamente: un upsert podría sobrescribir una primera configuración concurrente.
     const perfil = version?.success
-      ? await prisma.companyProfile.update({ where: { id: 1, updatedAt: new Date(version.data.updatedAt) }, data: { ...data, updatedAt: new Date(Math.max(Date.now(), new Date(version.data.updatedAt).getTime() + 1)) }, select: seleccion })
-      : await prisma.companyProfile.create({ data: { ...data, id: 1 }, select: seleccion });
+      ? await prisma.$transaction(async tx => { await exigirAccesoEnTransaccion(tx, "configuracion.operar"); return anotarMutacion(tx, "companyProfile", "update", await tx.companyProfile.update({ where: { id: 1, updatedAt: new Date(version.data.updatedAt) }, data: { ...data, updatedAt: new Date(Math.max(Date.now(), new Date(version.data.updatedAt).getTime() + 1)) }, select: seleccion })); })
+      : await prisma.$transaction(async tx => { await exigirAccesoEnTransaccion(tx, "configuracion.operar"); return anotarMutacion(tx, "companyProfile", "create", await tx.companyProfile.create({ data: { ...data, id: 1 }, select: seleccion })); });
     return { ok: true, mensaje: "Datos de Empresa guardados.", empresa: serializar(perfil) };
   } catch (error) { return errorOperacion(error); }
 }
 
 export async function guardarEmpresaConLogo(datos: unknown, referencia?: unknown, archivo?: File, quitarLogo = false): Promise<ResultadoEmpresa> {
+  await exigirAcceso("configuracion.operar");
+
   // Validar antes de escribir archivos; guardarEmpresa vuelve a validar al persistir.
   const validacion = empresaSchema.safeParse(datos);
   if (!validacion.success) return { ok: false, mensaje: "Revisa los campos del formulario.", campos: validacion.error.flatten().fieldErrors };

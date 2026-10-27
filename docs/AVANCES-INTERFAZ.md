@@ -449,3 +449,206 @@ Fuente, reglas y evidencia: `docs/HITO-ORDEN-TRABAJO-PRODUCCION.md`, checkpoint 
 - [x] Usuario aprueba funcionamiento integral el 18-10-2026, después de la corrección del incidente de producción. Aceptación general sin reporte individual por escenario.
 
 Fuente: `HITO-ORDEN-TRABAJO-PRODUCCION.md`, checkpoint OT8/OT9, y `OPERACION-ORDENES-TRABAJO.md`.
+
+## 19-10-2026 — Guías de Despacho G4
+
+- [x] Acción Corregir sobre `/trabajos/despachos`, cantidades aún corregibles por partida/bodega y motivo/fecha.
+- [x] Recepción física explícita, previsualización y confirmación; conservar UUID/datos ante resultado incierto.
+- [x] Mostrar entregado neto y pendiente al revisar cierre de OT.
+- [x] Comprobación Chromium del flujo y anchos 320/375/768/1440 sin desborde estable ni errores JS.
+- [x] Documento/PDF, historial detallado e integración contextual implementados en G5.
+- [x] Validación exhaustiva G6 y aprobación funcional general del usuario el 20-10-2026.
+
+Detalles y evidencias en `HITO-GUIAS-DESPACHO-ENTREGAS.md`, sección 15. El servidor temporal en 3031 se detuvo; el servidor previo del usuario en 3030 se conservó.
+
+## 19-10-2026 — Guías de Despacho G5
+
+- [x] Consulta de folio sobre el listado: emisor/destino históricos, conformidad, netos e historial de entregas/correcciones con Kardex/reservas.
+- [x] Accesos **Guías y entregas** desde OT/OCC, filtro contextual por OT y apertura de documento al confirmar salida/corrección.
+- [x] Previsualización explícita de salida; bloqueo de campos e intento estable ante resultado incierto; estados de carga/error y legado sin PDF.
+- [x] Emisión confirmada, historial por plantilla, vista previa, impresión y descarga del PDF archivado de entrega/corrección.
+- [x] Chromium: foco inicial/Escape, 320/375/768/1440, flujo de entrega/PDF/descarga y navegación OT/OCC sin errores JS.
+- [x] Permisos por rol rotulados como futuros, sin presentar protección inexistente.
+
+El documento sigue siendo operativo interno; G6 y aprobación funcional final permanecen pendientes. Referencia: `HITO-GUIAS-DESPACHO-ENTREGAS.md`, sección 16.
+
+
+## 20-10-2026 — Guías de Despacho G6
+
+- [x] Cobertura pendiente de OT considera entrega neta por origen de reserva, evitando faltantes aparentes tras despachar.
+- [x] Formulario rechaza cantidades inválidas aunque haya otras partidas válidas; enlaces de consulta con contraste verificado.
+- [x] Chromium en 320/375/768/1440, foco/Tab/Escape y recuperación con el mismo UUID tras perder respuestas de entrega, PDF y corrección ya confirmados.
+- [x] Matriz técnica y regresiones G4/G5 en copias descartables, checks correctos y limpieza de entornos/servidor de prueba.
+- [x] Manual de operación, recuperación y respaldo en [OPERACION-GUIAS-DESPACHO.md](OPERACION-GUIAS-DESPACHO.md).
+- [x] Aprobación funcional general del usuario y cierre del hito el 20-10-2026.
+
+G0–G6 técnicamente completos; ver la sección 17 de [HITO-GUIAS-DESPACHO-ENTREGAS.md](HITO-GUIAS-DESPACHO-ENTREGAS.md). No se implementan permisos por rol sin autenticación.
+
+
+## 20-10-2026 — Cierre funcional de Guías y seguimiento de usabilidad
+
+Aprobación general del usuario: «Quedó bien». Hito G0–G6 cerrado. Se registra su observación sobre funcionalidades difíciles de identificar: quedan pendientes un manual completo del ERP y una revisión de visibilidad de acciones, ayudas, mensajes y recorridos para distintos niveles de experiencia. Estas mejoras todavía no se implementan; ver sección 18 de [HITO-GUIAS-DESPACHO-ENTREGAS.md](HITO-GUIAS-DESPACHO-ENTREGAS.md).
+
+
+## 20-10-2026 — Seguridad S1
+
+Preparada estructura de usuarios/roles múltiples/sesiones/factores y contrato de integración. Inventariadas 22 páginas, 87 acciones y seis rutas de archivos. Sin cambios visuales ni login implementado; la protección efectiva corresponde a S2–S4. Checkpoint en sección 18 de [HITO-INICIO-SESION-SEGURIDAD.md](HITO-INICIO-SESION-SEGURIDAD.md).
+
+
+## 20-10-2026 — Seguridad S2
+
+- [x] Ingreso local, activación y recuperación; formularios accesibles con estados de envío y ayuda.
+- [x] Mi acceso: contraseña, reautenticación, factor opcional personal y sesiones.
+- [x] Usuarios: listado/búsqueda/paginación y Ver/Crear/Editar sobre listado, confirmaciones y enlace privado.
+- [x] Menú muestra identidad y acceso al panel; entrada Mi acceso en navegación centralizada.
+- [x] Chromium 320/375/768/1440, invitación/activación y TOTP/respaldo/desactivación propia sin errores JS.
+- [ ] Google y autorización integral del ERP, según S3/S4.
+
+Rutas nuevas de S2 protegidas en servidor; los módulos previos conservan acceso anterior hasta S4. No hay aprobación funcional general S7. Referencia: [hito, sección 19](HITO-INICIO-SESION-SEGURIDAD.md#19-checkpoint-de-continuidad--s2-local-completo-20-10-2026).
+
+
+## 21-10-2026 — Seguridad S4
+
+- [x] Menú lateral, buscador y accesos/indicadores provisionales del Dashboard filtrados por unión de permisos.
+- [x] Controles de escritura por rol, consulta de documentos/archivos autorizada y mensaje de acceso denegado con regreso a Inicio.
+- [x] Proyección financiera restringida en OCC/OT/productos desde servidor; no depender de ocultar componentes para proteger los importes.
+- [x] Chromium con seis roles y combinación Ventas + Cobranza, URL directa/acción directa/pestaña revocada y vistas 375/1440 sin errores JS. Lint/build correctos.
+
+S3 queda pospuesto. S4 sustituye el acceso anterior de los módulos previos descrito en el checkpoint S2; S5–S7 y métricas reales del Dashboard siguen pendientes.
+
+
+## 21-10-2026 — Seguridad S5
+
+- [x] Visor de auditoría/autoría exclusivo del Administrador, filtros de calendario chileno y paginación.
+- [x] Entrada en Administración/menú de usuario/buscador y enlaces a autoría en Cotización, OCC, OT y Guía.
+- [x] Identificación de historia sin evidencia como «Sin autoría registrada», sin atribuciones retroactivas.
+- [x] Depuración de eventos antiguos con confirmación, estado de respuesta y reautenticación en servidor.
+- [x] Chromium con roles/URL/acción directa, enlaces/filtros y 375/1440 sin errores JS; lint/build correctos.
+
+Siguiente: S6 (validación integral y operación), luego S7 (aprobación funcional).
+
+### 22-10-2026 — S6: comprobación y cabeceras de seguridad
+
+- [x] Protección general contra marcos de otros sitios; PDF conservados dentro del ERP y pantallas de seguridad con DENY.
+- [x] Ensayo local HTTPS de ingreso al Dashboard/panel, cookies seguras, TOTP, reinicio y anchos 320/375/768/1440 sin errores JavaScript.
+- [x] Roles/auditoría en Chromium y regresión completa S6 correctos (48/48); ver `docs/SEGURIDAD-S6-CONTINUIDAD.md`.
+- [ ] Verificación del destino HTTPS definitivo y aprobación funcional S7; un ensayo local no las sustituye.
+
+
+### 23-10-2026 — S7: ajustes de la primera revisión
+
+- [x] Retorno automático al login tras activar o recuperar contraseña, con mensaje visible.
+- [x] Avisos emergentes de resultado en acceso, Mi acceso y Usuarios, además del mensaje persistente.
+- [x] Diálogo de confirmación de identidad dentro de Usuarios, con formulario conservado y contraseña/factor del titular; confirmación reutilizable cinco minutos.
+- [x] Aprobaciones funcionales recibidas: S7-01, S7-02 y S7-05.
+- [ ] Revisión de las correcciones S7-02/S7-03/S7-06 y los demás bloques de la guía; cierre S7 pendiente.
+
+- [x] Lint/build/tipos y regresión de acceso con Chromium correctos; servidor propio retirado, datos originales intactos. Evidencia en sección 25 del hito.
+
+
+### 24-10-2026 — S7-07: aprobación y cierre de sesión visible
+
+El usuario confirmó sesiones simultáneas del mismo usuario en dos navegadores y cierre remoto de la otra sesión: S7-07 aprobado. Se incorpora un botón permanente en la barra superior para cerrar la sesión actual desde cualquier sección del ERP: texto en escritorio, icono de salida con nombre accesible y título en pantallas pequeñas. Usa la operación de cierre existente, impide envíos repetidos mientras responde, notifica errores y recarga el documento hacia el login al confirmar. Mi acceso conserva su botón. Revisión de visibilidad por el usuario pendiente; S7 general sigue abierto.
+
+Validación del ajuste: `pnpm lint`, `pnpm build` y revisión del diff correctos. No se iniciaron servidores ni se modificó la base de datos; revisión visual/funcional del botón por el usuario pendiente.
+
+
+### 24-10-2026 — Aprobaciones funcionales S7
+
+El usuario confirma S7-02/S7-03/S7-06/S7-07 y aprueba S7-09. Se consideran resueltas las observaciones de retorno al login, avisos visibles, diálogo administrativo y cierre visible de sesión. Con las aprobaciones anteriores, quedan aprobados S7-01/02/03/05/06/07/09. Pendientes S7-04/08/10/11/12 según la [guía](GUIA-PRUEBAS-SEGURIDAD-S7.md); S7 sigue abierto. Esta actualización sólo registra resultados del usuario: revisión de contenido, referencias y diff, sin ejecutar pruebas de aplicación, servidores ni operaciones en base.
+
+
+### 24-10-2026 — Cobranzas C1
+
+- [x] Pantalla de cuentas con búsqueda, filtros, totales y paginación PostgreSQL; deuda y vencimiento separados.
+- [x] Detalle sobre listado con factura, promesa y abonos paginados/anulados; cierre conserva filtros.
+- [x] Contenedor relativo para tabla desplazable y barra superior compacta en anchos intermedios, conservando búsqueda/cierre accesibles.
+- [x] Lint/build, integración C1, roles S4 y Chromium C1 (320/375/768/1440) correctos. Ver checkpoint en `HITO-COBRANZAS.md`.
+- [ ] Revisión funcional C1. Registro/anulación de abonos C2, comprobantes/promesas C3 y cierre C4 pendientes.
+
+
+### 24-10-2026 — Cobranzas C2
+
+- [x] C1 aprobado por el usuario.
+- [x] Registrar abono y anular con motivo desde el detalle, sólo Cobranza/Administrador.
+- [x] Revisión antes de confirmar, avisos y datos/UUID conservados con reintento ante respuesta incierta; errores confirmados permiten editar.
+- [x] Lint/build/tipos, coberturas de seguridad e integración/Chromium correctos. Evidencia final y guía en sección 8 de HITO-COBRANZAS.md.
+- [ ] Aprobación funcional C2. C3 comprobantes/promesas y C4 cierre pendientes.
+
+
+### 24-10-2026 — Cobranzas C3
+
+- [x] C2 aprobado por el usuario.
+- [x] Comprobante opcional al registrar y adjuntos posteriores con conservación de anteriores, revisión/reintento y descarga privada.
+- [x] Cambio/quita de promesa con motivo, control de concurrencia e historial paginado, sin alterar vencimiento.
+- [x] Lint/build/tipos/Prisma, coberturas S4/S5 y regresiones C1/C2/C3/Chromium correctos en copia; UUID separados para pago y adjunto.
+- [x] C1/C2 operativos mientras no exista la migración C3; nuevas funciones protegidas por disponibilidad del esquema.
+- [x] Habilitación local: usuario autorizó y se aplicó C3 con respaldo restaurado/verificado y comparación de las 80 tablas previas intactas. Ver sección 9 de HITO-COBRANZAS.md.
+- [ ] Aprobación funcional C3 y cierre C4.
+
+
+### 24-10-2026 — Cobranzas C4
+
+- [x] Enlaces de cuenta desde OCC/OT/guías para perfiles financieros; sin enlace para obra propia ni Producción sin rol financiero.
+- [x] Detalle por OCC existente, sin duplicar deuda y conservando historiales/paginación.
+- [x] Resumen agregado protegido preparado para Dashboard posterior; pantalla de Dashboard sin implementar aún.
+- [x] Guía funcional/operativa de Cobranzas y prueba integral/Chromium con regresiones C1/C2/C3 correctas (2/2), lint/build/coberturas correctos.
+- [ ] Revisión funcional C3/C4 y cierre expreso de Cobranzas por el usuario.
+
+
+### 24-10-2026 — Dashboard real y avisos
+
+- [x] Decisiones D-D01–D-D07 aprobadas, hito y guía de lectura preparados.
+- [x] Indicadores reales por permiso, OT activas/borradores, cotizaciones vigentes/vencidas y próximas, deuda desde cuentas y stock bajo por combinación.
+- [x] Consumo pendiente/físico/reservas/libre/faltante por material/bodega y movimientos de materia prima/terminado.
+- [x] Gráfico de cohortes cotizado/contratado de seis meses con tabla accesible y ceros, sin nuevas dependencias.
+- [x] Campana de avisos internos por permisos en layout; sin correos ni estado leído/no leído.
+- [x] Lint/build/tipos, escenario Dashboard, cobertura y regresión S4 correctos; seis roles, tablas/gráfico y 320/375/768/1440. Copias/servidores retirados; origen/archivos intactos.
+- [ ] Revisión funcional D1–D5, rendimiento con volumen representativo y cierre expreso. Checkpoint en HITO-DASHBOARD.md.
+
+
+### 24-10-2026 — Manual/usabilidad: primera entrega
+
+- [x] Manual transversal por tarea/perfil, guía de orientación desde README y revisión priorizada con evidencia.
+- [x] Crear/Ver trabajo en OCC según permisos productivos de operación/lectura; Preparar otra entrega sólo con operación de guías.
+- [x] Lint/build y escenario C4 ampliado/Chromium correctos en copia; enlaces y anclas del manual verificados.
+- [ ] Capturas completamente anonimizadas, ayuda integrada en ERP, revisión de acciones/teclado/móvil con usuarios y aprobación funcional.
+
+Continuidad: HITO-MANUAL-USABILIDAD.md y REVISION-USABILIDAD-V1.md. No se da por completada la facilidad de uso sólo por publicar el manual.
+
+
+### 26-10-2026 — Alta de materia prima en Compras
+
+- [x] Crear materia prima desde un detalle editable mediante formulario compartido y selector buscable de unidad.
+- [x] Mantener datos del documento y seleccionar el material recién creado sin navegar al mantenedor.
+- [x] Respetar permisos y bloqueo estructural de compra; explicar persistencia del catálogo y ausencia de stock.
+- [ ] Aprobación funcional del usuario para este nuevo flujo (ver HITO-COMPRAS.md).
+
+
+### 26-10-2026 — Proveedores y Clientes desde documentos
+
+- [x] Crear proveedor desde Compras y cliente con sucursales desde Cotizaciones mediante formularios compartidos.
+- [x] Selección automática, preservación de borradores y permisos vigentes; consulta y documentos bloqueados sin acciones de alta.
+- [ ] Revisión funcional del usuario y comprobación visual de diálogos/sucursales con teclado y móvil.
+
+
+### 26-10-2026 — Cotizaciones con precios netos
+
+- [x] Etiquetas Precio unitario neto, Subtotal neto, NETO, IVA y TOTAL; descuento sobre neto y vista previa coherente con servidor.
+- [x] Avisos para documentos históricos y conversión de precios al corregir una oferta antigua.
+- [x] OCC y PDF distinguen modalidad histórica/neto; PDF v2 conserva versiones previas.
+- [ ] Revisión funcional/visual del usuario, incluidas cotizaciones nuevas e históricas.
+
+
+### 27-10-2026 — Detalles de Compras en grilla
+
+- [x] Agregar detalle mediante diálogo, con verificación de servidor e incorporación a grilla legible con cantidades/importes.
+- [x] Ver/Editar/Quitar, confirmación al quitar, descarte de edición, foco de retorno y desplazamiento horizontal de tabla.
+- [x] Conservar Crear materia prima dentro del detalle y restricciones comerciales de las líneas guardadas/bloqueadas.
+- [ ] Revisión del usuario de los flujos, teclado y móvil. El build continúa limitado por permisos internos de Turbopack.
+
+
+### 27-10-2026 — Inventario transversal de detalles
+
+- [x] Documento [HITO-GRILLAS-DETALLE.md](HITO-GRILLAS-DETALLE.md): grillas existentes, bloques pendientes, prioridades, restricciones y criterios de aceptación.
+- [ ] Implementar y validar las etapas propuestas GD1–GD7. Esta actualización no modifica la aplicación.

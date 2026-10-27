@@ -1,3 +1,5 @@
+import { anotarMutacion } from "@/lib/seguridad/autoria";
+import { exigirAcceso, exigirAccesoEnTransaccion } from "@/lib/seguridad/acceso";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
 import { normalizarRut } from "@/lib/validaciones/rut";
@@ -5,6 +7,8 @@ import { cuentaBancariaSchema, referenciaCuentaSchema, referenciaPrincipalSchema
 import type { CuentaBancaria, ResultadoCuentaBancaria } from "@/lib/tipos/cuenta-bancaria";
 const seleccion = { id: true, bankName: true, accountType: true, accountNumber: true, holderName: true, holderRut: true, email: true, isActive: true, isPrimary: true, version: true, createdAt: true, updatedAt: true, _count: { select: { quotes: true } } } satisfies Prisma.CompanyBankAccountSelect;
 export async function listarCuentasBancarias(): Promise<CuentaBancaria[]> {
+  await exigirAcceso("configuracion.leer");
+
   const filas = await prisma.companyBankAccount.findMany({ where: { companyId: 1 }, select: seleccion, orderBy: [{ isPrimary: "desc" }, { isActive: "desc" }, { id: "asc" }] });
   return filas.map(({ createdAt, updatedAt, _count, ...f }) => ({ ...f, createdAt: createdAt.toISOString(), updatedAt: updatedAt.toISOString(), cotizaciones: _count.quotes }));
 }
@@ -23,29 +27,37 @@ function errorOperacion(error: unknown): ResultadoCuentaBancaria {
   return { ok: false, mensaje: "No se pudo completar la operación. Revisa la conexión y actualiza el listado." };
 }
 export async function guardarCuentaBancaria(datos: unknown, referencia?: unknown): Promise<ResultadoCuentaBancaria> {
+  await exigirAcceso("configuracion.operar");
+
   const validacion = cuentaBancariaSchema.safeParse(datos);
   if (!validacion.success) return { ok: false, mensaje: validacion.error.issues[0].message };
   const ref = referencia === undefined ? undefined : referenciaCuentaSchema.safeParse(referencia);
   if (ref && !ref.success) return { ok: false, mensaje: "La referencia de la cuenta no es válida." };
   try {
     return await prisma.$transaction(async tx => {
+      await exigirAccesoEnTransaccion(tx, "configuracion.operar");
+
       await bloquearEmpresa(tx);
       const datos = { ...validacion.data, holderRut: normalizarRut(validacion.data.holderRut), email: validacion.data.email || null };
-      if (ref?.success) await tx.companyBankAccount.update({ where: { ...ref.data, companyId: 1 }, data: { ...datos, version: { increment: 1 } } });
+      if (ref?.success) await anotarMutacion(tx, "companyBankAccount", "update", await tx.companyBankAccount.update({ where: { ...ref.data, companyId: 1 }, data: { ...datos, version: { increment: 1 } } }));
       else {
         const principal = await tx.companyBankAccount.findFirst({ where: { companyId: 1, isPrimary: true } });
         // Primera cuenta principal: no crear un perfil ni datos bancarios ficticios.
-        await tx.companyBankAccount.create({ data: { ...datos, companyId: 1, isPrimary: !principal } });
+        await anotarMutacion(tx, "companyBankAccount", "create", await tx.companyBankAccount.create({ data: { ...datos, companyId: 1, isPrimary: !principal } }));
       }
       return { ok: true, mensaje: ref ? "Cuenta bancaria actualizada." : "Cuenta bancaria creada." };
     });
   } catch (error) { return errorOperacion(error); }
 }
 export async function marcarCuentaPrincipal(referencia: unknown): Promise<ResultadoCuentaBancaria> {
+  await exigirAcceso("configuracion.operar");
+
   const ref = referenciaPrincipalSchema.safeParse(referencia);
   if (!ref.success) return { ok: false, mensaje: "La referencia de la cuenta no es válida." };
   try {
     return await prisma.$transaction(async tx => {
+      await exigirAccesoEnTransaccion(tx, "configuracion.operar");
+
       await bloquearEmpresa(tx);
       const cuenta = await tx.companyBankAccount.findUniqueOrThrow({ where: { id: ref.data.id, companyId: 1, version: ref.data.version } });
       const anterior = await tx.companyBankAccount.findFirst({ where: { companyId: 1, isPrimary: true } });
@@ -54,28 +66,34 @@ export async function marcarCuentaPrincipal(referencia: unknown): Promise<Result
       if (cuenta.isPrimary) return { ok: true, mensaje: "La cuenta ya es principal." };
       // Liberar el índice único antes de marcar la nueva principal; el trigger diferido
       // exige una principal al confirmar y un fallo revierte ambas escrituras.
-      if (anterior) await tx.companyBankAccount.update({ where: { id: anterior.id }, data: { isPrimary: false, version: { increment: 1 } } });
-      await tx.companyBankAccount.update({ where: { id: cuenta.id }, data: { isPrimary: true, version: { increment: 1 } } });
+      if (anterior) await anotarMutacion(tx, "companyBankAccount", "update", await tx.companyBankAccount.update({ where: { id: anterior.id }, data: { isPrimary: false, version: { increment: 1 } } }));
+      await anotarMutacion(tx, "companyBankAccount", "update", await tx.companyBankAccount.update({ where: { id: cuenta.id }, data: { isPrimary: true, version: { increment: 1 } } }));
       return { ok: true, mensaje: "Cuenta principal actualizada. Los documentos anteriores conservan sus datos." };
     });
   } catch (error) { return errorOperacion(error); }
 }
 export async function cambiarEstadoCuenta(referencia: unknown, activa: unknown): Promise<ResultadoCuentaBancaria> {
+  await exigirAcceso("configuracion.operar");
+
   const ref = referenciaCuentaSchema.safeParse(referencia);
   if (!ref.success || typeof activa !== "boolean") return { ok: false, mensaje: "La referencia o estado no es válido." };
   try {
     return await prisma.$transaction(async tx => {
+      await exigirAccesoEnTransaccion(tx, "configuracion.operar");
+
       await bloquearEmpresa(tx);
       const cuenta = await tx.companyBankAccount.findUniqueOrThrow({ where: { ...ref.data, companyId: 1 } });
       if (!activa && cuenta.isPrimary) return { ok: false, mensaje: "Selecciona otra cuenta principal antes de desactivar esta cuenta." };
       if (cuenta.isActive === activa) return { ok: true, mensaje: "La cuenta ya tiene ese estado." };
-      await tx.companyBankAccount.update({ where: { id: cuenta.id }, data: { isActive: activa, version: { increment: 1 } } });
+      await anotarMutacion(tx, "companyBankAccount", "update", await tx.companyBankAccount.update({ where: { id: cuenta.id }, data: { isActive: activa, version: { increment: 1 } } }));
       return { ok: true, mensaje: activa ? "Cuenta activada." : "Cuenta desactivada; su historial se conserva." };
     });
   } catch (error) { return errorOperacion(error); }
 }
 /** Para el futuro formulario: sólo cuentas activas, con búsqueda en el selector cliente. */
 export async function listarCuentasParaCotizacion() {
+  await exigirAcceso("configuracion.leer");
+
   return (await listarCuentasBancarias()).filter(c => c.isActive);
 }
 /** Crear el snapshot dentro de la transacción de la cotización. Omitir ID usa la principal;

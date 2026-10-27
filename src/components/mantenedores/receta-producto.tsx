@@ -1,4 +1,5 @@
 "use client";
+import { Permiso } from "@/components/seguridad/permisos";
 import { formatearCantidad } from "@/lib/formato";
 
 import { useRef, useState } from "react";
@@ -126,7 +127,7 @@ export function RecetaProducto({ lineas, materiales, unidadProducto, consulta, p
                 <TableCell><div className="flex gap-1">
                   <BotonConAyuda type="button" variant="ghost" size="sm" aria-label={`Ver material ${nombre}`} ayuda="Consulta la cantidad y unidad de esta materia prima." disabled={pendiente} onClick={() => abrir("ver", linea)}><Eye /><span className="sr-only sm:not-sr-only">Ver</span></BotonConAyuda>
                   {!consulta && <>
-                    <BotonConAyuda type="button" variant="ghost" size="sm" aria-label={`Editar material ${nombre}`} ayuda="Edita esta fila sin salir del producto." disabled={pendiente} onClick={() => abrir("editar", linea)}><Pencil /><span className="sr-only sm:not-sr-only">Editar</span></BotonConAyuda>
+                    <Permiso permiso="catalogos.operar"><BotonConAyuda type="button" variant="ghost" size="sm" aria-label={`Editar material ${nombre}`} ayuda="Edita esta fila sin salir del producto." disabled={pendiente} onClick={() => abrir("editar", linea)}><Pencil /><span className="sr-only sm:not-sr-only">Editar</span></BotonConAyuda></Permiso>
                     <BotonConAyuda type="button" variant="ghost" size="sm" aria-label={`Quitar material ${nombre}`} ayuda="Quita esta materia prima del borrador con confirmación." disabled={pendiente} onClick={() => onQuitar(linea.uid)}><Trash2 /><span className="sr-only sm:not-sr-only">Quitar</span></BotonConAyuda>
                   </>}
                 </div></TableCell>

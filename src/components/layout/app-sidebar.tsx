@@ -1,10 +1,11 @@
 "use client";
+import { useRoles, Permiso } from "@/components/seguridad/permisos";
 
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronDown, Hexagon, Settings2, X } from "lucide-react";
-import { navegacion, rutaEstaActiva } from "@/config/navegacion";
+import { navegacionPermitida, rutaEstaActiva } from "@/config/navegacion";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
@@ -14,6 +15,8 @@ import {
 } from "@/components/ui/sidebar";
 
 export function AppSidebar() {
+  const roles = useRoles();
+  const navegacion = navegacionPermitida(roles);
   const pathname = usePathname();
   const { state, setOpenMobile, isMobile } = useSidebar();
   const [gruposAbiertos, setGruposAbiertos] = useState<Record<string, boolean>>({});
@@ -64,7 +67,7 @@ export function AppSidebar() {
           })}
         </nav>
       </SidebarContent>
-      <SidebarFooter className="border-t border-border p-2">
+      <Permiso permiso="configuracion.leer"><SidebarFooter className="border-t border-border p-2">
         <SidebarMenu><SidebarMenuItem>
           <SidebarMenuButton asChild tooltip="Configurar empresa" className="h-12">
             <Link href="/configuracion/empresa" onClick={cerrarEnMovil}>
@@ -73,7 +76,7 @@ export function AppSidebar() {
             </Link>
           </SidebarMenuButton>
         </SidebarMenuItem></SidebarMenu>
-      </SidebarFooter>
+      </SidebarFooter></Permiso>
     </Sidebar>
   );
 }

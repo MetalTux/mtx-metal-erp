@@ -1,3 +1,4 @@
+import { exigirAcceso } from "@/lib/seguridad/acceso";
 import { consultarAjustes } from "@/lib/consultas/ajustes-inventario";
 import { listarCatalogosInventario } from "@/lib/consultas/inventario";
 import { AjustesInventario } from "@/components/inventario/ajustes-inventario";
@@ -6,6 +7,8 @@ export default async function Page({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  await exigirAcceso("ajustes.leer");
+
   const entrada = await searchParams;
   const [consulta, catalogos] = await Promise.all([
     consultarAjustes(entrada),

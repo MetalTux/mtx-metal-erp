@@ -1,4 +1,10 @@
 "use client";
+import { AltaProveedor } from "@/components/mantenedores/altas-desde-documento";
+import { Permiso } from "@/components/seguridad/permisos";
+import { FormularioMaterial } from "@/components/mantenedores/materiales";
+import { guardarDatosMaterial } from "@/app/(app)/mantenedores/materiales/actions";
+import type { DatosMaterial } from "@/lib/validaciones/material";
+import type { ResultadoMaterial } from "@/lib/tipos/material";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -44,6 +50,7 @@ import {
   obtenerCompra,
   guardarDatosCompra,
   calcularDatosCompra,
+  calcularDetalleCompra,
   eliminarDatosCompra,
 } from "@/app/(app)/compras/actions";
 import { formatearCantidad, formatearFecha } from "@/lib/formato";
@@ -132,7 +139,7 @@ function FormularioCompra({
           documentTypeId: 0,
           documentNumber: "",
           warehouseId: 0,
-          lines: [nuevaLinea()],
+          lines: [],
         },
   );
   const [clave] = useState(() => crypto.randomUUID());
@@ -142,6 +149,64 @@ function FormularioCompra({
   const [confirmar, setConfirmar] = useState(false);
   const [descarte, setDescarte] = useState(false);
   const [sucio, setSucio] = useState(false);
+  const [altaProveedor, setAltaProveedor] = useState(false);
+  const [proveedoresNuevos, setProveedoresNuevos] = useState<CatalogosCompra["proveedores"]>([]);
+  const proveedores = [...catalogos.proveedores, ...proveedoresNuevos.filter(nuevo => !catalogos.proveedores.some(actual => actual.id === nuevo.id))].sort((a, b) => a.name.localeCompare(b.name, "es-CL"));
+  const [detalle, setDetalle] = useState<{ indice?: number; linea: DatosCompra["lines"][number]; consulta: boolean; modificado: boolean }>();
+  const [validandoDetalle, setValidandoDetalle] = useState(false);
+  const [importesDetalle, setImportesDetalle] = useState<Record<string, { importe: string; cantidad: string }>>({});
+  const [errorDetalle, setErrorDetalle] = useState<string>();
+  const [descartarDetalle, setDescartarDetalle] = useState(false);
+  const [quitarDetalle, setQuitarDetalle] = useState<number>();
+  const botonAgregarDetalle = useRef<HTMLButtonElement>(null);
+  const retornoDetalle = useRef<HTMLElement | null>(null);
+  function abrirDetalle(indice?: number, soloLectura = false) {
+    retornoDetalle.current = document.activeElement as HTMLElement;
+    setErrorDetalle(undefined);
+    setDetalle({ indice, linea: indice === undefined ? nuevaLinea() : { ...datos.lines[indice] }, consulta: soloLectura, modificado: false });
+  }
+  function cerrarDetalle() {
+    if (lineaMaterial !== undefined || creandoMaterial || validandoDetalle || descartarDetalle) return;
+    if (detalle?.modificado && !detalle.consulta) setDescartarDetalle(true);
+    else setDetalle(undefined);
+  }
+  function modificarDetalle(parte: Partial<DatosCompra["lines"][number]>) {
+    setDetalle(actual => actual ? { ...actual, linea: { ...actual.linea, ...parte }, modificado: true } : actual);
+    setErrorDetalle(undefined);
+  }
+  async function aceptarDetalle() {
+    if (!detalle || detalle.consulta || bloqueada || lineaMaterial !== undefined || validandoDetalle) return;
+    setValidandoDetalle(true);
+    try {
+      const resultado = await calcularDetalleCompra(detalle.linea);
+      if (!resultado.ok) { setErrorDetalle(resultado.mensaje); return; }
+      setImportesDetalle(anteriores => ({ ...anteriores, [JSON.stringify(resultado.linea)]: { importe: resultado.importe, cantidad: resultado.cantidad } }));
+      cambiar("lines", detalle.indice === undefined ? [...datos.lines, resultado.linea] : datos.lines.map((linea, indice) => indice === detalle.indice ? resultado.linea : linea));
+      setDetalle(undefined);
+    } catch { setErrorDetalle("No se pudo verificar el detalle. Conservamos sus datos para reintentar."); }
+    finally { setValidandoDetalle(false); }
+  }
+  const [lineaMaterial, setLineaMaterial] = useState<number>();
+  const [creandoMaterial, setCreandoMaterial] = useState(false);
+  const [materialesNuevos, setMaterialesNuevos] = useState<CatalogosCompra["materiales"]>([]);
+  const materiales = [...catalogos.materiales, ...materialesNuevos.filter(nuevo => !catalogos.materiales.some(actual => actual.id === nuevo.id))]
+    .sort((a, b) => a.name.localeCompare(b.name, "es-CL"));
+  async function crearMaterial(valores: DatosMaterial): Promise<ResultadoMaterial> {
+    setCreandoMaterial(true);
+    try {
+      const resultado = await guardarDatosMaterial(valores);
+      if (resultado.ok && resultado.material) {
+        const material = resultado.material;
+        setMaterialesNuevos(anteriores => [...anteriores, { id: material.id, code: material.code, name: material.name, unidad: material.unidad.abbreviation }]);
+        modificarDetalle({ rawMaterialId: material.id });
+        setLineaMaterial(undefined);
+        notificar.exito("Materia prima creada y seleccionada. Completa la compra para registrarla.");
+      }
+      return resultado;
+    } catch {
+      return { ok: false, mensaje: "No se pudo confirmar la creación. Busca el código en Materias primas antes de reintentar; la compra conserva sus datos." };
+    } finally { setCreandoMaterial(false); }
+  }
   function cambiar<K extends keyof DatosCompra>(
     campo: K,
     valor: DatosCompra[K],
@@ -151,11 +216,12 @@ function FormularioCompra({
     setCalculo(undefined);
   }
   function cerrar() {
-    if (ocupado) return;
+    if (ocupado || detalle || quitarDetalle !== undefined || lineaMaterial !== undefined || altaProveedor) return;
     if (sucio && !consulta) setDescarte(true);
     else onCerrar();
   }
   async function preparar() {
+    if (detalle || quitarDetalle !== undefined) return;
     setError(undefined);
     const v = compraSchema.safeParse(datos);
     if (!v.success) {
@@ -285,7 +351,10 @@ function FormularioCompra({
               />
             )}
             <div className="grid min-w-0 gap-4 sm:grid-cols-2">
-              {selector("supplierId", "Proveedor", catalogos.proveedores)}
+              <div className="min-w-0 space-y-2">
+                {selector("supplierId", "Proveedor", proveedores)}
+                {!bloqueada && <Permiso permiso="compras.operar"><Permiso permiso="proveedores.operar"><Button type="button" variant="outline" size="sm" disabled={ocupado} onClick={() => setAltaProveedor(true)}><Plus aria-hidden="true" /> Crear proveedor</Button></Permiso></Permiso>}
+              </div>
               {selector("documentTypeId", "Tipo de documento", catalogos.tipos)}
               <div className="space-y-2">
                 <div className="flex items-center gap-1">
@@ -323,178 +392,34 @@ function FormularioCompra({
                 />
               </div>
             </div>
-            <div className="space-y-4">
-              {datos.lines.map((l, i) => (
-                <fieldset
-                  key={l.id ?? `nueva-${i}`}
-                  className="min-w-0 space-y-3 rounded-md border border-border p-4"
-                  disabled={ocupado}
-                >
-                  <legend className="px-1 text-sm font-medium">
-                    Detalle {i + 1}
-                  </legend>
-                  <div className="grid min-w-0 gap-3 sm:grid-cols-2">
-                    <div className="min-w-0 space-y-2">
-                      <div className="flex items-center gap-1">
-                        <Label htmlFor={`material-${i}`}>
-                          Materia prima {i + 1}
-                        </Label>
-                        <AyudaCampo
-                          nombre={`Materia prima ${i + 1}`}
-                          texto="Selecciona el material comprado. Su unidad de inventario ya está definida en Materias primas; el contenido de la presentación se expresa en esa unidad."
-                        />
-                      </div>
-                      <SelectorBuscable
-                        id={`material-${i}`}
-                        nombre={`materia prima ${i + 1}`}
-                        opciones={catalogos.materiales.map((m) => ({
-                          valor: String(m.id),
-                          etiqueta: `${m.code} · ${m.name} (${m.unidad})`,
-                        }))}
-                        valor={String(l.rawMaterialId || "")}
-                        onChange={(v) =>
-                          cambiar(
-                            "lines",
-                            datos.lines.map((a, n) =>
-                              n === i ? { ...a, rawMaterialId: Number(v) } : a,
-                            ),
-                          )
-                        }
-                        placeholder="Seleccionar materia prima"
-                        disabled={bloqueada || ocupado}
-                      />
-                    </div>
-                    {(
-                      [
-                        ["presentation", "Presentación de compra"],
-                        ["purchasedQuantity", "Cantidad de presentaciones"],
-                        [
-                          "unitFactor",
-                          "Unidades del material por presentación",
-                        ],
-                        ["unitPrice", "Precio por presentación"],
-                      ] as const
-                    ).map(([campo, titulo]) => (
-                      <div key={campo} className="space-y-2">
-                        <div className="flex items-center gap-1">
-                          <Label htmlFor={`${campo}-${i}`}>
-                            {titulo} {i + 1}
-                          </Label>
-                          <AyudaCampo
-                            nombre={`${titulo} ${i + 1}`}
-                            texto={ayudas[campo]}
-                          />
-                        </div>
-                        {campo === "presentation" ? (
-                          <TextoAutocompletable
-                            id={`${campo}-${i}`}
-                            valor={l.presentation}
-                            opciones={catalogos.presentaciones}
-                            readOnly={bloqueada}
-                            disabled={ocupado}
-                            onChange={(valor) =>
-                              cambiar(
-                                "lines",
-                                datos.lines.map((a, n) =>
-                                  n === i ? { ...a, presentation: valor } : a,
-                                ),
-                              )
-                            }
-                          />
-                        ) : (
-                          <Input
-                            id={`${campo}-${i}`}
-                            inputMode="decimal"
-                            value={l[campo]}
-                            readOnly={
-                              bloqueada ||
-                              (campo === "unitPrice" && Boolean(l.id))
-                            }
-                            onChange={(e) =>
-                              cambiar(
-                                "lines",
-                                datos.lines.map((a, n) =>
-                                  n === i
-                                    ? { ...a, [campo]: e.target.value }
-                                    : a,
-                                ),
-                              )
-                            }
-                          />
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Contenido expresado en{" "}
-                    {catalogos.materiales.find((m) => m.id === l.rawMaterialId)
-                      ?.unidad ?? "la unidad del material"}
-                    . {l.id && "Precio guardado: no editable."}
-                  </p>
-                  <EquivalenciaCompra
-                    cantidad={l.purchasedQuantity}
-                    factor={l.unitFactor}
-                    presentacion={l.presentation}
-                    unidad={
-                      catalogos.materiales.find((m) => m.id === l.rawMaterialId)
-                        ?.unidad ?? "unidad del material"
-                    }
-                  />
-                  {calculo && (
-                    <p className="text-sm tabular-nums">
-                      Equivalente:{" "}
-                      {formatearCantidad(calculo.lineas[i].cantidad)} · Importe:{" "}
-                      {dinero(calculo.lineas[i].importe)}
-                    </p>
-                  )}
-                  {consulta && c && (
-                    <div className="space-y-1 text-sm">
-                      <p>
-                        Importe: {dinero(c.lines[i].lineAmount)} · Equivalente:{" "}
-                        {formatearCantidad(c.lines[i].quantity)}{" "}
-                        {c.lines[i].unidad}
-                      </p>
-                      <p>
-                        Recibido: {c.lines[i].recibido} · Cerrado:{" "}
-                        {c.lines[i].cerrado} · Pendiente: {c.lines[i].pendiente}{" "}
-                        presentaciones
-                      </p>
-                      <Link
-                        className="text-primary underline"
-                        href={`/inventario/movimientos?material=${l.rawMaterialId}&bodega=${c.warehouseId}`}
-                      >
-                        Ver movimientos del material en esta bodega
-                      </Link>
-                    </div>
-                  )}
-                  {!bloqueada && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      disabled={datos.lines.length <= 1}
-                      onClick={() =>
-                        cambiar(
-                          "lines",
-                          datos.lines.filter((_, n) => n !== i),
-                        )
-                      }
-                    >
-                      Quitar detalle {i + 1}
-                    </Button>
-                  )}
-                </fieldset>
-              ))}
-            </div>
-            {!bloqueada && (
-              <Button
-                type="button"
-                variant="outline"
-                disabled={ocupado || datos.lines.length >= 50}
-                onClick={() => cambiar("lines", [...datos.lines, nuevaLinea()])}
-              >
-                Agregar detalle
-              </Button>
-            )}
+            <section className="min-w-0 space-y-3" aria-label="Detalles de compra">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h3 className="font-medium">Detalles de compra ({datos.lines.length})</h3>
+                {!bloqueada && <Permiso permiso="compras.operar"><Button ref={botonAgregarDetalle} type="button" variant="outline" disabled={ocupado || datos.lines.length >= 50} onClick={() => abrirDetalle()}><Plus aria-hidden="true" /> Agregar detalle de compra</Button></Permiso>}
+              </div>
+              <div className="overflow-x-auto rounded-md border border-border" role="region" aria-label="Grilla de detalles" tabIndex={0}>
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/40 text-left"><tr>{["Materia prima", "Presentación", "Cantidad", "Contenido por presentación", "Cantidad de inventario", "Precio por presentación", "Importe", "Acciones"].map(titulo => <th key={titulo} scope="col" className="whitespace-nowrap p-3 font-medium">{titulo}</th>)}</tr></thead>
+                  <tbody>{datos.lines.map((linea, indice) => {
+                    const material = materiales.find(m => m.id === linea.rawMaterialId);
+                    const importe = importesDetalle[JSON.stringify(linea)]?.importe ?? calculo?.lineas[indice]?.importe ?? (linea.id && c?.lines.find(l => l.id === linea.id && l.purchasedQuantity === linea.purchasedQuantity)?.lineAmount);
+                    return <tr key={linea.id ?? `nueva-${indice}`} className="border-t border-border align-top">
+                      <td className="min-w-48 p-3"><p className="font-medium">{material?.name ?? "Materia prima no disponible"}</p><p className="text-xs text-muted-foreground">{material?.code}</p></td>
+                      <td className="p-3">{linea.presentation}</td><td className="p-3 tabular-nums">{formatearCantidad(linea.purchasedQuantity)}</td>
+                      <td className="p-3 tabular-nums">{formatearCantidad(linea.unitFactor)} {material?.unidad}</td>
+                      <td className="p-3 tabular-nums">{formatearCantidad(importesDetalle[JSON.stringify(linea)]?.cantidad ?? calculo?.lineas[indice]?.cantidad ?? (linea.id ? c?.lines.find(l => l.id === linea.id)?.quantity : undefined) ?? "—")} {material?.unidad}</td><td className="whitespace-nowrap p-3 tabular-nums">{dinero(linea.unitPrice)}</td>
+                      <td className="whitespace-nowrap p-3 tabular-nums">{importe ? dinero(importe) : "Al revisar compra"}</td>
+                      <td className="p-3"><div className="flex gap-1">
+                        <Button type="button" variant="ghost" size="sm" disabled={ocupado} aria-label={`Ver detalle ${indice + 1}`} onClick={() => abrirDetalle(indice, true)}><Eye aria-hidden="true" /> Ver</Button>
+                        {!bloqueada && <Permiso permiso="compras.operar"><Button type="button" variant="ghost" size="sm" disabled={ocupado} aria-label={`Editar detalle ${indice + 1}`} onClick={() => abrirDetalle(indice)}><Pencil aria-hidden="true" /> Editar</Button><Button type="button" variant="ghost" size="sm" disabled={ocupado} aria-label={`Quitar detalle ${indice + 1}`} onClick={() => setQuitarDetalle(indice)}><Trash2 aria-hidden="true" /> Quitar</Button></Permiso>}
+                      </div></td>
+                    </tr>;
+                  })}</tbody>
+                </table>
+                {!datos.lines.length && <p className="p-4 text-sm text-muted-foreground">No hay detalles. Usa Agregar detalle de compra para ingresar los materiales comprados.</p>}
+              </div>
+              <p className="text-xs text-muted-foreground">Los importes y equivalencias se verifican en el servidor al revisar y guardar la compra. Agregar o quitar detalles aquí modifica sólo este borrador.</p>
+            </section>
             {consulta && c && (
               <div className="space-y-2">
                 <p className="font-medium">
@@ -543,14 +468,162 @@ function FormularioCompra({
                 {consulta ? "Cerrar" : "Cancelar"}
               </Button>
               {!consulta && (
-                <Button type="submit" disabled={ocupado}>
+                <Permiso permiso="compras.operar"><Button type="submit" disabled={ocupado}>
                   {ocupado ? "Verificando…" : "Revisar y guardar"}
-                </Button>
+                </Button></Permiso>
               )}
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
+      <Dialog open={Boolean(detalle)} onOpenChange={abierto => { if (!abierto) cerrarDetalle(); }}>
+        <DialogContent showCloseButton={false} className="max-h-[90dvh] overflow-y-auto sm:max-w-2xl" onEscapeKeyDown={evento => {
+          evento.preventDefault();
+          const destino = evento.target;
+          if (destino instanceof HTMLElement && destino.getAttribute("role") === "combobox" && destino.getAttribute("aria-expanded") === "true") return;
+          cerrarDetalle();
+        }} onInteractOutside={evento => evento.preventDefault()} onCloseAutoFocus={evento => { evento.preventDefault(); (retornoDetalle.current?.isConnected ? retornoDetalle.current : botonAgregarDetalle.current)?.focus(); }}>
+          <DialogHeader><DialogTitle>{detalle?.consulta ? "Ver detalle de compra" : detalle?.indice === undefined ? "Agregar detalle de compra" : "Editar detalle de compra"}</DialogTitle><DialogDescription>Indica presentación, cantidad, contenido y precio. Aceptar detalle verifica importes y equivalencias y lo incorpora al borrador; la compra se registra al confirmar el documento completo.</DialogDescription></DialogHeader>
+          {detalle && (() => { const l = detalle.linea, i = detalle.indice ?? datos.lines.length, historica = l.id ? c?.lines.find(linea => linea.id === l.id) : undefined; return <form className="space-y-4" onSubmit={evento => { evento.preventDefault(); evento.stopPropagation(); void aceptarDetalle(); }}>
+            {errorDetalle && <Aviso titulo={errorDetalle} />}
+                <fieldset
+                  key={l.id ?? `nueva-${i}`}
+                  className="min-w-0 space-y-3 rounded-md border border-border p-4"
+                  disabled={ocupado || validandoDetalle}
+                >
+                  <legend className="px-1 text-sm font-medium">
+                    Detalle {i + 1}
+                  </legend>
+                  <div className="grid min-w-0 gap-3 sm:grid-cols-2">
+                    <div className="min-w-0 space-y-2">
+                      <div className="flex items-center gap-1">
+                        <Label htmlFor={`material-${i}`}>
+                          Materia prima {i + 1}
+                        </Label>
+                        <AyudaCampo
+                          nombre={`Materia prima ${i + 1}`}
+                          texto="Selecciona el material comprado. Su unidad de inventario ya está definida en Materias primas; el contenido de la presentación se expresa en esa unidad."
+                        />
+                      </div>
+                      <SelectorBuscable
+                        id={`material-${i}`}
+                        nombre={`materia prima ${i + 1}`}
+                        opciones={materiales.map((m) => ({
+                          valor: String(m.id),
+                          etiqueta: `${m.code} · ${m.name} (${m.unidad})`,
+                        }))}
+                        valor={String(l.rawMaterialId || "")}
+                        onChange={(v) => modificarDetalle({ rawMaterialId: Number(v) })}
+                        placeholder="Seleccionar materia prima"
+                        disabled={detalle.consulta || ocupado}
+                      />
+                      {!detalle.consulta && <Permiso permiso="compras.operar"><Permiso permiso="catalogos.operar">
+                        <Button type="button" variant="outline" size="sm" disabled={ocupado} onClick={() => setLineaMaterial(i)}>
+                          <Plus aria-hidden="true" /> Crear materia prima
+                        </Button>
+                      </Permiso></Permiso>}
+                    </div>
+                    {(
+                      [
+                        ["presentation", "Presentación de compra"],
+                        ["purchasedQuantity", "Cantidad de presentaciones"],
+                        [
+                          "unitFactor",
+                          "Unidades del material por presentación",
+                        ],
+                        ["unitPrice", "Precio por presentación"],
+                      ] as const
+                    ).map(([campo, titulo]) => (
+                      <div key={campo} className="space-y-2">
+                        <div className="flex items-center gap-1">
+                          <Label htmlFor={`${campo}-${i}`}>
+                            {titulo} {i + 1}
+                          </Label>
+                          <AyudaCampo
+                            nombre={`${titulo} ${i + 1}`}
+                            texto={ayudas[campo]}
+                          />
+                        </div>
+                        {campo === "presentation" ? (
+                          <TextoAutocompletable
+                            id={`${campo}-${i}`}
+                            valor={l.presentation}
+                            opciones={catalogos.presentaciones}
+                            readOnly={detalle.consulta}
+                            disabled={ocupado}
+                            onChange={(valor) => modificarDetalle({ presentation: valor })}
+                          />
+                        ) : (
+                          <Input
+                            id={`${campo}-${i}`}
+                            inputMode="decimal"
+                            value={l[campo]}
+                            readOnly={
+                              detalle.consulta ||
+                              (campo === "unitPrice" && Boolean(l.id))
+                            }
+                            onChange={(e) => modificarDetalle({ [campo]: e.target.value })}
+                          />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Contenido expresado en{" "}
+                    {materiales.find((m) => m.id === l.rawMaterialId)
+                      ?.unidad ?? "la unidad del material"}
+                    . {l.id && "Precio guardado: no editable."}
+                  </p>
+                  {!detalle.consulta && <EquivalenciaCompra
+                    cantidad={l.purchasedQuantity}
+                    factor={l.unitFactor}
+                    presentacion={l.presentation}
+                    unidad={
+                      materiales.find((m) => m.id === l.rawMaterialId)
+                        ?.unidad ?? "unidad del material"
+                    }
+                  />}
+                  {detalle.consulta && historica && c && (
+                    <div className="space-y-1 text-sm">
+                      <p>
+                        Importe: {dinero(historica.lineAmount)} · Equivalente:{" "}
+                        {formatearCantidad(historica.quantity)}{" "}
+                        {historica.unidad}
+                      </p>
+                      <p>
+                        Recibido: {historica.recibido} · Cerrado:{" "}
+                        {historica.cerrado} · Pendiente: {historica.pendiente}{" "}
+                        presentaciones
+                      </p>
+                      <Link
+                        className="text-primary underline"
+                        href={`/inventario/movimientos?material=${l.rawMaterialId}&bodega=${c.warehouseId}`}
+                      >
+                        Ver movimientos del material en esta bodega
+                      </Link>
+                    </div>
+                  )}
+                </fieldset>
+            <DialogFooter><Button type="button" variant="outline" disabled={validandoDetalle} onClick={cerrarDetalle}>{detalle.consulta ? "Cerrar" : "Cancelar"}</Button>{!detalle.consulta && <Button type="submit" disabled={validandoDetalle}>{validandoDetalle ? "Verificando…" : "Aceptar detalle"}</Button>}</DialogFooter>
+          </form>; })()}
+        </DialogContent>
+      </Dialog>
+      <ConfirmarDescarte abierto={descartarDetalle} onAbiertoChange={setDescartarDetalle} onConfirmar={() => { setDescartarDetalle(false); setDetalle(undefined); }} />
+      <ConfirmarAccion abierto={quitarDetalle !== undefined} onAbiertoChange={abierto => { if (!abierto) setQuitarDetalle(undefined); }} titulo="Quitar detalle de compra" descripcion="Se quitará este detalle del borrador. La compra guardada sólo cambia al confirmar el documento completo." accion="Quitar detalle" pendiente={false} onConfirmar={() => { cambiar("lines", datos.lines.filter((_, indice) => indice !== quitarDetalle)); setQuitarDetalle(undefined); }} />
+      <Dialog open={lineaMaterial !== undefined} onOpenChange={abierto => { if (!abierto && !creandoMaterial) setLineaMaterial(undefined); }}>
+        <DialogContent className="max-h-[90dvh] overflow-y-auto" onEscapeKeyDown={evento => { if (creandoMaterial) evento.preventDefault(); }} onInteractOutside={evento => evento.preventDefault()}>
+          <DialogHeader>
+            <DialogTitle>Crear materia prima para el detalle {(lineaMaterial ?? 0) + 1}</DialogTitle>
+            <DialogDescription>Se guardará en el catálogo y se seleccionará en esta compra. Crear el material no ingresa stock. El material se conserva aunque canceles la compra.</DialogDescription>
+          </DialogHeader>
+          {lineaMaterial !== undefined && <FormularioMaterial editor={{ modo: "crear" }} unidades={catalogos.unidades} pendiente={creandoMaterial} onCerrar={() => setLineaMaterial(undefined)} onGuardar={crearMaterial} />}
+        </DialogContent>
+      </Dialog>
+      <AltaProveedor abierto={altaProveedor} onCerrar={() => setAltaProveedor(false)} onCreado={proveedor => {
+        setProveedoresNuevos(anteriores => [...anteriores, { id: proveedor.id, name: proveedor.name, rut: proveedor.rut }]);
+        cambiar("supplierId", proveedor.id);
+        setAltaProveedor(false);
+      }} />
       <ConfirmarAccion
         abierto={confirmar}
         onAbiertoChange={setConfirmar}
@@ -743,7 +816,7 @@ export function Compras({
           >
             <Eye />
           </BotonConAyuda>
-          <BotonConAyuda
+          <Permiso permiso="compras.operar"><BotonConAyuda
             variant="ghost"
             size="icon"
             aria-label={`Editar compra ${c.documentNumber}`}
@@ -752,7 +825,7 @@ export function Compras({
             onClick={() => void abrir(c, "editar")}
           >
             <Pencil />
-          </BotonConAyuda>
+          </BotonConAyuda></Permiso>
           <BotonConAyuda
             variant="ghost"
             size="icon"
@@ -783,7 +856,7 @@ export function Compras({
           >
             <ListX />
           </BotonConAyuda>
-          <BotonConAyuda
+          <Permiso permiso="compras.operar"><BotonConAyuda
             variant="ghost"
             size="icon"
             aria-label={`Anular compra ${c.documentNumber}`}
@@ -792,8 +865,8 @@ export function Compras({
             onClick={() => void abrir(c, "anular")}
           >
             <Ban />
-          </BotonConAyuda>
-          <BotonConAyuda
+          </BotonConAyuda></Permiso>
+          <Permiso permiso="compras.operar"><BotonConAyuda
             variant="ghost"
             size="icon"
             aria-label={`Eliminar compra ${c.documentNumber}`}
@@ -808,7 +881,7 @@ export function Compras({
             }
           >
             <Trash2 />
-          </BotonConAyuda>
+          </BotonConAyuda></Permiso>
         </div>
       ),
     },
@@ -832,7 +905,7 @@ export function Compras({
               <RefreshCw />
               Actualizar
             </BotonConAyuda>
-            <BotonConAyuda
+            <Permiso permiso="compras.operar"><BotonConAyuda
               ayuda="Registra una compra. El ingreso a stock se realiza después mediante Recibir."
               disabled={pendiente || cargando}
               onClick={() => {
@@ -842,7 +915,7 @@ export function Compras({
             >
               <Plus />
               Crear compra
-            </BotonConAyuda>
+            </BotonConAyuda></Permiso>
           </>
         }
       />

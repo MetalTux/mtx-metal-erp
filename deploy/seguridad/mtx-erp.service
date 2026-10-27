@@ -1,0 +1,26 @@
+[Unit]
+Description=MTX Metal ERP
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=mtx-erp
+Group=mtx-erp
+WorkingDirectory=/srv/mtx-metal-erp
+Environment=NODE_ENV=production
+Environment=PLAYWRIGHT_BROWSERS_PATH=/srv/mtx-metal-erp/var/chromium
+EnvironmentFile=/etc/mtx-metal-erp/erp.env
+ExecStart=/usr/bin/node node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3030
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/srv/mtx-metal-erp/var /srv/mtx-metal-erp/.next/cache
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

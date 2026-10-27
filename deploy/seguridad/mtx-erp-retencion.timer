@@ -1,0 +1,11 @@
+[Unit]
+Description=Retención diaria de eventos de seguridad MTX Metal ERP
+
+[Timer]
+OnCalendar=*-*-* 03:15:00 America/Santiago
+Persistent=true
+RandomizedDelaySec=300
+Unit=mtx-erp-retencion.service
+
+[Install]
+WantedBy=timers.target

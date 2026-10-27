@@ -1,3 +1,4 @@
+import { exigirAcceso } from "@/lib/seguridad/acceso";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
 import { filtrosTrasladosSchema } from "@/lib/validaciones/traslado";
@@ -25,6 +26,8 @@ export type FilaTraslado = {
   entradaId: number | null;
 };
 export async function consultarTraslados(entrada: unknown) {
+  await exigirAcceso("traslados.leer");
+
   const v = filtrosTrasladosSchema.safeParse(entrada);
   if (!v.success)
     return {

@@ -1,4 +1,5 @@
 "use client";
+import { Permiso } from "@/components/seguridad/permisos";
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -25,7 +26,7 @@ type Editor = { modo: "crear" | "ver" | "editar"; proveedor?: Proveedor };
 const buscarProveedor = (proveedor: Proveedor) => `${proveedor.name} ${proveedor.rut} ${normalizarRut(proveedor.rut).replace("-", "")} ${formatearRut(proveedor.rut)} ${proveedor.email ?? ""} ${proveedor.phone ?? ""}`;
 const fecha = (valor: string) => new Intl.DateTimeFormat("es-CL", { dateStyle: "short", timeStyle: "short", timeZone: "America/Santiago" }).format(new Date(valor));
 
-function FormularioProveedor({ editor, pendiente, onCerrar, onGuardar }: { editor: Editor; pendiente: boolean; onCerrar: () => void; onGuardar: (datos: DatosProveedor) => Promise<ResultadoProveedor> }) {
+export function FormularioProveedor({ editor, pendiente, onCerrar, onGuardar }: { editor: Editor; pendiente: boolean; onCerrar: () => void; onGuardar: (datos: DatosProveedor) => Promise<ResultadoProveedor> }) {
   const consulta = editor.modo === "ver";
   const [error, setError] = useState<string>();
   const { register, handleSubmit, setError: setErrorCampo, formState: { errors } } = useForm<DatosProveedor>({
@@ -51,7 +52,7 @@ function FormularioProveedor({ editor, pendiente, onCerrar, onGuardar }: { edito
       <p className="font-medium text-foreground">Compras asociadas: <span className="tabular-nums">{editor.proveedor.compras}</span></p>
       <p>Registro: {fecha(editor.proveedor.createdAt)}</p><p>Última actualización: {fecha(editor.proveedor.updatedAt)}</p>
     </div>}
-    <DialogFooter><Button type="button" variant="outline" disabled={pendiente} onClick={onCerrar}>{consulta ? "Cerrar" : "Cancelar"}</Button>{!consulta && <Button type="submit" disabled={pendiente}>{pendiente && <LoaderCircle className="animate-spin" aria-hidden="true" />}{pendiente ? "Guardando…" : editor.modo === "crear" ? "Crear proveedor" : "Guardar cambios"}</Button>}</DialogFooter>
+    <DialogFooter><Button type="button" variant="outline" disabled={pendiente} onClick={onCerrar}>{consulta ? "Cerrar" : "Cancelar"}</Button>{!consulta && <Permiso permiso="proveedores.operar"><Button type="submit" disabled={pendiente}>{pendiente && <LoaderCircle className="animate-spin" aria-hidden="true" />}{pendiente ? "Guardando…" : editor.modo === "crear" ? "Crear proveedor" : "Guardar cambios"}</Button></Permiso>}</DialogFooter>
   </form>;
 }
 
@@ -105,12 +106,12 @@ export function Proveedores({ proveedores }: { proveedores: Proveedor[] }) {
     { accessorKey: "compras", header: "Compras", cell: ({ row }) => <span className="tabular-nums">{row.original.compras}</span> },
     { id: "acciones", header: "Acciones", enableSorting: false, cell: ({ row }) => <div className="flex items-center gap-1">
       <Button variant="ghost" size="sm" disabled={pendiente} aria-label={`Ver ${row.original.name}`} onClick={() => abrir("ver", row.original.id)}><Eye aria-hidden="true" />Ver</Button>
-      <Button variant="ghost" size="sm" disabled={pendiente} aria-label={`Editar ${row.original.name}`} onClick={() => abrir("editar", row.original.id)}><Pencil aria-hidden="true" />Editar</Button>
-      <Button variant="ghost" size="sm" disabled={pendiente} className="hover:bg-destructive/15" aria-label={`Eliminar ${row.original.name}`} onClick={() => { recordarFoco(); setErrorEliminar(undefined); setAEliminar(row.original); }}><Trash2 className="text-destructive" aria-hidden="true" />Eliminar</Button>
+      <Permiso permiso="proveedores.operar"><Button variant="ghost" size="sm" disabled={pendiente} aria-label={`Editar ${row.original.name}`} onClick={() => abrir("editar", row.original.id)}><Pencil aria-hidden="true" />Editar</Button></Permiso>
+      <Permiso permiso="proveedores.operar"><Button variant="ghost" size="sm" disabled={pendiente} className="hover:bg-destructive/15" aria-label={`Eliminar ${row.original.name}`} onClick={() => { recordarFoco(); setErrorEliminar(undefined); setAEliminar(row.original); }}><Trash2 className="text-destructive" aria-hidden="true" />Eliminar</Button></Permiso>
     </div> },
   ];
   return <div className="space-y-6">
-    <PageHeader titulo="Proveedores" descripcion="Administra tus proveedores y sus datos de contacto." acciones={<Button ref={crearBoton} disabled={pendiente} className="h-9" onClick={() => { recordarFoco(); setEditor({ modo: "crear" }); }}><Plus aria-hidden="true" />Crear proveedor</Button>} />
+    <PageHeader titulo="Proveedores" descripcion="Administra tus proveedores y sus datos de contacto." acciones={<Permiso permiso="proveedores.operar"><Button ref={crearBoton} disabled={pendiente} className="h-9" onClick={() => { recordarFoco(); setEditor({ modo: "crear" }); }}><Plus aria-hidden="true" />Crear proveedor</Button></Permiso>} />
     <SectionCard titulo="Catálogo de proveedores" descripcion="Consulta el RUT, los datos de contacto y las compras asociadas." contentClassName="p-0">
       <DataTable datos={proveedores} columnas={columnas} textoBusqueda={buscarProveedor} filtroPlaceholder="Buscar por nombre, RUT o contacto…" nombre="proveedores" acciones={<Button variant="outline" size="sm" disabled={pendiente} onClick={() => router.refresh()}><RefreshCw aria-hidden="true" />Actualizar</Button>} vacio={<EmptyState icono={Truck} titulo="Todavía no hay proveedores" descripcion="Crea el primer proveedor para registrar tus compras." />} />
     </SectionCard>

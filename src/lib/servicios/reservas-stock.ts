@@ -1,3 +1,5 @@
+import { anotarMutacion } from "@/lib/seguridad/autoria";
+import { exigirAcceso, exigirAccesoEnTransaccion } from "@/lib/seguridad/acceso";
 import { formatearCantidad } from "@/lib/formato";
 import { createHash } from "node:crypto";
 import { z } from "zod";
@@ -45,8 +47,8 @@ async function preparar(tx: Prisma.TransactionClient, d: z.infer<typeof referenc
 async function registrar(tx: Prisma.TransactionClient, d: z.infer<typeof referencia>, type: "RESERVAR_STOCK" | "LIBERAR_RESERVA", fingerprint: string, beforeSnapshot: Prisma.JsonValue) {
   await tx.workOrder.update({ where: { id: d.workOrderId }, data: { version: { increment: 1 } } });
   const s = await snapshots(tx, d.workOrderId);
-  return tx.workOrderOperation.create({ data: { idempotencyKey: d.idempotencyKey, workOrderId: d.workOrderId, version: d.version + 1, type, fingerprint,
-    beforeSnapshot: beforeSnapshot as Prisma.InputJsonValue, afterSnapshot: s.plan, reservationSnapshot: s.reservations } });
+  return anotarMutacion(tx, "workOrderOperation", "create", await tx.workOrderOperation.create({ data: { idempotencyKey: d.idempotencyKey, workOrderId: d.workOrderId, version: d.version + 1, type, fingerprint,
+    beforeSnapshot: beforeSnapshot as Prisma.InputJsonValue, afterSnapshot: s.plan, reservationSnapshot: s.reservations } }));
 }
 const resultado = (op: { workOrderId: number; version: number; reservationSnapshot: Prisma.JsonValue }, replayed: boolean) => ({ workOrderId: op.workOrderId, version: op.version, reservationSnapshot: op.reservationSnapshot, replayed });
 
@@ -91,6 +93,12 @@ export async function reservarPlanTrabajoEnTransaccion(tx: Prisma.TransactionCli
     // Padres de recurso serializan combinaciones inexistentes sin crearlas al consultar.
     necesidades.sort((a,b) => a.position-b.position || (a.rawMaterialId ?? 0)-(b.rawMaterialId ?? 0) || (a.productId ?? 0)-(b.productId ?? 0) || a.warehouseId-b.warehouseId || (a.plannedDetailId ?? a.supplyPlanId ?? a.productionOutputId!)-(b.plannedDetailId ?? b.supplyPlanId ?? b.productionOutputId!));
     for (const n of necesidades) {
+      if (n.supplyPlanId !== null || n.productionOutputId !== null) {
+        const [entregado] = await tx.$queryRaw<{ quantity: string }[]>`SELECT public.entrega_neta_origen_reserva(${n.supplyPlanId}::integer,${n.productionOutputId}::integer)::text AS quantity`;
+        const pendiente = new Prisma.Decimal(n.requestedQuantity).minus(entregado.quantity);
+        exigir(pendiente.gte(0), "La entrega neta supera su abastecimiento original.");
+        n.requestedQuantity = pendiente.toFixed(3);
+      }
       if(new Prisma.Decimal(n.requestedQuantity).isZero())continue;
       let stock: Prisma.Decimal, kardex: Prisma.Decimal;
       if (n.rawMaterialId !== null) {
@@ -118,9 +126,13 @@ export async function reservarPlanTrabajoEnTransaccion(tx: Prisma.TransactionCli
 
 /** Backend de reserva parcial. No crea documentos de trabajo, filas de stock ni Kardex. */
 export async function completarReservasTrabajo(input: z.infer<typeof referencia>) {
+  await exigirAcceso("trabajos.operar");
+
   const d = referencia.parse(input);
   const fingerprint = createHash("sha256").update(JSON.stringify({ type: "RESERVAR_STOCK", workOrderId: d.workOrderId, version: d.version })).digest("hex");
   return prisma.$transaction(async tx => {
+      await exigirAccesoEnTransaccion(tx, "trabajos.operar");
+
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${d.idempotencyKey},91357))`;
     const p = await preparar(tx, d, "RESERVAR_STOCK", fingerprint);
     if (p.replay) return resultado(p.replay, true);
@@ -131,10 +143,14 @@ export async function completarReservasTrabajo(input: z.infer<typeof referencia>
 
 /** Liberación parcial explícita: no altera existencias ni se dispara por antigüedad. */
 export async function liberarReservaTrabajo(input: z.infer<typeof liberacion>) {
+  await exigirAcceso("trabajos.operar");
+
   const d = liberacion.parse(input); const q = new Prisma.Decimal(d.quantity);
   exigir(q.gt(0) && q.lte("99999999999.999"), "La cantidad a liberar debe ser positiva y válida.");
   const fingerprint = createHash("sha256").update(JSON.stringify({ type: "LIBERAR_RESERVA", workOrderId: d.workOrderId, version: d.version, allocationId: d.allocationId, quantity: q.toFixed(3), reason: d.reason })).digest("hex");
   return prisma.$transaction(async tx => {
+      await exigirAccesoEnTransaccion(tx, "trabajos.operar");
+
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${d.idempotencyKey},91357))`;
     const p = await preparar(tx, d, "LIBERAR_RESERVA", fingerprint);
     if (p.replay) return resultado(p.replay, true);

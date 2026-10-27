@@ -1,6 +1,6 @@
 # Operación de Órdenes de Trabajo
 
-Entrega técnica OT0–OT9 completada el 16-10-2026. Aprobación funcional general del usuario recibida el 18-10-2026 y registrada en [el hito](HITO-ORDEN-TRABAJO-PRODUCCION.md). Autenticación/roles, Despacho y los servicios de Cobranza requieren entregas propias.
+Entrega técnica OT0–OT9 completada el 16-10-2026. Aprobación funcional general del usuario recibida el 18-10-2026 y registrada en [el hito](HITO-ORDEN-TRABAJO-PRODUCCION.md). Acceso por roles, Despacho y Cobranza están implementados en sus hitos posteriores. Manual transversal vigente: [MANUAL-USUARIO.md](MANUAL-USUARIO.md).
 
 ## Flujo operativo
 
@@ -41,25 +41,17 @@ Las operaciones de dominio usan UUID/huella/versiones y snapshots propios. El PD
 - En OT comercial, el emisor y el alcance provienen del compromiso histórico; en obra propia, la emisión captura la configuración de Empresa disponible al emitir, sin inventar datos faltantes. Las emisiones existentes nunca se actualizan desde Empresa.
 - El PDF es un documento interno: contiene instrucciones operativas. No incluye el detalle de abonos ni se presenta como guía, factura tributaria o certificado de pago. No se habilitan uploads de planos ni firma de recepción.
 
-## Permisos futuros
+## Permisos vigentes
 
-No hay login/roles implementados. La siguiente matriz delimita capacidades que deberá controlar ese módulo; no describe una protección de acceso existente.
+La sesión y los permisos se validan en servidor. Producción y Despacho/Administrador operan plan, reservas, fabricación, cierre y entregas; Cobranza/Administrador registra o corrige factura externa y opera pagos. Los perfiles con lectura autorizada pueden consultar; precios/cuentas no se envían a perfiles sin permiso financiero. Los roles se suman. Ver [Seguridad](OPERACION-SEGURIDAD.md), [Cobranzas](OPERACION-COBRANZAS.md) y el [manual](MANUAL-USUARIO.md).
 
-| Capacidad | Lectura | Escritura futura a autorizar |
-| --- | --- | --- |
-| Consulta de OT, plan, avance e historial | Consultar documentos y sus versiones | Ninguna por consultar |
-| Planificación | Ver compromiso y recursos | Crear/revisar plan pendiente, iniciar, completar/liberar reservas |
-| Producción | Ver previsión, consumos y resultado | Registrar fabricación/avance con confirmación |
-| Correcciones | Ver originales y dependencias | Revertir con motivo/confirmación física y anular propia pendiente |
-| Cierre y factura | Ver preparación y cuenta | Finalizar, registrar/corregir referencia externa |
-| Documentos PDF | Leer/descargar archivo histórico | Emitir copia de revisión actual con confirmación |
-| Despacho y Cobranza | Sólo contratos documentados abajo | Sin servicios operativos en este hito |
+Los contratos técnicos siguientes conservan parte de su redacción histórica; las guías operativas actuales y los checkpoints posteriores determinan lo implementado.
 
 ## Contrato final de integración: Despacho
 
-Contrato de dominio para el próximo módulo; no se ha publicado un endpoint de despacho ni se permiten salidas genéricas para simularlo.
+Contrato de dominio integrado con el módulo de despacho en `/trabajos/despachos`; las salidas usan sus servicios transaccionales y referencias tipadas.
 
-El alcance fue planificado y aprobado en [HITO-GUIAS-DESPACHO-ENTREGAS.md](HITO-GUIAS-DESPACHO-ENTREGAS.md): sólo ventas de OCC, entregas parciales incluso antes de finalizar OT, guía operativa interna e historial legado no conciliado.
+El alcance fue planificado y aprobado en [HITO-GUIAS-DESPACHO-ENTREGAS.md](HITO-GUIAS-DESPACHO-ENTREGAS.md): sólo ventas de OCC, entregas parciales incluso antes de finalizar OT, guía operativa interna e historial legado no conciliado. G0 fija la sucursal histórica de la OCC como único destino; confirmar la salida acredita la entrega y descuenta stock, y cada línea de servicio/a medida conserva nombre y fecha de conformidad. G1 creó la estructura, G2 incorporó consultas y G3 habilitó la confirmación de entregas en `/trabajos/despachos`. G4 habilita correcciones parciales/completas con motivo y folio propio, recepción física explícita en la bodega original y reconstrucción de reserva propia. Factura, deuda, abonos y documentos posteriores se conservan. Completar reservas y cerrar OT consideran sólo el pendiente neto; devolver no desbloquea la reversión histórica de producción.
 
 - Fuente: `WorkOrder` de contrato nuevo, `WorkOrderLine` y `SalesOrderDetail` aceptado. Cada futura línea de guía conservará esas referencias y snapshots de producto/material/servicio, descripción, unidad y cantidades. El máximo comercial es lo aceptado menos entregas netas confirmadas, no lo ofrecido ni únicamente lo fabricado.
 - Datos de consulta a preparar: ID/versión/folio/estado de OT, orden/línea de origen, modo operativo, recurso/unidad histórica, cantidad aceptada, ejecutada neta, entregada neta, pendiente y reserva propia activa por bodega. Mientras no existan líneas de guía, **no presentar** `DeliveryNote` legado como prueba de cantidades entregadas ni inventar entregado cero para un legado ambiguo.
@@ -72,6 +64,12 @@ El alcance fue planificado y aprobado en [HITO-GUIAS-DESPACHO-ENTREGAS.md](HITO-
 
 - Reutilizar la cuenta única de OCC. Importe acordado inmutable y saldo derivado de abonos no anulados. No crear cuenta por OT, factura o guía.
 - `AccountReceivable.dueDate` de OT con contrato nuevo tiene como fuente exclusiva la referencia externa vigente; nulo antes de facturar. `paymentPromiseDate` permanece independiente. Corregir factura conserva importe/pagos y puede recalcular vencimiento incluso con saldo cero.
-- Los servicios futuros de abono/anulación deben validar UUID estable, importe positivo, medio, sobrepagos, estado de cuenta y permisos. Mantener locks Quote → SalesOrder → WorkOrder si corresponde → AccountReceivable; cuando sólo se bloquea cuenta, no solicitar luego un padre que otro flujo mantenga esperando esa cuenta.
+- Los servicios de abono/anulación implementados en Cobranzas validan UUID estable, importe positivo, medio, sobrepagos, estado de cuenta y permisos. Mantener locks Quote → SalesOrder → WorkOrder si corresponde → AccountReceivable; cuando sólo se bloquea cuenta, no solicitar luego un padre que otro flujo mantenga esperando esa cuenta.
 - No trasladar identidad/origen de cuenta o abono para eludir restricciones; no inferir pagos desde campos heredados de `DeliveryNote`. Cuenta anulada se excluye de por cobrar y no se presenta automáticamente como saldada.
 - Cancelación contractual, reapertura, cierre incompleto, notas de crédito y facturación parcial requieren nuevas decisiones sobre importes/identidades/vencimientos. No resolverlos reduciendo cantidades de una OT ni editando una cuenta existente.
+
+## Consulta documental de despachos (G5)
+
+Desde **Ver OT** o **Ver OCC**, **Guías y entregas** abre `/trabajos/despachos` filtrado por OT y permite preparar el pendiente elegible. Seleccionar un folio abre el documento sobre el listado: destino histórico, cantidades por unidad, conformidad, Kardex/reservas e historial de originales/correcciones. Registrar una salida o devolución abre su consulta; generar su PDF requiere otra confirmación y no altera inventario ni deuda.
+
+Cada guía o corrección tiene PDF propio, interno y no tributario, archivado por versión de plantilla. Ver/descargar/imprimir utiliza los bytes conservados y verificados; una corrección posterior se consulta en el historial y no reescribe el PDF original. Respaldar PostgreSQL junto con `GUIA_PDF_DIR` (predeterminado `var/guias/pdfs/`) y logos históricos. No purgar emisiones; ante un archivo alterado restaurar los bytes originales desde respaldo. Mantener UUID/datos al reintentar una emisión incierta. El PDF de OT sigue siendo un documento de producción separado. Más detalle en la sección 16 del hito de Guías de Despacho.

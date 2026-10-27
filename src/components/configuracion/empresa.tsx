@@ -1,4 +1,5 @@
 "use client";
+import { Permiso } from "@/components/seguridad/permisos";
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
@@ -86,7 +87,7 @@ function EditorEmpresa({ perfil, pendiente, onCerrar, onGuardar, onRestaurarFoco
             {errorLogo && <p role="alert" className="text-sm">{errorLogo}</p>}
             {(archivo || (perfil?.logoUrl && !quitarLogo)) && <Button type="button" variant="outline" onClick={quitar}>Quitar logo</Button>}
           </fieldset>
-          <DialogFooter><Button type="button" variant="outline" disabled={pendiente} onClick={cerrar}>Cancelar</Button><Button type="submit" disabled={pendiente}>{pendiente ? <LoaderCircle aria-hidden="true" className="animate-spin" /> : <Save aria-hidden="true" />}{pendiente ? "Guardando…" : "Guardar Empresa"}</Button></DialogFooter>
+          <DialogFooter><Button type="button" variant="outline" disabled={pendiente} onClick={cerrar}>Cancelar</Button><Permiso permiso="configuracion.operar"><Button type="submit" disabled={pendiente}>{pendiente ? <LoaderCircle aria-hidden="true" className="animate-spin" /> : <Save aria-hidden="true" />}{pendiente ? "Guardando…" : "Guardar Empresa"}</Button></Permiso></DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
@@ -123,7 +124,7 @@ export function ConfiguracionEmpresa({ perfilInicial, cuentasIniciales }: { perf
   }
   const incompleto = perfil && (!perfil.legalName || !perfil.rut);
   return <div className="space-y-6">
-    <PageHeader titulo="Empresa" descripcion="Configura los datos de la empresa que utiliza el ERP." acciones={<><Button variant="outline" disabled={pendiente} onClick={() => actualizar()}><RefreshCw aria-hidden="true" />Actualizar</Button><Button ref={botonPrincipal} disabled={pendiente} onClick={() => actualizar(true)}>{pendiente ? <LoaderCircle aria-hidden="true" className="animate-spin" /> : <Pencil aria-hidden="true" />}{perfil ? "Editar Empresa" : "Configurar empresa"}</Button></>} />
+    <PageHeader titulo="Empresa" descripcion="Configura los datos de la empresa que utiliza el ERP." acciones={<><Button variant="outline" disabled={pendiente} onClick={() => actualizar()}><RefreshCw aria-hidden="true" />Actualizar</Button><Permiso permiso="configuracion.operar"><Button ref={botonPrincipal} disabled={pendiente} onClick={() => actualizar(true)}>{pendiente ? <LoaderCircle aria-hidden="true" className="animate-spin" /> : <Pencil aria-hidden="true" />}{perfil ? "Editar Empresa" : "Configurar empresa"}</Button></Permiso></>} />
     {!perfil ? <SectionCard titulo="Datos de Empresa"><EmptyState icono={Building2} titulo="Configurar empresa" descripcion="Todavía no hay un perfil guardado. Completa los datos que tengas disponibles para comenzar." /></SectionCard> : <>
       {incompleto && <Aviso tipo="informacion" titulo="Perfil incompleto">Puedes seguir completando los datos. Los requisitos para emitir documentos se definirán en el módulo de Ventas.</Aviso>}
       <div className="grid gap-6 lg:grid-cols-2">{grupos.map(grupo => <SectionCard key={grupo.titulo} titulo={grupo.titulo}><dl className="space-y-4">{grupo.campos.map(campo => <div key={campo.nombre}><dt className="text-xs text-muted-foreground">{campo.titulo}</dt><dd className="mt-1 break-words text-sm">{perfil[campo.nombre] ? campo.nombre === "rut" ? formatearRut(perfil.rut!) : perfil[campo.nombre] : <span className="text-muted-foreground">Sin configurar</span>}</dd></div>)}</dl></SectionCard>)}<SectionCard titulo="Identidad visual"><VistaLogo key={perfil.logoUrl} url={perfil.logoUrl} /></SectionCard></div>

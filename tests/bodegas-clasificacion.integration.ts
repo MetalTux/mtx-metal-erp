@@ -4,6 +4,7 @@ import { prisma } from "../src/lib/prisma";
 import { guardarBodega, consultarBodega } from "../src/lib/servicios/bodegas";
 import { listarCatalogosInventario } from "../src/lib/consultas/inventario";
 import { catalogosCompra } from "../src/lib/servicios/compras";
+import { crearPlanConMaterial } from "./fixtures/plan-propio";
 async function main() {
   const destino = new URL(process.env.DATABASE_URL!);
   assert(["localhost", "127.0.0.1"].includes(destino.hostname) && destino.pathname.startsWith("/mtx_validacion_bodegas_"));
@@ -26,8 +27,8 @@ async function main() {
     if (classification === "PRODUCTO_TERMINADO") {
       await assert.rejects(prisma.warehouseStock.create({ data: { warehouseId: resultado.bodega.id, rawMaterialId: material.id, quantity: "0" } }));
       await assert.rejects(prisma.stockMovement.create({ data: { warehouseId: resultado.bodega.id, rawMaterialId: material.id, type: "AJUSTE", quantity: "0" } }));
-      const trabajo = await prisma.workOrder.create({ data: { productName: nombre } });
-      await assert.rejects(prisma.workOrderDetail.create({ data: { workOrderId: trabajo.id, rawMaterialId: material.id, warehouseId: resultado.bodega.id, quantityNeeded: "1" } }));
+      const plan = await crearPlanConMaterial(unidad.id, material.id, resultado.bodega.id);
+      assert(!plan.ok && /bodega/i.test(plan.mensaje), "Plan debe rechazar bodega exclusiva de terminado para materia prima");
     }
   }
   await prisma.warehouseStock.create({ data: { warehouseId: heredada.id, rawMaterialId: material.id, quantity: "0", minStock: "1" } });

@@ -1,4 +1,6 @@
 "use server";
+import { exigirAcceso, exigirOrigenAccion } from "@/lib/seguridad/acceso";
+
 import { revalidatePath } from "next/cache";
 import { Prisma } from "@/generated/prisma/client";
 import { ajusteSchema } from "@/lib/validaciones/ajuste";
@@ -7,10 +9,16 @@ import {
   registrarAjusteInventario,
 } from "@/lib/servicios/ajustes-inventario";
 export async function obtenerSaldoAjuste(entrada: unknown) {
+  await exigirOrigenAccion();
+  await exigirAcceso("ajustes.leer", true);
+
   return consultarSaldoAjuste(entrada);
 }
 /** La diferencia de la confirmación también se calcula con Decimal en servidor. */
 export async function prepararConfirmacionAjuste(entrada: unknown) {
+  await exigirOrigenAccion();
+  await exigirAcceso("ajustes.operar", true);
+
   const v = ajusteSchema.safeParse(entrada);
   if (!v.success)
     return {
@@ -26,6 +34,9 @@ export async function prepararConfirmacionAjuste(entrada: unknown) {
   };
 }
 export async function guardarDatosAjuste(entrada: unknown) {
+  await exigirOrigenAccion();
+  await exigirAcceso("ajustes.operar", true);
+
   const r = await registrarAjusteInventario(entrada);
   if (r.ok)
     for (const ruta of [

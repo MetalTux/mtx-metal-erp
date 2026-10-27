@@ -1180,3 +1180,285 @@ El usuario confirma que todo funciona correctamente tras revisar el módulo. Se 
 ## 18-10-2026 — Planificación de Guías de Despacho y Entregas
 
 Se agrega `HITO-GUIAS-DESPACHO-ENTREGAS.md` con dependencias actuales, invariantes propuestas, etapas G0–G6, casos mínimos y criterios de cierre. `OPERACION-ORDENES-TRABAJO.md` enlaza el plan y refleja la regla aprobada de conformidad por línea para servicios/a medida. La planificación queda cerrada funcionalmente tras las cinco respuestas del usuario del 18-10-2026: sólo OCC/clientes, entregas parciales antes de finalizar OT, documento operativo interno, conformidad por línea para servicios/a medida y legado `DeliveryNote` no conciliado. No se modifica esquema, código ni base de datos.
+
+## 18-10-2026 — G0 de Guías de Despacho cerrado
+
+Auditoría local de sólo lectura: cero `DeliveryNote` heredadas, una OT comercial nueva finalizada, ninguna OCC confirmada sin OT, numeración de guías y perfil de Empresa configurados. El usuario aprueba D06–D08: sólo sucursal histórica de la OCC como destino; salida de bodega confirmada acredita entrega y descuenta stock; SERVICIO/A_MEDIDA exige nombre y fecha de conformidad por línea. Se documentan estados y condiciones de emisión. G1–G6 quedan pendientes; sin cambios de esquema, código ni datos.
+
+## 18-10-2026 — G1 de Guías de Despacho: estructura y migración
+
+`prisma/schema.prisma` y la migración `20261019010200_estructura_guias_despacho` agregan partidas de guía, tipo entrega/corrección, folio y operación idempotente, snapshots, conformidad por línea y referencias tipadas a Kardex y reservas. FK compuestas, índices y CHECKs ligan documento, OCC, OT, recursos y bodegas. Una restricción diferida verifica la completitud y cantidades netas de cada guía nueva. El legado `DeliveryNote` se conserva sin folio, líneas ni entregas inventadas, identificado por `schemaVersion = null`; sus campos de pago siguen siendo sólo históricos.
+
+La nueva estructura no habilita emisiones: triggers bloquean inserciones hasta G3, cuando el servicio podrá coordinar en una transacción folio, operación, reservas, stock y movimientos y adaptar los triggers vigentes de OT/reservas. G2 permanece como siguiente etapa de consultas y preparación. Migración aplicada sólo a la base local `mtx_metal_erp` tras verificar su estado; archivo de respaldo en `backups/20261018_guias_g1/base.dump` (excluido de git). La prueba de migración se realizó en una copia local descartable.
+
+## 18-10-2026 — G2 de Guías de Despacho: consultas y preparación
+
+Se reemplaza la ruta provisional `/trabajos/despachos` por una consulta de sólo lectura con listado paginado, filtros de folio/cliente/OT/estado/fechas, aviso y filtro de legado no conciliado, y preparación por OT. `guias-despacho.ts` calcula en `RepeatableRead` cantidades contratadas, ejecución neta, entrega neta sólo desde guías nuevas, pendiente, reserva propia, saldo libre y conciliación Kardex por bodega. La previsualización informa el máximo orientativo y los motivos de inelegibilidad, sin escribir guías, folios, stock ni reservas. G3 deberá revalidar todo bajo bloqueo al confirmar; la barrera de inserción G1 sigue vigente.
+
+## 19-10-2026 — G3 de Guías de Despacho: salida confirmada
+
+`20261019024500_confirmacion_guias_despacho` amplía los triggers de OT/reservas para `DESPACHAR` y abre sólo inserciones de entregas completas; documentos y partidas siguen inmutables, y las correcciones quedan para G4. El servicio `guias-despacho.ts` valida OCC/OT, snapshots, cantidades, ejecución neta, reservas y saldo/Kardex bajo bloqueos ordenados. Folio, guía, partidas, eventos de reserva, SALIDA de inventario físico, versión y operación quedan en una transacción idempotente. El formulario en `/trabajos/despachos` permite cantidades parciales por línea/bodega, conformidad de prestaciones y confirmación explícita de la salida.
+
+La migración se probó en copia local y se aplicó a `mtx_metal_erp` tras respaldo en `backups/20261019_guias_g3/base.dump` (ignorado por git). En copias descartables se confirmó una guía mixta con reintento exacto, se rechazó reutilizar el UUID con otros datos y se indujo una falla final que revirtió guía, folio, eventos y movimientos. No se emitieron guías en la base de desarrollo durante la validación.
+
+## 19-10-2026 — G4 de Guías de Despacho: correcciones y dependencias
+
+D09–D11 aprobadas: correcciones parciales o completas con documento inverso, recepción física en la bodega original para reponer bienes y conservación de deuda/factura/abonos aunque existan documentos posteriores. La migración nueva `20261019040000_correcciones_guias_despacho` habilita `CORREGIR_DESPACHO`, conserva inmutabilidad y límites acumulados por partida, y registra confirmación física. Las reservas reconstruidas referencian la partida inversa y el débito original con FK/índices; conservan recurso y origen de abastecimiento, sin reactivar ni editar historia. Stock, AJUSTE positivo, reserva propia, folio, documento y operación/versionado son atómicos e idempotentes.
+
+`/trabajos/despachos` incorpora preparación, previsualización y confirmación de corrección. Servicios/a medida revierten entrega sin inventario. Completar reservas y cerrar OT consideran entrega neta derivada de documentos/débitos/restituciones, evitando reservar dos veces una entrega previa. La revisión de cierre muestra entregado y pendiente. Se mantienen bloqueos de reversión productiva tras despachos y de anulación contractual de OCC con OT; corregir no modifica cuenta, factura ni pagos.
+
+Pruebas G4 en copias descartables: tipos de línea, parcial/completa, mixtas/bodegas, recepción física, reentrega, factura/pagos, reservas/cierre, UUID, concurrencia, inmutabilidad, rechazo SQL y rollback. Regresión existente de cierre/factura correcta. UI comprobada en Chromium a 320/375/768/1440; servidor temporal 3031 detenido y servidor previo 3030 conservado. Migración aplicada localmente tras respaldo en `backups/20261019_guias_g4/`; conteos/huellas de 67 tablas de negocio intactos. G5/G6 y aprobación funcional final siguen pendientes.
+
+Cierre técnico G4: lint/build y validación/generación Prisma correctos; 35 migraciones al día, sin diferencias de esquema. Tres copias descartables retiradas, respaldo permanente conservado y sin push. La revisión funcional final no se da por aprobada.
+
+## 19-10-2026 — G5 de Guías de Despacho: consulta e historial PDF
+
+Se consolida `/trabajos/despachos` con detalle sobre el listado, datos históricos de emisor/cliente/destino, fechas, partidas/conformidad, cantidades comerciales netas, historial de OT y trazabilidad de movimientos/reservas. OT/OCC incorporan el acceso contextual **Guías y entregas**. La salida presenta su previsualización antes de confirmar, conserva campos/UUID ante resultado incierto y abre la consulta del documento confirmado. Se incorporan carga/error recuperables y foco de consulta/confirmaciones; los roles siguen expresamente pendientes de autenticación.
+
+La migración `20261019060000_pdf_guias_despacho` agrega `DeliveryNotePdfEmission` / `DeliveryNotePdfRequest`, índices/FK Restrict, snapshots exactos, unicidad guía/plantilla, comprobación de solicitud completa e inmutabilidad. Emisión idempotente con render fuera de tx y verificación de origen; concurrencia converge en un archivo archivado, sin alterar folio/inventario/OT/cuenta. PDF de entrega/corrección interno en Carta, con snapshots de la guía y referencia del inverso. Los nombres auxiliares de bodega se capturan al emitir y quedan archivados; no se reconstruyen nombres pasados inexistentes. Cambiar mantenedores o registrar otra corrección no modifica bytes previos.
+
+`AlmacenPdfGuia` usa `var/guias/pdfs/` o `GUIA_PDF_DIR`, excluido de git y a respaldar junto con PostgreSQL y logos históricos. Chromium instalado, `GUIA_CHROMIUM_PATH` opcional, HTML escapado y red/JS deshabilitados. Descarga por `/api/guias/pdfs/[emision]` con verificación de cabecera/tamaño/SHA-256, `nosniff` y sin caché; errores de archivo no regeneran documentos. Plantillas versionadas en `src/config/pdf-guias.ts`, sin purgar emisiones anteriores.
+
+Pruebas `guias-documentos.integration.ts` en copia/almacén descartables: modos de línea, entrega/corrección, consulta/historial, archivo histórico, texto/paginación, UUID/concurrencia, snapshots/bytes adulterados y rollback/limpieza. Chromium valida consulta/móvil, foco/Escape, confirmación, PDF/descarga y accesos OT/OCC. Migración aplicada localmente tras respaldo en `backups/20261019_guias_g5/`; las 67 tablas de negocio previas conservan conteos/huellas. G6 y aprobación funcional final siguen pendientes.
+
+Cierre técnico G5: lint/build y validación/generación Prisma correctos; 36 migraciones al día, sin diferencias de esquema. Copia PostgreSQL G5, almacén PDF y dumps temporales retirados; respaldo permanente conservado. Servidor temporal 3031 detenido y servidor previo 3030 intacto. Sin push.
+
+
+## 2026-10-20: Guías G6 — validación técnica completa
+
+Se completó la matriz de integración, concurrencia y recuperación en copias locales descartables, con rollback tras 11 etapas de escritura de entrega y 11 de corrección. Se repitieron las regresiones G4/G5 y la transición real desde guías legadas anteriores al contrato de OT, conservando sus campos sin inferir entregas, deuda ni PDF. Chromium valida móvil, foco, teclado, contraste y pérdida de respuesta posterior al commit de entrega/PDF/corrección con recuperación por el mismo UUID.
+
+Se corrige la consulta/interfaz de OT para comparar reservas con el pendiente neto de abastecimientos y resultados fabricados, sin modificar el plan ni persistir saldos nuevos. El formulario de salida rechaza cantidades cero/negativas aunque otra línea sea válida; sólo omite campos vacíos. Los enlaces de guías usan el token informativo existente para mejorar contraste.
+
+Sin cambios de esquema ni migraciones en G6. Lint/build correctos, Prisma válido, 36 migraciones al día y diff de esquema vacío. Copias/archivos descartables retirados y servidor propio detenido, puertos 3030/3031 libres. Evidencia ignorada por git en `backups/20261020_guias_g6/`. Se agrega [manual de operación y recuperación](OPERACION-GUIAS-DESPACHO.md); [G6](HITO-GUIAS-DESPACHO-ENTREGAS.md) queda técnicamente completo, con aprobación funcional final del usuario pendiente. Sin push.
+
+
+## 2026-10-20: Aprobación funcional de Guías y mejoras posteriores
+
+El usuario aprueba el resultado general («Quedó bien»); se registra cierre funcional G0–G6. Quedan pendientes un manual de usuario completo del ERP y mejoras de usabilidad para que las funcionalidades sean más fáciles de identificar y utilizar con distintos niveles de experiencia. Seguimiento en la sección 18 de [HITO-GUIAS-DESPACHO-ENTREGAS.md](HITO-GUIAS-DESPACHO-ENTREGAS.md). Se actualizan estado y referencias, sin atribuir pruebas individuales al usuario. Cambio sólo documental: contenido, enlaces y diff revisados; sin ejecutar build, servicios ni operaciones en la base.
+
+
+## 2026-10-20: Revisión de pendientes para V1
+
+Se contrasta código, rutas, esquema, pruebas disponibles y checkpoints de hitos en [CIERRE-VERSION-1.md](CIERRE-VERSION-1.md). El circuito comercial/productivo y despacho ya está implementado; los principales faltantes comprobados son autenticación/permisos, operación de Cobranza y consultas reales del Dashboard. Se propone cerrar además usabilidad/manual, revisiones funcionales y preparación de instalación/respaldo/restauración, con criterios de salida y funciones diferibles. Se distinguen checks históricos desactualizados de desarrollo realmente pendiente.
+
+No se fija por defecto una matriz de roles, reglas de pagos ni nuevo alcance funcional. Revisión estática y documental, enlaces y diff comprobados; sin pruebas de aplicación nuevas, servicios, migraciones ni escrituras en la base.
+
+
+## 2026-10-20: Preparación de Inicio de Sesión y Seguridad
+
+Se agrega [HITO-INICIO-SESION-SEGURIDAD.md](HITO-INICIO-SESION-SEGURIDAD.md) por solicitud del usuario: descripción completa, propuestas de roles/matriz, acceso local y Google opcional, recuperación, usuarios, sesiones, autorización de páginas/acciones/archivos y auditoría/autoría. Plan S0–S7 con checks, criterios de avance y matriz técnica; D01–D10 requieren validación. Se consultan inicialmente roles, métodos y entorno. Fuentes oficiales de Google/OWASP y condición explícita de no habilitar servicios con gasto adicional sin resolverla.
+
+Se enlaza desde Cierre V1 y AGENTS. Entrega sólo documental para revisión antes del desarrollo: sin instalar paquetes, cambiar esquema, tocar la base ni configurar proveedores. Contenido, enlaces locales y diff revisados.
+
+
+## 2026-10-20: Primeras decisiones de acceso y roles
+
+El usuario aprueba los seis roles propuestos y asignación múltiple por unión de permisos sin invalidaciones, correo/contraseña más Google opcional y uso por Internet con equipos personales. Se actualizan D01–D03, S0 y referencias del [hito de seguridad](HITO-INICIO-SESION-SEGURIDAD.md); capacidades sensibles y D04–D10 siguen pendientes. Se consultan alta, recuperación y sesiones. Sólo documentación; diff revisado, sin cambios de aplicación o base.
+
+
+## 2026-10-20: Seguridad — decisiones D04–D06
+
+Se registran respuestas del usuario en [Inicio de Sesión y Seguridad](HITO-INICIO-SESION-SEGURIDAD.md): sólo Administrador gestiona usuarios/roles, sin registro público; recuperación por correo cuando haya SMTP y asistencia del Administrador; inactividad 60 minutos y máximo absoluto 8 horas, manteniendo la propuesta de varias sesiones/cierre de las demás. Se consultan matriz/visibilidad, segundo factor y acciones excepcionales; auditoría/retención sigue pendiente. Sólo documentación, enlaces y diff revisados; sin código, paquetes, servicios ni base de datos.
+
+
+## 2026-10-20: Seguridad — matriz, doble factor personal y correcciones
+
+Se registran D07/D08/D10 del [hito de seguridad](HITO-INICIO-SESION-SEGURIDAD.md): matriz para toda la empresa, sin límite por bodega y visibilidad según tarea; TOTP voluntario para todos, exclusivamente activable/desactivable por el titular en su panel; correcciones/anulaciones por área y Administrador en todas, sin excepción para gestionar el factor de otra persona. Se detallan recorrido/checks/pruebas del panel y desafíos también con Google. Auditoría/retención D09 y recuperación personal de TOTP D08-R quedan consultadas, sin aprobación inferida. Sólo documentación; enlaces y diff revisados, sin implementación ni base de datos.
+
+
+## 2026-10-20: Seguridad — decisiones funcionales resueltas
+
+El usuario aprueba D09 y D08-R en [Inicio de Sesión y Seguridad](HITO-INICIO-SESION-SEGURIDAD.md): auditoría de accesos/cambios, autoría nueva, IP/navegador, consulta sólo Administrador y retención de eventos 12 meses conservando la autoría documental; códigos personales de respaldo para recuperar/reconfigurar TOTP tras perder el móvil, iguales para todos, incluidos Administradores. Se actualizan recorridos, checks y referencias; no hay desactivación administrativa del factor ajeno. Decisiones funcionales resueltas; falta revisión final/autorización para desarrollar. Sólo documentación, enlaces y diff comprobados; sin código, servicios ni base de datos.
+
+
+## 2026-10-20: Seguridad S1 — diseño y estructura implementados
+
+Autorizado S1 por el usuario. Se agregan [contrato técnico](SEGURIDAD-S1-DISENO.md), [inventario](SEGURIDAD-S1-INVENTARIO.md) y catálogo de permisos con unión de roles y titularidad del factor. Se instalan openid-client/jose/argon2/otplib (MIT) con lockfile. La migración `20261020201416_estructura_seguridad_s1` prepara 11 tablas para extensión de usuario, roles múltiples, Google, sesiones/desafíos/tokens, TOTP/códigos, límites, eventos y autoría. Conserva las tablas anteriores y no importa contraseñas heredadas; el seed deja de crear credenciales fijas.
+
+Ensayo en copia descartable, 23 rechazos SQL, pruebas de política y bibliotecas correctos. Aplicación local tras respaldo `backups/20261020_seguridad_s1/`; 69 tablas previas conservan huellas/conteos, un usuario nuevo de seguridad pendiente y cero credenciales habilitadas. Lint/build/validate/generate correctos, 37 migraciones al día y diff de esquema vacío. Copia/dump temporal retirados; sin servidores iniciados, 3031 libre y 3030 ocupado por proceso conservado. Sin push. Checkpoint en sección 18 de [hito](HITO-INICIO-SESION-SEGURIDAD.md). S1 no habilita login ni protege rutas; S2–S7 siguen pendientes.
+
+
+## 2026-10-20: Seguridad S2 — acceso local, usuarios y panel personal
+
+Se implementan login/activación/recuperación, sesiones revocables 60 min/8 h y desafío TOTP separado; panel propio de contraseña/factor/códigos/sesiones y administración de usuarios con roles múltiples, invitaciones, baja/versionado y protección concurrente del último Administrador. Provisión/recuperación CLI local sin contraseña fija, con entrada sin eco; nunca elimina factor ajeno. Recuperación SMTP opcional TLS verificado y enlaces privados en fragmento. Se añaden nodemailer y sus tipos, API JSON con origen/tamaño/cookies seguros y cabeceras de protección para rutas nuevas. Registro automático SQL/errores crudos Prisma desactivado para proteger secretos del pool compartido.
+
+Validaciones sólo en copia S2: ciclo, activación/códigos/desafíos concurrentes, recuperación sin bypass, revocación/versiones, último Administrador, rollback inducido, expiración y límites. Regresión de cuenta sin hash frente a comparación ficticia, recuperación local administrativa y correo en SMTP TLS local correctos. Chromium valida invitación/activación/roles, cookies/CSRF/tamaño y factor/respaldo/gestión propia en 320/375/768/1440 sin errores JS. Lint/build/TypeScript correctos; sin migraciones nuevas ni usuarios habilitados en base real.
+
+Operación/configuración en [OPERACION-SEGURIDAD.md](OPERACION-SEGURIDAD.md), avances y checkpoint en sección 19 de [hito](HITO-INICIO-SESION-SEGURIDAD.md). No confundir con seguridad completa: Google S3, autorización de módulos anteriores S4, visor/depuración/autoría de negocio S5 y cierre S6/S7 siguen pendientes.
+
+
+## 2026-10-20: Contraseña mínima 8 y diagnóstico de provisión
+
+El usuario cambia el mínimo a 8 caracteres; se centraliza política 8–128 en `src/config/politica-contrasenas.ts` y se actualizan servidor, formularios, CLI y documentación. Se corrige el diagnóstico del comando: configuración antes de solicitar contraseña, imports diferidos y mensajes seguros por causa en lugar del error genérico.
+
+Auditoría sin mostrar valores detecta ausencia de las tres variables de seguridad. El usuario confirma http://localhost:3030; se configura origen y generan claves locales privadas, sin sobrescribir claves existentes y con respaldo del entorno en `backups/20261020_seguridad_clave8/`. No se habilitan cuentas reales por esta operación. Pruebas de límites/diagnósticos, CLI interactivo sin eco y ciclo con 8 caracteres en copia descartable correctos; 7 se rechaza sin consumir tokens. Lint/build/tipos correctos, sin migraciones.
+
+
+## 2026-10-20: Dashboard después de iniciar sesión
+
+El ingreso local completo, con o sin segundo factor, redirige a `/` en lugar de `/mi-acceso`. El usuario accede voluntariamente a su panel desde menú/navegación. Se actualizan manual, checkpoint y expectativas del test UI existente; sin cambios de servicios, credenciales ni base de datos.
+
+Lint/build correctos y navegación verificada en Chromium para contraseña y doble factor mediante respuestas simuladas, sin escribir cuentas. Cierre documental del 21-10-2026: puertos 3030/3031 libres y ningún servidor de validación pendiente.
+
+
+## 2026-10-21: Seguridad S4 — autorización integral del ERP
+
+Google S3 queda pospuesto por decisión del usuario. Se conectan sesión y unión de permisos a 24 páginas, 87 acciones con control de origen, 119 entradas de servicios/consultas y seis rutas de archivos. Las transacciones de escritura revalidan la credencial y comparten cerrojo con la revocación de seguridad; se preservan transacciones de dominio, versiones e idempotencia, sin migraciones. Menú/buscador/Dashboard y controles siguen permisos; los DTO operativos omiten datos financieros restringidos. Editar productos sin permiso de precios conserva el valor existente. Los archivos requieren autorización y dejan de tener caché pública; imágenes/logos comprueban referencias visibles. No se alteran bytes históricos.
+
+Cobertura estática, integración en copia S4 y Chromium correctos: seis roles + unión, URL/acción directa, CSRF, pestaña revocada, expiración 60 min/8 h, revocación concurrente con commit, precio manipulado sin efecto y tres PDF históricos con huellas intactas. Regresión S1, lint/build correctos. Documentación/checkpoint en sección 22 del hito y operación actualizada. S5 (auditoría/autoría), S6 (regresión integral y entorno final) y S7 pendientes; sin cambios en cuentas/base de trabajo ni push.
+
+
+## 2026-10-21: Seguridad S5 — auditoría y autoría duradera
+
+Se integra autor de servidor en 61 puntos de escritura de los servicios, usando las tablas/triggers S1 sin migraciones. Autoría y hecho comparten transacción; los diarios conservan UUID/autor originales en reintentos. Se cubren documentos nuevos y derivados, inventario, maestros/configuración y PDF; no hay backfill ni cambios de PDF históricos. Los folios automáticos no se registran como edición manual de numeración.
+
+Nuevo visor exclusivo de Administrador, con filtros/paginación, acceso desde menú/buscador y enlaces en Cotización/OCC/OT/Guía. Metadatos de seguridad normalizados, expiraciones únicas y denegaciones limitadas, sin secretos ni UA crudo. Retención de eventos a 12 meses, con reautenticación en UI o comando de servidor (simulación por defecto); conserva autoría y registra ejecución humana o Proceso del sistema. Programar la tarea diaria corresponde a S6.
+
+Cobertura S5/S4, regresión S1, integración del ciclo con cuatro modos/devolución/PDF e invariantes, retención/CLI/rollback/reintento y Chromium correctos. Lint/build/tipos correctos tras corregir el literal BigInt de la prueba. Checkpoint completo en [SEGURIDAD-S5-CONTINUIDAD.md](SEGURIDAD-S5-CONTINUIDAD.md) y sección 23 del hito; operación actualizada. S3 pospuesto, S6/S7 pendientes. Sin push.
+
+
+Limpieza S5 confirmada: copia/fixtures/PDF temporales retirados, servidor detenido y puertos 3030/3031 libres. Evidencias privadas en `backups/20261021_seguridad_s5/`, ignoradas por git; checkpoint S5 completo para continuar directamente con S6.
+
+## 22-10-2026 — S6: validación y preparación operativa de seguridad
+
+Se añade `seguridad:validar-s6`: respaldo privado de PostgreSQL/configuración y seis almacenes, copias independientes con credencial real, manifiestos/huellas, escenarios de primera configuración con esquema vacío y ensayo histórico de migraciones de guías. Los fixtures anteriores a OT/guías se adaptan al flujo vigente; las referencias de planificación sin stock tienen una prueba propia. No se deshabilitan triggers ni se modifica la base de trabajo.
+
+Nuevo comando `seguridad:revocar-restauracion`, simulación por defecto: revoca sesiones, elimina enlaces/desafíos, incrementa revisiones y registra evento de sistema atómicamente. Conserva factores/códigos personales, contraseñas, roles y autoría. Procedimiento de mantenimiento/conciliación y plantillas de servicio, proxy y retención diaria en operación y `deploy/seguridad/`; no instaladas en un destino real.
+
+Next/ESLint 16.3.8, Sharp 0.35.5 y Prisma 7.10.1, parches transitivos compatibles y shadcn sólo en desarrollo. `tsx` y `dotenv` se declaran de producción porque los comandos de mantenimiento programados los necesitan. Cliente regenerado sin migraciones S6. Auditoría de producción: cero avisos; queda `braces` en herramientas de desarrollo sin parche publicado (GHSA-vfj7-8cjw-p6xm), sin aceptar patrones de usuarios del ERP. No se oculta el aviso. Las fuentes de los parches incluyen los avisos oficiales de [Next.js](https://github.com/vercel/next.js/security/advisories/GHSA-vcvr-r3jv-pc5j) y [Sharp](https://github.com/lovell/sharp/security/advisories/GHSA-wq5f-xc86-pv6w).
+
+Cabeceras contra marcos de otros sitios en todo el ERP, manteniendo PDF del mismo origen y DENY en seguridad/administración. Se documenta la excepción ESLint para recargar el documento al cambiar de identidad y descartar el caché anterior. Compilación/lint/Prisma correctos; ensayo HTTPS local correcto. Regresión final 48/48 y repetición HTTPS tras normalizar el origen en mayúsculas correctas. Base/entorno/archivos intactos; copias/fixtures/servidores propios retirados. Resultado y pendientes exactos en [SEGURIDAD-S6-CONTINUIDAD.md](SEGURIDAD-S6-CONTINUIDAD.md). El usuario confirmó cierre S6 local y despliegue preparado, sin servidor todavía. S3 pospuesto; instalación HTTPS/timer reales diferidos y S7 pendiente, sin push.
+
+
+## 23-10-2026 — S7: guía de revisión funcional para el usuario
+
+Se prepara [GUIA-PRUEBAS-SEGURIDAD-S7.md](GUIA-PRUEBAS-SEGURIDAD-S7.md), contrastada con controles visibles y permisos actuales: ingreso al Dashboard, panel, alta/activación, contraseña y recuperación, seis roles/unión, revocación/baja/sesiones, factor personal, auditoría y usabilidad. Incluye resultados esperados, estados por bloque, incidencias, limpieza y aprobación expresa, sin marcar pruebas del usuario como realizadas.
+
+Operaciones de negocio se reservan a una copia; correo real, tiempos prolongados y cuenta administrativa con factor quedan identificados como condicionados. Se distingue Cobranza pendiente de sus permisos disponibles y se conservan Google/despliegue diferidos. Se enlaza la guía desde el hito y la operación; se actualiza su cabecera de estado. Sólo documentación: sin servidores, cambios en base ni ejecución de build/lint.
+
+
+## 23-10-2026 — S7: observaciones de activación, avisos y confirmación administrativa
+
+Se registran S7-01/S7-02/S7-05 aprobados por el usuario. La activación y el restablecimiento de contraseña vuelven automáticamente al login con un aviso; no autentican al titular. Se incorpora el contenedor de avisos existente también al layout de acceso, y se notifican los resultados del panel y del mantenedor de usuarios sin exponer enlaces ni códigos en los avisos.
+
+Usuarios permite reautenticar al Administrador en un diálogo local con contraseña y su segundo factor cuando corresponda. Una respuesta tipada `reauthRequired` abre ese diálogo al intentar una operación sin confirmación reciente. Se conservan datos y confirmación, sin reintentar ni guardar automáticamente. La ventana de cinco minutos, permisos, auditoría y validaciones transaccionales siguen aplicándose. S7-03/S7-06 corregidos pendientes de revisión funcional; S7 permanece abierto. Sin migraciones.
+
+Validación técnica de estas correcciones: `pnpm lint`, `pnpm build`, `pnpm exec tsc --noEmit` y `pnpm seguridad:validar-s6 seguridad-acceso` correctos. Este último ejecuta regresiones de acceso/recuperación/correo TLS local y Chromium con activación/reset al login, avisos visibles, identidad vencida sin escritura, formulario conservado al cancelar, contraseña incorrecta, confirmación explícita posterior, reutilización y factor personal en el diálogo. No hubo errores JavaScript. Evidencia privada: `backups/20261023_seguridad_s6/1792804026138/`. Base y archivos de origen sin cambios; copia/fixtures/servidor 3031 retirados, servidor previo del usuario en 3030 conservado. No se repitió toda la regresión S6 de 48 escenarios ni se sustituye la aprobación funcional pendiente.
+
+
+### 24-10-2026 — S7-07: aprobación y cierre de sesión visible
+
+El usuario confirmó sesiones simultáneas del mismo usuario en dos navegadores y cierre remoto de la otra sesión: S7-07 aprobado. Se incorpora un botón permanente en la barra superior para cerrar la sesión actual desde cualquier sección del ERP: texto en escritorio, icono de salida con nombre accesible y título en pantallas pequeñas. Usa la operación de cierre existente, impide envíos repetidos mientras responde, notifica errores y recarga el documento hacia el login al confirmar. Mi acceso conserva su botón. Revisión de visibilidad por el usuario pendiente; S7 general sigue abierto.
+
+Validación del ajuste: `pnpm lint`, `pnpm build` y revisión del diff correctos. No se iniciaron servidores ni se modificó la base de datos; revisión visual/funcional del botón por el usuario pendiente.
+
+
+### 24-10-2026 — Aprobaciones funcionales S7
+
+El usuario confirma S7-02/S7-03/S7-06/S7-07 y aprueba S7-09. Se consideran resueltas las observaciones de retorno al login, avisos visibles, diálogo administrativo y cierre visible de sesión. Con las aprobaciones anteriores, quedan aprobados S7-01/02/03/05/06/07/09. Pendientes S7-04/08/10/11/12 según la [guía](GUIA-PRUEBAS-SEGURIDAD-S7.md); S7 sigue abierto. Esta actualización sólo registra resultados del usuario: revisión de contenido, referencias y diff, sin ejecutar pruebas de aplicación, servidores ni operaciones en base.
+
+
+## 24-10-2026 — Cobranzas C0/C1: plan y consultas
+
+Se prepara `docs/HITO-COBRANZAS.md` con contratos existentes y decisiones C-D01–C-D04 aprobadas. El usuario autoriza avanzar sin cerrar las validaciones S7 restantes.
+
+Se sustituye la pantalla provisional por listado y detalle de cuentas sobre la misma ruta. Consultas protegidas por `cobranza.leer` y `precios.leer`, con nueva comprobación dentro de la transacción RepeatableRead. Agregación de pagos vigentes por cuenta antes de unir documentos; filtros/paginación en PostgreSQL y totales decimales del filtro. Cuenta anulada excluida del cobro, estado de pago separado de vencimiento, hoy de Santiago y promesa independiente. Detalle con factura vigente e historial paginado de abonos incluidos los anulados; se conservan importe y fechas históricas. No se publican URLs heredadas arbitrarias de comprobantes.
+
+No se agregan servicios de pagos ni migraciones en C1. El ejecutor de validación existente incorpora `cobranza-consultas`, con copia descartable y credencial real, comparación de datos/archivos originales y limpieza; no implica repetir o cerrar toda S6. C2–C4 y aprobación funcional C1 pendientes.
+
+La validación visual de C1 detectó dos desbordamientos: el caption accesible de la tabla requería un contenedor relativo y la barra superior necesitaba compactar buscador/cierre en anchos intermedios. Se corrigen ambos manteniendo nombres accesibles y botones disponibles; las etiquetas completas vuelven cuando hay espacio. La cobertura estática S4 incorpora la nueva consulta autorizada: 120 entradas, sin reducir las comprobaciones existentes.
+
+C1 cerrado técnicamente con lint/build/tipos, cobertura estática S4 (120 entradas), integración de consultas y Chromium 320/375/768/1440 correctos. Roles S4 también pasaron. Evidencia C1 final `backups/20261024_seguridad_s6/1792818441250/`; referencias exactas y pruebas visuales previas superadas en sección 7 del hito. C0/C1 marcados, aprobación funcional C1 pendiente, siguiente C2. Sin migraciones ni alteración de datos/archivos originales en los ensayos finales.
+
+
+## 24-10-2026 — Cobranzas C2: pagos y anulaciones
+
+C1 aprobado por el usuario. C2 implementa alta de abonos con UUID y comparación canónica del contenido original; el reintento conserva resultado tras anulación. La anulación conserva datos originales y usa identidad natural pago/motivo, sin tabla nueva ni migración. Bloqueo de cuenta, saldo Decimal y control de sobrepago atómicos; fechas según Santiago, anticipos sin factura y medios aprobados. Cheques sólo cobrados.
+
+Acciones con origen/permisos y validación transaccional, formularios sobre el detalle con revisión y respuesta incierta protegida. Autoría Payment atómica de alta/anulación, sin atribución histórica. Coberturas estáticas ampliadas sin retirar controles: 90 acciones, 122 servicios/consultas y 63 puntos de autoría. Validación y continuidad exactas en sección 8 de HITO-COBRANZAS.md; C3 adjuntos/promesas y aprobación funcional C2 pendientes.
+
+C2 validado: lint/build/tipos, coberturas S4/S5, integración C1/C2 con rollback después de insertar el abono, concurrencia, permisos y Chromium de registro/anulación correctos. Base y archivos originales intactos, servidor/copia retirados. Evidencia `backups/20261024_seguridad_s6/1792819206115/`; checklist C2 actualizado, aprobación funcional pendiente. Próximo C3.
+
+
+## 24-10-2026 — Cobranzas C3: comprobantes privados y promesas
+
+C2 aprobado; formatos/límites/conservación y política de promesas C-D06/C-D07 aprobadas. `PaymentAttachment` y `PaymentPromiseChange` incorporan archivos privados y cambios de promesa inmutables con índices/FK, CHECK y autoría transaccional; no se migran datos heredados ni cambian importes/vencimientos. Migración generada/revisada y ensayada en copia local antes del destino real.
+
+Almacén local privado `COBRANZA_COMPROBANTE_DIR`, UUID, huella/tamaño y descarga autorizada sin caché ni contenido inline; subida idempotente y limpieza conservadora tras fallo. Registro con archivo confirma pago y luego adjunto, informa/reintenta sólo la subida si falla. Promesas con motivo, versión, UUID/huella e historial paginado, sin reescribir vencimiento. Detalles operativos/recorrido en sección 9 de HITO-COBRANZAS.md. Cierre técnico y evidencias se registran al terminar las comprobaciones.
+
+
+C3 validado en copia con el escenario C1/C2/C3 y Chromium (1/1), lint/build/tipos/Prisma y coberturas S4/S5 correctos. Se corrigió el UUID compartido entre alta del pago y adjunto: cada operación conserva ahora su identidad, sin colisión de autoría. Comprobado el modo compatible sin tablas C3 para mantener C1/C2 disponibles.
+
+Evidencia final `backups/20261024_seguridad_s6/1792857793317/`; base/almacenes de origen intactos, copias/archivos temporales/servidores retirados. La migración está probada pero **no aplicada a la base local de trabajo**: revisión automática rechazó esa escritura por la restricción interpretada de usar copias. Se requiere autorización explícita para habilitar C3 localmente. Checkpoint y pasos exactos en sección 9 de HITO-COBRANZAS.md. Aprobación funcional C3 y C4 pendientes.
+
+
+## 24-10-2026 — C3 aplicado a PostgreSQL local con autorización
+
+Tras autorización explícita del usuario se aplicó únicamente la migración C3 a `mtx_metal_erp`. Respaldo nuevo restaurado en copia y cotejado antes de migrar; comparación posterior de las 80 tablas anteriores idéntica, nuevas tablas vacías y 38 migraciones al día. No se ejecutó seed/reset ni se alteraron abonos o documentos. Copia retirada, respaldo/evidencia conservados en `backups/20261024_cobranza_c3/aplicacion_1792859912558/`. El bloqueo de aprobación anterior queda resuelto. Cliente regenerado y Prisma validado; C3 habilitado localmente, aprobación funcional pendiente.
+
+Comprobaciones posteriores a la aplicación local: `pnpm prisma validate`, `pnpm prisma generate`, `pnpm prisma migrate status`, `pnpm lint` y `pnpm build` correctos. No se iniciaron servidores de aplicación ni se registraron pagos/comprobantes de prueba en la base local.
+
+
+## 24-10-2026 — Cobranzas C4: integración y cierre técnico
+
+Enlace reutilizable a la cuenta por OCC desde OCC/OT/guías, con permisos financieros y protección de navegación bloqueada. El parámetro `orden` resuelve una cuenta existente; no crea deudas ni usa totales de guías. Consulta `consultarResumenCobranza` agregada/protegida reutiliza el cálculo del listado sin implementar Dashboard. Se incorpora `OPERACION-COBRANZAS.md` con tareas, permisos y respaldo/recuperación.
+
+Nuevo escenario `cobranza-cierre` en el ejecutor aislado: anticipo, producción/servicios, entregas, factura, cobro final, anulación/corrección, devolución/reentrega, deuda única, conciliación física, obra propia y enlaces/permisos en Chromium. C1/C2/C3 y C4 correctos 2/2; lint/build/tipos/coberturas correctos (125 entradas). Sin cambios de esquema ni datos de prueba en origen; evidencia `backups/20261024_seguridad_s6/1792860383179/`, copias/servidores retirados. C3/C4 funcionales pendientes y hito sin cierre expreso; sección 10 del hito es el checkpoint vigente.
+
+
+## 24-10-2026 — Dashboard: datos reales y avisos
+
+D-D01–D-D07 aprobadas por el usuario. Se crea HITO-DASHBOARD.md y OPERACION-DASHBOARD.md. Inicio conecta indicadores, OT, cotizaciones próximas a vencer, consumo pendiente por material/bodega con reservas, movimientos de materia prima/terminado y comparación mensual cotizado/contratado de cohortes. Usa el resumen de cuentas existente, sin deuda por guía, y cantidades/importes Decimal; gráfico con tabla accesible y sin nuevas dependencias.
+
+Consultas por bloque, con permisos de servidor/transacción y DTO sin áreas no autorizadas; errores distinguibles de cero. Campana interna por permisos sin correo ni estado de lectura, consultada desde layout. Sin cambios de esquema, seed o escrituras de consulta. Nuevo escenario dashboard en ejecutor aislado con fixtures y Chromium de seis roles; detalle y evidencia en sección 6 del hito. Cobertura estática: 127 entradas de servicio/consulta; aceptación funcional y escala representativa pendientes.
+
+Cierre técnico Dashboard D0–D4: escenario propio correcto 1/1 (`backups/20261024_seguridad_s6/1792878086286/`) y regresión S4 por el layout compartido correcta 1/1 (`backups/20261024_seguridad_s6/1792878144191/`). Lint/build/tipos y cobertura correctos. Datos/almacenes originales intactos, copias/servidores retirados. D5 funcional y medición de volumen real pendientes; no se cierran C3/C4/S7 por inferencia.
+
+
+## 24-10-2026 — Manual transversal y primera revisión de usabilidad
+
+Se entrega primera edición textual MANUAL-USUARIO.md (18 capítulos), HITO-MANUAL-USABILIDAD.md y REVISION-USABILIDAD-V1.md con doce hallazgos priorizados y estados. README deja de ser genérico: acceso al manual, desarrollo en 3030, fuentes operativas y límites actuales. Guías OT/Guías corrigen afirmaciones desactualizadas sobre ausencia de login/roles y apuntan al manual vigente.
+
+Usabilidad: Crear trabajo desde OCC exige trabajos.operar; Ver trabajo existente exige trabajos.leer, sin quedar ligado a editar OCC. Preparar otra entrega exige guias.operar. No se amplían permisos de servidor ni se cambian reglas de negocio.
+
+Lint/build y cobertura S4 correctos; cobranza-cierre ampliado con roles de creación/lectura/despacho correcto 1/1, evidencia `backups/20261024_seguridad_s6/1792883623974/`. 65 enlaces/anclas locales correctos; datos/almacenes originales intactos y ensayo retirado. Capturas anonimizadas, ayuda dentro del ERP y revisión con usuarios siguen pendientes. No se cierran C3/C4, Dashboard ni S7 por esta entrega.
+
+
+## 26-10-2026 — Origen de seguridad en túneles de desarrollo
+
+Se centraliza la comprobación de origen en `src/lib/seguridad/origen.ts`, usada por `/api/seguridad` y las guardas de Server Actions. Compatibilidad acotada a Dev Tunnels en desarrollo: origen reescrito localhost:3030, navegador same-origin y host público exacto. Producción conserva comparación canónica; no se amplían permisos ni se modifica la BD. Prueba específica de aceptación/rechazo en `tests/seguridad-origen-tunel.ts`; operación y límites documentados en OPERACION-SEGURIDAD.md. Confirmación funcional del túnel pendiente del usuario.
+
+Validación: prueba específica de origen, cobertura S4 (92 acciones, 25 páginas, 7 rutas de archivos y 127 entradas de servicios/consultas), `pnpm lint` y `pnpm build` correctos. Sin iniciar servidores de validación ni ejecutar escrituras en la base.
+
+
+## 26-10-2026 — Crear materias primas durante el registro de compras
+
+FormularioMaterial se comparte entre mantenedor y diálogo de alta desde cada detalle de Compra. Se reutiliza guardarDatosMaterial (origen, permiso catalogos.operar y servicio transaccional con autoría/validación existentes). El editor conserva la compra y añade el material al selector local con selección en la línea de origen; crear material es independiente de guardar/recibir la compra. El catálogo de Compras incluye unidades existentes y la acción de guardar materiales revalida también /compras. Sin migraciones ni modificaciones de reglas de stock. Manual y checklist de Compras actualizados; revisión funcional pendiente.
+
+Validación: lint/cobertura S4 correctos y compilación inicial correcta; repetición final bloqueada por permisos internos de Turbopack y fallo de --showConfig en la alternativa Webpack. Véase HITO-COMPRAS.md.
+
+Comprobación final independiente `pnpm exec tsc --noEmit`: correcta.
+
+
+## 26-10-2026 — Altas internas de Proveedores y Clientes
+
+Se comparten FormularioProveedor y FormularioCliente en diálogos de alta desde Compras y Cotizaciones, respectivamente. Se reutilizan acciones/servicios existentes con sus permisos, origen y autoría. Catálogos locales incorporan inmediatamente proveedor o cliente/sucursales devueltos por el servidor y seleccionan el registro nuevo (Casa Central en Cotizaciones), conservando borrador. El alta es independiente del documento: cancelar la compra/cotización no elimina el catálogo creado. Se revalidan /compras y /ventas/cotizaciones tras guardar sus mantenedores. No cambia esquema, permisos ni reglas monetarias. Revisión funcional pendiente.
+
+Validación de las altas internas: `pnpm lint`, `pnpm exec tsc --noEmit`, cobertura S4 (92 acciones, 25 páginas, 7 rutas y 127 entradas) y revisión de diff correctos. `pnpm build` ejecutado y bloqueado por Turbopack al abrir puerto interno (Operation not permitted). No se iniciaron servidores de validación ni se escribieron fixtures en la BD. Prueba funcional de navegador pendiente.
+
+
+## 26-10-2026 — Cotizaciones netas e IVA sobre neto
+
+Por confirmación explícita del usuario se cambia la base de ingreso: precios unitarios netos, descuento sobre subtotal neto, IVA sobre neto descontado y total como suma. Se añaden `Quote.pricesIncludeVat` y `SalesOrder.pricesIncludeVat` con default true para conservar historia. El servicio crea cotizaciones nuevas/correcciones con false; pendientes previas mantienen modo original. La OCC hereda modo/IVA y mantiene deuda con IVA. La función pura conserva compatibilidad con entradas históricas sin marca. No hay recálculo de importes previos ni cambios de saldo, stock o PDF archivados.
+
+Migración aditiva transaccional `20261026120000_cotizaciones_precios_netos`: amplía CHECK de Quote/SalesOrder conservando reglas existentes y añade triggers que protegen modalidad/coherencia con origen. Se probó y restauró en copia antes de aplicarla localmente con respaldo; 73 tablas de negocio/usuarios verificadas sin alterar valores anteriores. Actividad concurrente en SecuritySession fue excluida explícitamente de la afirmación de invariancia.
+
+DTOs y formulario distinguen histórico/neto; correcciones antiguas proponen conversión explícita con revisión por redondeo. Plantilla PDF v2 y reconocimiento de reintentos v1 sin sustituir archivos existentes. Precio sugerido de Producto sigue con IVA y no se inserta como neto. Nuevas pruebas puras/BD y expectativas de regresiones ajustadas. Evidencia privada y revisión funcional pendiente en HITO-COTIZACIONES.md.
+
+Cierre de verificación: `prisma validate`, `prisma generate`, lint, tipos y cobertura S4 correctos; 39 migraciones locales al día. Pasan pruebas puras históricas/netas, integración nueva con correcciones e idempotencia, regresiones completas de Cotizaciones, OCC y emisión real de PDF Carta con imágenes/versiones/concurrencia. No se iniciaron servidores de aplicación para validar; pruebas de PDF cerraron su navegador. `pnpm build` se ejecutó pero Turbopack quedó bloqueado por el entorno al abrir un puerto interno (Operation not permitted), por lo que no se declara una compilación final exitosa. Se retiran las copias descartables y se conservan respaldo/evidencia privados. Reiniciar desarrollo y recargar el formulario antes de probar.
+
+
+## 27-10-2026 — Compras: grilla con editor de detalles
+
+La captura de detalles se separa del borrador de cabecera mediante diálogo; la grilla muestra cantidades, equivalencias, precios e importes, y acciones Ver/Editar/Quitar. Cambios de fila se aceptan explícitamente; cancelar conserva el borrador de compra y quitar requiere confirmación. Se mantiene alta de materia prima anidada, permisos y restricciones de precio/recepción/cierre. Se añade calcularDetalleCompra como Server Action protegida de previsualización, reutilizando el cálculo Decimal existente (calcularCompra recibe sólo las líneas que realmente utiliza). No hay cambios de modelo, migración ni escritura adicional en documentos/stock. Cobertura S4 pasa de 92 a 93 acciones; manual y checklist actualizados. Revisión funcional pendiente.

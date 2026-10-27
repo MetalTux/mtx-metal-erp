@@ -1,14 +1,17 @@
 "use client";
+import { useRoles } from "@/components/seguridad/permisos";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Search } from "lucide-react";
-import { navegacion } from "@/config/navegacion";
+import { navegacionPermitida } from "@/config/navegacion";
 import { Button } from "@/components/ui/button";
 import { Command, CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { useSidebar } from "@/components/ui/sidebar";
 
 export function CommandMenu() {
+  const roles = useRoles();
+  const navegacion = navegacionPermitida(roles);
   const [open, setOpen] = useState(false);
   const router = useRouter();
   const { setOpenMobile } = useSidebar();
@@ -24,9 +27,9 @@ export function CommandMenu() {
   }, []);
 
   return <>
-    <Button variant="outline" className="h-9 w-9 justify-center px-0 text-muted-foreground sm:w-60 sm:justify-start sm:gap-2 sm:px-3" onClick={() => setOpen(true)} aria-label="Buscar página" aria-haspopup="dialog" aria-keyshortcuts="Control+k Meta+k">
-      <Search aria-hidden="true" /><span className="hidden sm:inline">Buscar página…</span>
-      <kbd className="ml-auto hidden rounded border border-border px-1.5 py-0.5 font-sans text-[10px] sm:inline">Ctrl K</kbd>
+    <Button variant="outline" className="h-9 w-9 justify-center px-0 text-muted-foreground xl:w-60 xl:justify-start xl:gap-2 xl:px-3" onClick={() => setOpen(true)} aria-label="Buscar página" aria-haspopup="dialog" aria-keyshortcuts="Control+k Meta+k">
+      <Search aria-hidden="true" /><span className="hidden xl:inline">Buscar página…</span>
+      <kbd className="ml-auto hidden rounded border border-border px-1.5 py-0.5 font-sans text-[10px] xl:inline">Ctrl K</kbd>
     </Button>
     <CommandDialog open={open} onOpenChange={setOpen} title="Buscar página" description="Busca una sección de MTX Metal ERP y pulsa Enter para abrirla.">
       <Command>

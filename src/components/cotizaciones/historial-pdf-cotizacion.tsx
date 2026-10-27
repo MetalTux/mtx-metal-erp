@@ -1,4 +1,5 @@
 "use client";
+import { usePermiso } from "@/components/seguridad/permisos";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { emitirPdf, consultarPdfs, actualizarEmisor } from "@/app/(app)/ventas/cotizaciones/actions";
@@ -8,6 +9,8 @@ import { ConfirmarAccion } from "@/components/alertas/confirmar-accion";
 import type { historialPdfCotizacion } from "@/lib/servicios/pdfs-cotizacion";
 type Fila = Awaited<ReturnType<typeof historialPdfCotizacion>>[number];
 export function HistorialPdfCotizacion({ referencia, onBloqueo }: { referencia: { id: number; version: number }; onBloqueo?: (v: boolean) => void }) {
+ const operar = usePermiso("cotizaciones.operar");
+
   const router = useRouter();
   const botonEmisor = useRef<HTMLButtonElement>(null);
   const [revision, setRevision] = useState(referencia.version);
@@ -26,7 +29,7 @@ export function HistorialPdfCotizacion({ referencia, onBloqueo }: { referencia: 
   const url = (f: Fila) => `/api/cotizaciones/pdfs/${f.id}`;
   const vigente = filas.find(f => f.quoteVersion === revision);
   return <section className="min-w-0 space-y-3 rounded-md border border-border p-3" aria-label="PDF y versiones de cotización">
-    <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="font-semibold">PDF y versiones</h3><Button ref={accion} className="h-auto min-h-8 max-w-full whitespace-normal" type="button" disabled={pendiente || cargando} onClick={() => { if (vigente) { setSeleccionada(vigente); return; } if (!clave) setClave(crypto.randomUUID()); setConfirmar(true); }}>{vigente ? "Consultar PDF de esta revisión" : "Generar PDF de esta revisión"}</Button></div>
+    <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="font-semibold">PDF y versiones</h3>{(operar || vigente) && <Button ref={accion} className="h-auto min-h-8 max-w-full whitespace-normal" type="button" disabled={pendiente || cargando} onClick={() => { if (vigente) { setSeleccionada(vigente); return; } if (!clave) setClave(crypto.randomUUID()); setConfirmar(true); }}>{vigente ? "Consultar PDF de esta revisión" : "Generar PDF de esta revisión"}</Button>}</div>
     <p className="text-xs text-muted-foreground">Carta · Revisión actual {revision}. Cada emisión conserva su contenido y estado; las descargas no regeneran versiones anteriores.</p>
     {emisorEditable && <div className="space-y-2">
       <Button ref={botonEmisor} type="button" variant="outline" className="h-auto min-h-8 max-w-full whitespace-normal" disabled={pendiente || cargando} onClick={() => {

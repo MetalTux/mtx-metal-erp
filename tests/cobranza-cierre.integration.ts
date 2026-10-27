@@ -1,0 +1,47 @@
+import "dotenv/config";
+import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
+import { prisma } from "../src/lib/prisma";
+import { Prisma } from "../src/generated/prisma/client";
+import { crearEntornoGuiasG6,exigirCopiaG6,ok,uuid } from "./fixtures/guias-despacho";
+import { registrarAbono,anularAbono } from "../src/lib/servicios/cobranza";
+import { registrarGuiaDespacho,corregirGuiaDespacho } from "../src/lib/servicios/guias-despacho";
+import { consultarTrabajo } from "../src/lib/consultas/ordenes-trabajo";
+import { finalizarTrabajo,registrarFacturaTrabajo } from "../src/lib/servicios/cierre-trabajo";
+import { consultarCobranza,consultarResumenCobranza } from "../src/lib/consultas/cobranza";
+import { guardarCotizacion } from "../src/lib/servicios/cotizaciones";
+import { documentoVacioCotizacion } from "../src/lib/validaciones/texto-cotizacion";
+import { registrarOrdenCompraCliente, hoyOrden } from "../src/lib/servicios/ordenes-compra-cliente";
+import { crearPlanConMaterial,exigirPlan } from "./fixtures/plan-propio";
+import { credencialServidor } from "../src/lib/seguridad/acceso";
+import { conServidorValidacion } from "./fixtures/servidor-validacion";
+exigirCopiaG6();
+async function fisico(){const tablas=['WarehouseStock','StockMovement','ProductWarehouseStock','ProductStockMovement','StockReservationAllocation','StockReservationEvent','ProductionRecord','ProductionOutput','DeliveryNote','DeliveryNoteLine','WorkOrder','WorkOrderInvoiceReference'];return JSON.stringify(await prisma.$queryRawUnsafe(tablas.map(t=>`SELECT '${t}' tabla,md5(coalesce(string_agg(to_jsonb(r)::text,'' ORDER BY to_jsonb(r)::text),'')) huella FROM "${t}" r`).join(' UNION ALL ')));}
+async function main(){
+ const f=await crearEntornoGuiasG6(),hoy=hoyOrden(),resumenAntes=await consultarResumenCobranza();
+ let w=await f.crear(['PRODUCTO','SERVICIO'],{fabricar:'2'});const ordenId=w.plan!.salesOrderId!;
+ const cuenta=await prisma.accountReceivable.findUniqueOrThrow({where:{salesOrderId:ordenId}}),importe=cuenta.amount,anticipo=importe.div(4),restante=importe.minus(anticipo);
+ const resumenCreada=await consultarResumenCobranza();assert(new Prisma.Decimal(resumenCreada.porCobrar).eq(new Prisma.Decimal(resumenAntes.porCobrar).plus(importe)));
+ const antes=await fisico();
+ ok(await registrarAbono({cuentaId:cuenta.id,importe:anticipo.toFixed(2),fecha:hoy,medio:'Transferencia',referencia:'Anticipo C4 sin factura',clave:uuid()}));assert.equal(await fisico(),antes);
+ assert.equal((await consultarCobranza({orden:ordenId})).detalle!.id,cuenta.id);assert.equal((await consultarCobranza({orden:2147483647})).cuentaNoEncontrada,true);
+ w=await f.producir(w);const primera=ok(await registrarGuiaDespacho(f.salida(w,'1'),uuid()));w=await consultarTrabajo(w.id);ok(await registrarGuiaDespacho(f.salida(w,'1'),uuid()));w=await consultarTrabajo(w.id);
+ ok(await finalizarTrabajo({workOrderId:w.id,version:w.version,date:hoy,note:'Cierre integral C4',preparationConfirmed:true},uuid()));w=await consultarTrabajo(w.id);
+ ok(await registrarFacturaTrabajo({workOrderId:w.id,version:w.version,invoiceNumber:'C4-'+uuid(),invoiceDate:hoy,correctionReason:''},uuid()));w=await consultarTrabajo(w.id);assert(w.finance!.dueDate);assert.equal(w.finance!.paid,anticipo.toFixed(2));
+ const fisicoAntesCobro=await fisico(),clave=uuid(),datos={cuentaId:cuenta.id,importe:restante.toFixed(2),fecha:hoy,medio:'Transferencia',referencia:'Pago final C4',clave};
+ const pago=await registrarAbono(datos);assert(pago.ok,pago.mensaje);ok(await registrarAbono(datos));assert.equal(await fisico(),fisicoAntesCobro);assert.equal((await consultarCobranza({cuenta:cuenta.id})).detalle!.saldo,'0.00');
+ ok(await anularAbono({pagoId:pago.pagoId!,motivo:'Medio del abono incorrecto C4'}));assert.equal((await consultarCobranza({cuenta:cuenta.id})).detalle!.saldo,restante.toFixed(2));ok(await registrarAbono({...datos,clave:uuid(),medio:'Efectivo',referencia:'Corrección C4'}));assert.equal(await fisico(),fisicoAntesCobro);
+ const fechaVencimiento=w.finance!.dueDate,lineas=await prisma.deliveryNoteLine.findMany({where:{deliveryNoteId:primera.id}});
+ ok(await corregirGuiaDespacho({deliveryNoteId:primera.id,version:w.version,date:hoy,reason:'Devolución parcial con deuda conservada C4',physicalRestitutionConfirmed:true,lines:lineas.map(l=>({deliveryNoteLineId:l.id,quantity:'0.5'}))},uuid()));
+ w=await consultarTrabajo(w.id);ok(await registrarGuiaDespacho(f.salida(w,'0.5'),uuid()));
+ const final=await consultarCobranza({orden:ordenId});assert.equal(final.detalle!.saldo,'0.00');assert.equal(final.detalle!.dueDate,fechaVencimiento);assert.equal(final.detalle!.importe,importe.toFixed(2));assert.equal(await prisma.accountReceivable.count({where:{salesOrderId:ordenId}}),1);
+ await f.invariantes();const resumenFinal=await consultarResumenCobranza();assert.equal(resumenFinal.porCobrar,resumenAntes.porCobrar);assert.equal(resumenFinal.vencido,resumenAntes.vencido);
+ const propiasAntes=await prisma.accountReceivable.count(),propia=exigirPlan(await crearPlanConMaterial(f.hora.id,f.material.id,f.mp.id));assert.equal((await consultarTrabajo(propia.id)).finance,null);assert.equal(await prisma.accountReceivable.count(),propiasAntes);
+ const cliente=await prisma.quote.findFirstOrThrow();
+ const oferta=ok(await guardarCotizacion({date:hoy,validUntil:null,clientId:cliente.clientId,clientBranchId:cliente.clientBranchId,paymentConditionId:cliente.paymentConditionId,bankAccountId:null,discount:{modo:'SIN_DESCUENTO'},technicalDescription:documentoVacioCotizacion,lines:[{kind:'SERVICIO',productId:null,rawMaterialId:null,unitMeasureId:f.hora.id,description:'Oferta sin trabajo para revisión de accesos',quantity:'1',unitPrice:'100'}]},uuid()));
+ const linea=await prisma.quoteDetail.findFirstOrThrow({where:{quoteId:oferta.id}});
+ const sinTrabajo=ok(await registrarOrdenCompraCliente({quoteId:oferta.id,quoteVersion:oferta.version,date:hoy,customerOrderNumber:null,customerOrderDate:null,pdfEmissionId:null,technicalDescription:documentoVacioCotizacion,scopeReviewed:true,lines:[{quoteDetailId:linea.id,quantity:'1'}]},uuid()));
+ const token=await credencialServidor();assert(token);await conServidorValidacion(()=>{const r=spawnSync(process.execPath,['--import','tsx','tests/cobranza-cierre.ui.ts'],{env:{...process.env,C4_TOKEN:token,C4_ORDEN:String(ordenId),C4_OT:String(w.id),C4_GUIA:String(primera.id),C4_PROPIA:String(propia.id),C4_SIN_OT:String(sinTrabajo.id)},encoding:'utf8',timeout:90000});process.stdout.write(r.stdout??'');process.stderr.write(r.stderr??'');assert.equal(r.status,0,'C4 enlaces y permisos');});
+ console.log('C4: anticipo, producción/reservas, entrega parcial/final, factura, cobro/anulación/corrección, devolución/reentrega, deuda única, resumen y obra propia correctos.');
+}
+main().catch(e=>{console.error(e);process.exitCode=1;}).finally(()=>prisma.$disconnect());

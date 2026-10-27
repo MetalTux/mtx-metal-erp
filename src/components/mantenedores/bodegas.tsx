@@ -1,4 +1,5 @@
 "use client";
+import { Permiso } from "@/components/seguridad/permisos";
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -66,7 +67,7 @@ function FormularioBodega({ editor, pendiente, onCerrar, onGuardar }: { editor: 
       <p>Registro: {fecha(editor.bodega.createdAt)}</p>
       <p>Última actualización: {fecha(editor.bodega.updatedAt)}</p>
     </div>}
-    <DialogFooter><Button type="button" variant="outline" disabled={pendiente} onClick={onCerrar}>{consulta ? "Cerrar" : "Cancelar"}</Button>{!consulta && <Button type="submit" disabled={pendiente}>{pendiente && <LoaderCircle className="animate-spin" aria-hidden="true" />}{pendiente ? "Guardando…" : editor.modo === "crear" ? "Crear bodega" : "Guardar cambios"}</Button>}</DialogFooter>
+    <DialogFooter><Button type="button" variant="outline" disabled={pendiente} onClick={onCerrar}>{consulta ? "Cerrar" : "Cancelar"}</Button>{!consulta && <Permiso permiso="catalogos.operar"><Button type="submit" disabled={pendiente}>{pendiente && <LoaderCircle className="animate-spin" aria-hidden="true" />}{pendiente ? "Guardando…" : editor.modo === "crear" ? "Crear bodega" : "Guardar cambios"}</Button></Permiso>}</DialogFooter>
   </form>;
 }
 
@@ -119,12 +120,12 @@ export function Bodegas({ bodegas }: { bodegas: Bodega[] }) {
     { id: "referencias", header: "Referencias", enableSorting: false, cell: ({ row }) => <span className="text-muted-foreground">{Object.values(row.original.referencias).some((cantidad) => cantidad > 0) ? "En uso" : "Sin referencias"}</span> },
     { id: "acciones", header: "Acciones", enableSorting: false, cell: ({ row }) => <div className="flex items-center gap-1">
       <Button variant="ghost" size="sm" disabled={pendiente} aria-label={`Ver ${row.original.name}`} onClick={() => abrir("ver", row.original.id)}><Eye aria-hidden="true" />Ver</Button>
-      <Button variant="ghost" size="sm" disabled={pendiente} aria-label={`Editar ${row.original.name}`} onClick={() => abrir("editar", row.original.id)}><Pencil aria-hidden="true" />Editar</Button>
-      <Button variant="ghost" size="sm" disabled={pendiente} className="hover:bg-destructive/15" aria-label={`Eliminar ${row.original.name}`} onClick={() => { recordarFoco(); setErrorEliminar(undefined); setAEliminar(row.original); }}><Trash2 className="text-destructive" aria-hidden="true" />Eliminar</Button>
+      <Permiso permiso="catalogos.operar"><Button variant="ghost" size="sm" disabled={pendiente} aria-label={`Editar ${row.original.name}`} onClick={() => abrir("editar", row.original.id)}><Pencil aria-hidden="true" />Editar</Button></Permiso>
+      <Permiso permiso="catalogos.operar"><Button variant="ghost" size="sm" disabled={pendiente} className="hover:bg-destructive/15" aria-label={`Eliminar ${row.original.name}`} onClick={() => { recordarFoco(); setErrorEliminar(undefined); setAEliminar(row.original); }}><Trash2 className="text-destructive" aria-hidden="true" />Eliminar</Button></Permiso>
     </div> },
   ];
   return <div className="space-y-6">
-    <PageHeader titulo="Bodegas" descripcion="Organiza bodegas de materia prima, producto terminado o uso mixto." acciones={<Button ref={crearBoton} disabled={pendiente} className="h-9" onClick={() => { recordarFoco(); setEditor({ modo: "crear" }); }}><Plus aria-hidden="true" />Crear bodega</Button>} />
+    <PageHeader titulo="Bodegas" descripcion="Organiza bodegas de materia prima, producto terminado o uso mixto." acciones={<Permiso permiso="catalogos.operar"><Button ref={crearBoton} disabled={pendiente} className="h-9" onClick={() => { recordarFoco(); setEditor({ modo: "crear" }); }}><Plus aria-hidden="true" />Crear bodega</Button></Permiso>} />
     <SectionCard titulo="Catálogo de bodegas" descripcion="Identifica cada bodega y consulta sus referencias de inventario y documentos." contentClassName="p-0">
       <DataTable datos={bodegas} columnas={columnas} textoBusqueda={buscarBodega} filtroPlaceholder="Buscar nombre, ubicación o clasificación…" nombre="bodegas" acciones={<Button variant="outline" size="sm" disabled={pendiente} onClick={() => router.refresh()}><RefreshCw aria-hidden="true" />Actualizar</Button>} vacio={<EmptyState icono={Warehouse} titulo="Todavía no hay bodegas" descripcion="Crea la primera bodega para organizar dónde guardas tus materiales." />} />
     </SectionCard>

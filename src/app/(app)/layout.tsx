@@ -1,3 +1,6 @@
+import { consultarAvisosDashboard } from "@/lib/consultas/dashboard";
+import { exigirAcceso } from "@/lib/seguridad/acceso";
+import { PermisosProvider } from "@/components/seguridad/permisos";
 import { cookies } from "next/headers";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { AppTopbar } from "@/components/layout/app-topbar";
@@ -6,21 +9,23 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Notificaciones } from "@/components/alertas/notificaciones";
 
 export default async function ApplicationLayout({ children }: { children: React.ReactNode }) {
+  const sesion=await exigirAcceso(undefined, true);
+  const avisos=await consultarAvisosDashboard();
   const defaultOpen = (await cookies()).get("sidebar_state")?.value !== "false";
   return (
-    <TooltipProvider delayDuration={150}>
+    <PermisosProvider roles={sesion.roles}><TooltipProvider delayDuration={150}>
       <SidebarProvider defaultOpen={defaultOpen}>
         <a href="#contenido-principal" className="sr-only fixed top-2 left-2 z-50 rounded-md bg-primary px-4 py-2 text-primary-foreground focus:not-sr-only">Saltar al contenido</a>
         <AppSidebar />
         <Notificaciones />
         <SidebarInset className="min-w-0 bg-background">
-          <AppTopbar />
+          <AppTopbar sesion={sesion} avisos={avisos}/>
           <div id="contenido-principal" tabIndex={-1} className="flex-1 p-4 outline-none md:p-6">{children}</div>
           <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-border/60 px-4 py-3 text-xs text-muted-foreground md:px-6">
             <span>MTX Metal ERP</span><span>Gestión para la fabricación de estructuras metálicas</span>
           </footer>
         </SidebarInset>
       </SidebarProvider>
-    </TooltipProvider>
+    </TooltipProvider></PermisosProvider>
   );
 }

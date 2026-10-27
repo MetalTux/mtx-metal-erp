@@ -1,39 +1,30 @@
 import Link from "next/link";
-import { ArrowRight, Banknote, ChartColumn, Clock3, FileText, Hammer, History, PackageSearch } from "lucide-react";
+import { Prisma } from "@/generated/prisma/client";
+import { exigirAcceso } from "@/lib/seguridad/acceso";
+import { consultarDashboard } from "@/lib/consultas/dashboard";
+import { formatearCantidad,formatearFecha } from "@/lib/formato";
 import { PageHeader } from "@/components/page-header";
 import { SectionCard } from "@/components/section-card";
-import { EmptyState } from "@/components/empty-state";
-import { Button } from "@/components/ui/button";
-
-const indicadores = [
-  { titulo: "Cotizaciones pendientes", icono: FileText, detalle: "Ofertas por confirmar", color: "text-ring" },
-  { titulo: "Órdenes de trabajo activas", icono: Hammer, detalle: "Producción en curso", color: "text-info-foreground" },
-  { titulo: "Por cobrar", icono: Banknote, detalle: "Saldos pendientes por venta", color: "text-brand" },
-  { titulo: "Materiales con stock bajo", icono: PackageSearch, detalle: "Reposición por bodega", color: "text-warning" },
-];
-
-function EnlaceSeccion({ ruta }: { ruta: string }) {
-  return <Button asChild variant="ghost" className="h-7 shrink-0 px-2 text-xs text-muted-foreground"><Link href={ruta} aria-label="Abrir módulo">Ver módulo<ArrowRight className="size-3" aria-hidden="true" /></Link></Button>;
-}
-
-export default function DashboardPage() {
-  return <>
-    <PageHeader titulo="Dashboard" descripcion="Una vista general de tu taller, tus materiales y tus trabajos." acciones={<Button asChild className="h-9 gap-2 rounded-md"><Link href="/ventas/cotizaciones"><FileText aria-hidden="true" />Ver cotizaciones</Link></Button>} />
-    <div className="mb-6 grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
-      {indicadores.map((indicador) => <section key={indicador.titulo} aria-label={indicador.titulo} className="rounded-lg border border-border bg-card p-4">
-        <div className="flex items-start justify-between gap-3"><h2 className="text-sm font-medium text-muted-foreground">{indicador.titulo}</h2><indicador.icono className={`size-4 shrink-0 ${indicador.color}`} aria-hidden="true" /></div>
-        <p className="mt-4 text-3xl font-semibold tabular-nums" aria-label="Indicador disponible próximamente">—</p>
-        <p className="mt-1 text-xs text-muted-foreground">{indicador.detalle}</p>
-      </section>)}
-    </div>
-    <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-      <SectionCard titulo="Requerimiento de materiales vs stock" acciones={<EnlaceSeccion ruta="/inventario/stock" />} className="md:col-span-2" contentClassName="p-0">
-        <div className="overflow-x-auto"><table className="w-full text-left text-sm"><caption className="sr-only">Disponibilidad de materiales requeridos por los trabajos</caption><thead className="border-b border-border bg-muted/30 text-[13px] text-muted-foreground"><tr><th className="px-4 py-3 font-medium">Material</th><th className="px-4 py-3 text-right font-medium">Requerido</th><th className="px-4 py-3 text-right font-medium">Disponible</th><th className="px-4 py-3 font-medium">Estado</th></tr></thead><tbody><tr><td colSpan={4}><EmptyState icono={PackageSearch} titulo="Materiales, siempre a la vista" descripcion="Aquí podrás comparar lo que necesitan tus trabajos con las existencias de cada bodega." /></td></tr></tbody></table></div>
-      </SectionCard>
-      <SectionCard titulo="Órdenes de trabajo activas" acciones={<EnlaceSeccion ruta="/trabajos/ordenes" />}><EmptyState icono={Hammer} titulo="Tu producción en un solo lugar" descripcion="Aquí verás tus trabajos en curso, para clientes y obras propias." /></SectionCard>
-      <SectionCard titulo="Cotizado vs aprobado" descripcion="Últimos 6 meses" className="md:col-span-2"><EmptyState icono={ChartColumn} titulo="El avance de tus cotizaciones" descripcion="El resumen mensual estará disponible al habilitar la gestión de ventas." /></SectionCard>
-      <SectionCard titulo="Cotizaciones por vencer" acciones={<EnlaceSeccion ruta="/ventas/cotizaciones" />}><EmptyState icono={Clock3} titulo="Anticípate a los vencimientos" descripcion="Aquí se destacarán las cotizaciones pendientes que vencen en los próximos 7 días." /></SectionCard>
-      <SectionCard titulo="Últimos movimientos de stock" acciones={<EnlaceSeccion ruta="/inventario/movimientos" />} className="md:col-span-2 lg:col-span-3"><EmptyState icono={History} titulo="Cada movimiento, registrado" descripcion="Consulta aquí las entradas, salidas y ajustes de tus materiales." className="min-h-36" /></SectionCard>
-    </div>
-  </>;
+const dinero=(v:string)=>`$${formatearCantidad(v)}`;
+const fecha=(v:string|null)=>v?v.split('-').reverse().join('-'):'Sin fecha';
+function Tarjeta({titulo,valor,detalle,error}:{titulo:string;valor:string;detalle:string;error?:string}){return <section aria-label={titulo} className="min-w-0 rounded-lg border bg-card p-4"><h2 className="text-sm text-muted-foreground">{titulo}</h2><p className="my-3 break-words text-3xl font-semibold tabular-nums">{error?'—':valor}</p><p className="text-xs text-muted-foreground" role={error?'status':undefined}>{error??detalle}</p></section>;}
+const aviso=(error?:string)=><p role="status" className="text-sm text-muted-foreground">{error??'No hay registros para mostrar.'}</p>;
+export default async function DashboardPage(){
+ await exigirAcceso();const d=await consultarDashboard(),o=d.ofertas?.datos,t=d.trabajos?.datos,i=d.inventario?.datos,c=d.cobranza?.datos;
+ const max=o?.meses?.reduce((v,m)=>Prisma.Decimal.max(v,m.cotizado,m.contratado),new Prisma.Decimal(0))??new Prisma.Decimal(0);
+ return <div className="space-y-6"><PageHeader titulo="Dashboard" descripcion={`Resumen de la empresa al ${fecha(d.hoy)}. Los bloques se muestran según tus permisos.`}/>
+ <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+ {d.ofertas&&<Tarjeta titulo="Cotizaciones pendientes" valor={String(o?.pendientes??0)} detalle={`${o?.vigentes??0} vigentes o sin vencimiento · ${o?.vencidas??0} vencidas${o?.monto!==undefined?' · '+dinero(o.monto):''}${o?.legadas?' · incluye '+o.legadas+' antiguas sin folio':''}`} error={d.ofertas.error}/>}
+ {d.trabajos&&<Tarjeta titulo="Órdenes de trabajo activas" valor={String((t?.preparacion??0)+(t?.produccion??0))} detalle={`${t?.preparacion??0} en preparación · ${t?.produccion??0} en producción · ${t?.borradores??0} borradores aparte${t?.legadas?' · '+t.legadas+' antiguas por conciliar':''}`} error={d.trabajos.error}/>}
+ {d.cobranza&&<Tarjeta titulo="Por cobrar" valor={dinero(c?.porCobrar??'0')} detalle={`${c?.cuentasVencidas??0} cuentas vencidas · ${dinero(c?.vencido??'0')} vencidos`} error={d.cobranza.error}/>}
+ {d.inventario&&<Tarjeta titulo="Materiales con stock bajo" valor={String(i?.bajo??0)} detalle="Combinaciones material/bodega con saldo menor al mínimo configurado" error={d.inventario.error}/>}
+ </div>
+ <div className="grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-3">
+ {d.inventario&&<SectionCard titulo="Requerimiento de materiales vs stock" descripcion="Consumo pendiente de planes activos; las ventas directas y entregas de terminado se revisan en sus módulos." className="lg:col-span-2">
+ {i?<><p className="mb-3 text-sm text-muted-foreground">Hasta 10 combinaciones priorizadas de {i.totalRequerimientos}. Libre descuenta todas las reservas; pendiente por reservar corresponde a estos consumos.</p><div className="relative w-full overflow-x-auto"><table className="w-full text-left text-sm"><caption className="sr-only">Demanda y disponibilidad por material y bodega</caption><thead><tr>{['Material / bodega','Unidad','Pendiente','Físico','Reservado para consumo','Libre','Por reservar','Faltante físico'].map(t=><th className="p-2" key={t}>{t}</th>)}</tr></thead><tbody>{i.requerimientos.map(r=><tr className="border-t tabular-nums" key={`${r.materialId}-${r.bodegaId}`}><td className="p-2">{r.material}<span className="block text-muted-foreground">{r.bodega}</span><strong className="block text-xs">{new Prisma.Decimal(r.faltante).gt(0)?'No alcanza':new Prisma.Decimal(r.porReservar).gt(0)?'Por reservar':'Reservado'}</strong></td><td className="p-2">{r.unidad}</td>{[r.requerido,r.fisico,r.reservado,r.libre,r.porReservar,r.faltante].map((v,k)=><td key={k} className="p-2">{formatearCantidad(v)}</td>)}</tr>)}{!i.requerimientos.length&&<tr><td colSpan={8} className="p-3">No hay consumo pendiente en planes activos.</td></tr>}</tbody></table></div><Link className="mt-3 inline-block text-sm underline" href="/inventario/stock">Revisar stock por bodega</Link></>:aviso(d.inventario.error)}</SectionCard>}
+ {d.trabajos&&<SectionCard titulo="Trabajos activos" descripcion="Hasta 6; prioridad por fecha objetivo y fecha del plan.">{t?<><ul className="space-y-3">{t.filas.map(w=><li key={w.id} className="rounded border p-3 text-sm"><Link className="font-medium underline" href={`/trabajos/ordenes?ver=${w.id}`}>{w.folio} · {w.productName}</Link><p>{w.cliente} · {w.status==='EN_PROCESO'?'En producción':'En preparación'} · {fecha(w.date)}</p></li>)}{!t.filas.length&&<li>No hay trabajos activos.</li>}</ul><Link className="mt-3 inline-block text-sm underline" href="/trabajos/ordenes">Ver órdenes de trabajo</Link></>:aviso(d.trabajos.error)}</SectionCard>}
+ {d.ofertas&&o?.meses&&<SectionCard titulo="Cotizado vs contratado" descripcion="Seis meses por fecha de cotización; contratación vigente en OCC de esas mismas ofertas." className="lg:col-span-2"><p className="mb-3 text-sm"><span className="text-primary">■ Cotizado</span> · <span className="text-brand">■ Contratado</span></p><div className="relative w-full overflow-x-auto"><div className="grid min-w-80 grid-cols-6 gap-3" aria-hidden="true">{o.meses.map(m=><div key={m.mes}><div className="flex h-40 items-end justify-center gap-1 border-b"><div className="w-5 bg-primary" style={{height:max.isZero()?'0%':new Prisma.Decimal(m.cotizado).div(max).times(100).toFixed(3)+'%'}}/><div className="w-5 bg-brand" style={{height:max.isZero()?'0%':new Prisma.Decimal(m.contratado).div(max).times(100).toFixed(3)+'%'}}/></div><p className="mt-2 text-center text-xs">{m.mes.slice(5)}-{m.mes.slice(0,4)}</p></div>)}</div><table className="mt-4 w-full text-left text-sm tabular-nums"><caption className="sr-only">Importes mensuales cotizados y contratados</caption><thead><tr><th className="p-2">Mes</th><th className="p-2">Cotizado</th><th className="p-2">Contratado</th></tr></thead><tbody>{o.meses.map(m=><tr className="border-t" key={m.mes}><td className="p-2">{m.mes.slice(5)}-{m.mes.slice(0,4)}</td><td className="p-2">{dinero(m.cotizado)}</td><td className="p-2">{dinero(m.contratado)}</td></tr>)}</tbody></table></div></SectionCard>}
+ {d.ofertas&&<SectionCard titulo="Cotizaciones por vencer" descripcion="Hoy y los próximos siete días; hasta 6 ofertas pendientes.">{o?<><ul className="space-y-3">{o.proximas.map(q=><li key={q.id} className="text-sm">{q.legada?<span>{q.folio} · {q.cliente} (registro antiguo sin folio)</span>:<Link className="underline" href={`/ventas/cotizaciones?q=${encodeURIComponent(q.folio)}`}>{q.folio} · {q.cliente}</Link>}<p>Vence {fecha(q.fecha)}</p></li>)}{!o.proximas.length&&<li className="text-sm">No hay cotizaciones por vencer en ese período.</li>}</ul><Link className="mt-3 inline-block text-sm underline" href="/ventas/cotizaciones">Ver cotizaciones</Link></>:aviso(d.ofertas.error)}</SectionCard>}
+ {d.inventario&&<SectionCard titulo="Últimos movimientos de stock" descripcion="Los 10 registros más recientes, por fecha de registro; la fecha del hecho puede ser anterior." className="lg:col-span-3">{i?<><ul className="grid gap-3 md:grid-cols-2">{i.movimientos.map(m=><li key={`${m.origen}-${m.id}`} className="rounded border p-3 text-sm"><strong>{m.name}</strong> · {m.bodega}<p className="tabular-nums">{m.origen} · {m.type} · {formatearCantidad(m.quantity)} {m.unidad}</p><p>Hecho: {fecha(m.date)} · Registro: {formatearFecha(m.createdAt)}</p></li>)}{!i.movimientos.length&&<li className="text-sm">No hay movimientos registrados.</li>}</ul><div className="mt-3 flex flex-wrap gap-4 text-sm"><Link className="underline" href="/inventario/movimientos">Kardex de materia prima</Link><Link className="underline" href="/inventario/productos-terminados">Stock y movimientos de terminado</Link></div></>:aviso(d.inventario.error)}</SectionCard>}
+ </div></div>;
 }

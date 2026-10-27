@@ -1,3 +1,5 @@
+import { anotarMutacion } from "@/lib/seguridad/autoria";
+import { exigirAcceso, exigirAccesoEnTransaccion } from "@/lib/seguridad/acceso";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
 import { referenciaUnidadSchema, unidadMedidaSchema } from "@/lib/validaciones/unidad-medida";
@@ -25,10 +27,14 @@ function errorOperacion(error: unknown): ResultadoUnidad {
 }
 
 export async function listarUnidades(): Promise<UnidadMedida[]> {
+  await exigirAcceso("catalogos.leer");
+
   return (await prisma.unitMeasure.findMany({ select: seleccion, orderBy: [{ name: "asc" }, { id: "asc" }] })).map(serializar);
 }
 
 export async function consultarUnidad(id: unknown): Promise<ResultadoUnidad> {
+  await exigirAcceso("catalogos.leer");
+
   if (typeof id !== "number" || !Number.isSafeInteger(id) || id <= 0) return { ok: false, mensaje: "La unidad indicada no es válida." };
   try {
     const unidad = await prisma.unitMeasure.findUnique({ where: { id }, select: seleccion });
@@ -37,28 +43,34 @@ export async function consultarUnidad(id: unknown): Promise<ResultadoUnidad> {
 }
 
 export async function guardarUnidad(datos: unknown, referencia?: unknown): Promise<ResultadoUnidad> {
+  await exigirAcceso("catalogos.operar");
+
   const validacion = unidadMedidaSchema.safeParse(datos);
   if (!validacion.success) return { ok: false, mensaje: "Revisa los campos del formulario.", campos: validacion.error.flatten().fieldErrors };
   const registro = referencia === undefined ? undefined : referenciaUnidadSchema.safeParse(referencia);
   if (registro && !registro.success) return { ok: false, mensaje: "La referencia del registro no es válida. Actualiza el listado." };
   try {
     const unidad = registro?.success
-      ? await prisma.unitMeasure.update({ where: { id: registro.data.id, updatedAt: new Date(registro.data.updatedAt) }, data: validacion.data, select: seleccion })
-      : await prisma.unitMeasure.create({ data: validacion.data, select: seleccion });
+      ? await prisma.$transaction(async tx => { await exigirAccesoEnTransaccion(tx, "catalogos.operar"); return anotarMutacion(tx, "unitMeasure", "update", await tx.unitMeasure.update({ where: { id: registro.data.id, updatedAt: new Date(registro.data.updatedAt) }, data: validacion.data, select: seleccion })); })
+      : await prisma.$transaction(async tx => { await exigirAccesoEnTransaccion(tx, "catalogos.operar"); return anotarMutacion(tx, "unitMeasure", "create", await tx.unitMeasure.create({ data: validacion.data, select: seleccion })); });
     return { ok: true, mensaje: registro ? "Unidad de medida actualizada." : "Unidad de medida creada.", unidad: serializar(unidad) };
   } catch (error) { return errorOperacion(error); }
 }
 
 export async function eliminarUnidad(referencia: unknown): Promise<ResultadoUnidad> {
+  await exigirAcceso("catalogos.operar");
+
   const validacion = referenciaUnidadSchema.safeParse(referencia);
   if (!validacion.success) return { ok: false, mensaje: "La referencia del registro no es válida. Actualiza el listado." };
   try {
     // La FK de materiales impide el borrado también ante una asociación concurrente.
     return await prisma.$transaction(async tx => {
+      await exigirAccesoEnTransaccion(tx, "catalogos.operar");
+
       const filas = await tx.$queryRaw<{ id: number }[]>`SELECT id FROM "UnitMeasure" WHERE id=${validacion.data.id} AND "updatedAt"=${new Date(validacion.data.updatedAt)} FOR UPDATE`;
       if (!filas.length) return { ok: false, mensaje: "El registro cambió o ya no existe. Actualiza el listado." };
       if (await tieneReferenciaHistoricaPlan(tx, "UnitMeasure", validacion.data.id)) return { ok: false, mensaje: "No se puede eliminar esta unidad porque tiene planificación histórica de trabajos." };
-      await tx.unitMeasure.delete({ where: { id: validacion.data.id, updatedAt: new Date(validacion.data.updatedAt) } });
+      await anotarMutacion(tx, "unitMeasure", "delete", await tx.unitMeasure.delete({ where: { id: validacion.data.id, updatedAt: new Date(validacion.data.updatedAt) } }));
       return { ok: true, mensaje: "Unidad de medida eliminada." };
     });
   } catch (error) { return errorOperacion(error); }
