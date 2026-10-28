@@ -58,3 +58,13 @@ Generado [MANUAL-USUARIO.pdf](MANUAL-USUARIO.pdf) desde la edición textual del 
 ## 27-10-2026 — Revisión transversal de grillas de detalle
 
 Se prepara [HITO-GRILLAS-DETALLE.md](HITO-GRILLAS-DETALLE.md) con evidencia por componente, once puntos de modificación y secuencia GD0–GD7. Distingue captura, selección de partidas de origen, consultas e historiales. Sólo se completa el inventario documental; no se implementan cambios ni se aprueban revisiones funcionales pendientes.
+
+
+## Actualización de manual y ejemplos — GD7, 27-10-2026
+
+- [x] Nueva edición Markdown/PDF con grillas GD2–GD6 y tres capturas de componentes con datos ficticios, sin documentos de trabajo.
+- [x] Exportación reproducible mediante `pnpm manual:pdf`, sin dependencias nuevas ni solicitudes externas.
+- [x] Guía de aceptación transversal en [GUIA-PRUEBAS-GRILLAS-GD7.md](GUIA-PRUEBAS-GRILLAS-GD7.md).
+- [ ] Capturas integrales de todos los recorridos, validación de claridad con usuarios y cierre de M1/M2/M3. Los ejemplos de componentes no sustituyen esas revisiones.
+
+La edición actual sustituye el PDF de revisión del 25-10-2026 sin alterar sus aprobaciones pendientes. Evidencia y límites: [GRILLAS-GD7-VALIDACION.md](GRILLAS-GD7-VALIDACION.md).

@@ -1,4 +1,5 @@
 "use client";
+import { GrillaHistorial } from "@/components/grilla-historial";
 import { EnlaceCuenta } from "@/components/cobranza/enlace-cuenta";
 import { EnlaceAutoria } from "@/components/seguridad/enlace-autoria";
 import { useRef, useState } from "react";
@@ -46,8 +47,9 @@ export function VerOrden({ orden: o, onCerrar, onBloqueo }: { orden: OrdenConsul
     {o.commercialTerms && <div className="min-w-0 text-sm"><h3 className="font-medium">Condiciones comerciales</h3><p className="whitespace-pre-wrap break-words">{o.commercialTerms}</p></div>}
     <div className="min-w-0 space-y-2"><h3 className="font-medium">Alcance contratado</h3><EditorCotizacion valor={o.technicalDescription} onChange={ignorar} draftKey="" soloLectura etiqueta="Alcance técnico contratado" onBloqueo={ignorar} onValidez={ignorar} /></div>
     <details className="min-w-0 rounded-md border border-border p-3"><summary className="cursor-pointer text-sm">Consultar alcance técnico de la oferta original</summary><EditorCotizacion valor={o.originalTechnicalDescription} onChange={ignorar} draftKey="" soloLectura etiqueta="Alcance técnico original" onBloqueo={ignorar} onValidez={ignorar} /></details>
-    {o.pdfEmissionId && <p className="text-sm"><a className="text-primary underline" href={`/api/cotizaciones/pdfs/${o.pdfEmissionId}`} target="_blank" rel="noreferrer">Ver PDF de la revisión ofrecida</a> · El estado impreso corresponde al momento de emisión.</p>}
-    <div className="text-sm"><h3 className="font-medium">Historial</h3>{o.operaciones.map(op => <p key={op.version}>Revisión {op.version} · {op.type === "CONFIRMAR" ? "Confirmación" : "Anulación"} · {formatearFecha(op.createdAt)}</p>)}</div>
+    {o.pdfEmissionId && <p className="text-sm"><a className="text-link underline" href={`/api/cotizaciones/pdfs/${o.pdfEmissionId}`} target="_blank" rel="noreferrer">Ver PDF de la revisión ofrecida</a> · El estado impreso corresponde al momento de emisión.</p>}
+    <GrillaHistorial titulo="Historial de OCC" columnas={["Revisión","Operación","Registro"]} filas={o.operaciones.map(op=>({id:op.version,celdas:[op.version,op.type==="CONFIRMAR"?"Confirmación":"Anulación",formatearFecha(op.createdAt)]}))}/>
+
     <div className="flex flex-wrap justify-end gap-2">{o.status === "CONFIRMADA" && (o.workOrderId ? <Permiso permiso="trabajos.leer"><Button asChild variant="outline"><Link href={`/trabajos/ordenes?ver=${o.workOrderId}`}>Ver trabajo</Link></Button></Permiso> : <Permiso permiso="trabajos.operar"><Button asChild variant="outline"><Link href={`/trabajos/ordenes?crear=${o.id}`}>Crear trabajo</Link></Button></Permiso>)}<Button asChild variant="outline"><Link href={`/ventas/cotizaciones?q=${encodeURIComponent(o.quoteFolio)}`}>Consultar cotización</Link></Button>{o.status === "CONFIRMADA" && o.workOrderId && <Button asChild variant="outline"><Link href={`/trabajos/despachos?ot=${o.workOrderId}`}>Guías y entregas</Link></Button>}<Button variant="outline" onClick={onCerrar}>Cerrar</Button></div>
   </div>;
 }

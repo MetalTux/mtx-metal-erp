@@ -160,3 +160,6 @@ Actualización Dashboard, 24-10-2026: definiciones D-D01–D-D07 aprobadas e imp
 
 
 Actualización manual/usabilidad, 24-10-2026: primera edición textual completa del manual entregada, README orientado al ERP y guías OT/Guías conciliadas con permisos actuales. Doce hallazgos registrados; dos accesos por rol corregidos y validados en copia/Chromium (cobranza-cierre 1/1). Pendientes ayuda integrada, capturas anonimizadas, revisión funcional de facilidad de uso/manual y demás validaciones V1. Fuente de continuidad: HITO-MANUAL-USABILIDAD.md.
+
+
+Actualización grillas/manual, 27-10-2026: GD2–GD6 implementados y GD7 con regresión de componentes 7/7 usando CSS real/transporte simulado, quince capturas y manual Markdown/PDF actualizado con tres ejemplos ficticios. Corrección de desborde móvil OT y refuerzo de foco incluidos. Pendientes aprobación de usuario, integración real, build (bloqueado por entorno), zoom/teclado/contraste completos y cierre funcional de V1. No se resuelven por esta entrega las validaciones de Seguridad, Cobranzas o Dashboard. Continuidad en [GRILLAS-GD7-VALIDACION.md](GRILLAS-GD7-VALIDACION.md).

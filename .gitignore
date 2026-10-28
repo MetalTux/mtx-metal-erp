@@ -58,3 +58,6 @@ next-env.d.ts
 
 # Respaldos y evidencias privadas de validación (incluyen configuración y datos).
 /backups/
+
+# Artefactos reproducibles de regresión; conservar en docs sólo muestras ficticias revisadas.
+/var/validacion/

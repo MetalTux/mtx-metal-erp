@@ -1,0 +1,50 @@
+import { estilosGrillas, capturarGrillas } from "./soporte/grillas-navegador";
+// Consultas/componentes reales; servicios, transporte y router simulados. Sin servidor ni BD.
+import assert from "node:assert/strict";
+import { createRequire } from "node:module";
+import { resolve } from "node:path";
+import { chromium } from "playwright";
+const require=createRequire(import.meta.url);
+const esbuild=createRequire(require.resolve("tsx/package.json"))("esbuild");
+const entrada=`
+import React from 'react';import{createRoot}from'react-dom/client';import Page from '@/app/(app)/ventas/cobranza/page';import{PermisosProvider}from'@/components/seguridad/permisos';import{HistorialPdfCotizacion}from'@/components/cotizaciones/historial-pdf-cotizacion';import{HistorialPdfTrabajo}from'@/components/ordenes-trabajo/historial-pdf';import{HistorialPdfGuia}from'@/components/guia-despacho/historial-pdf';import{PanelAcceso}from'@/components/seguridad/panel';
+const fecha='2026-10-27T12:00:00Z';window.__gd6={roles:['ADMINISTRADOR'],acciones:[],cuenta:{filtros:{q:'Cliente de prueba',estado:'TODOS',vencimiento:'TODOS',pagina:1,abonos:2,promesas:1,cuenta:1},filas:[],total:0,paginas:1,pendiente:'100.00',vencido:'0.00',hoy:'2026-10-27',c3Disponible:true,detalle:{id:1,folio:'OCC-TEST',cliente:'Cliente de prueba',sucursal:'Central',importe:'200.00',abonado:'100.00',saldo:'100.00',dueDate:'2026-11-27',invoiceDate:null,factura:null,paymentPromiseDate:'2026-11-01',voidedAt:null,versionPromesa:'version',totalPromesas:2,paginasPromesas:2,paginaPromesas:1,promesas:[{id:8,previousDate:null,newDate:'2026-11-01',reason:'Motivo histórico de promesa',createdAt:fecha}],totalAbonos:21,paginaAbonos:2,paginasAbonos:3,abonos:[{id:7,amount:'100.00',paidAt:fecha,createdAt:fecha,method:'Transferencia',reference:'Referencia extensa conservada',voidedAt:null,adjuntos:[{id:'archivo-a',originalName:'Anterior.pdf',createdAt:fecha},{id:'archivo-b',originalName:'Corregido.png',createdAt:fecha}]},{id:9,amount:'50.00',paidAt:fecha,createdAt:fecha,method:'Efectivo',reference:null,voidedAt:fecha,voidReason:'Error histórico',adjuntos:[]}]}}};
+const root=createRoot(document.getElementById('root'));
+window.abrir=async modo=>{const lectura=modo==='lectura';window.__gd6.roles=lectura?['CONSULTA_GERENCIA']:['ADMINISTRADOR'];let contenido;if(['cuenta','lectura'].includes(modo))contenido=await Page({searchParams:Promise.resolve({})});else if(modo==='pdfs')contenido=<><HistorialPdfCotizacion referencia={{id:1,version:2}}/><HistorialPdfTrabajo referencia={{id:1,version:2}} onBloqueo={()=>{}}/><HistorialPdfGuia id={1} iniciales={[{id:'g1',folio:'GD-TEST',kind:'ENTREGA',templateVersion:1,createdAt:fecha}]} onBloqueo={()=>{}}/></>;else contenido=<PanelAcceso/>;root.render(<PermisosProvider roles={window.__gd6.roles}>{contenido}</PermisosProvider>)};
+`;
+const acciones=`
+const fecha='2026-10-27T12:00:00Z';
+export async function consultarPdfs(){return {ok:true,emisorEditable:false,filas:[{id:'q1',quoteVersion:1,status:'PENDIENTE',folio:'COT-TEST',createdAt:fecha}]}}
+export async function consultarPdfsTrabajo(){return {ok:true,filas:[{id:'t1',workOrderVersion:1,status:'EN_PROCESO',folio:'OT-TEST',createdAt:fecha}]}}
+export async function emitirPdf(){throw Error('No emitir en este ensayo')};export const emitirPdfTrabajo=emitirPdf,emitirDocumentoGuia=emitirPdf,consultarDocumentosGuia=emitirPdf,actualizarEmisor=emitirPdf,registrar=emitirPdf,anular=emitirPdf,adjuntar=emitirPdf,prometer=emitirPdf;
+`;
+async function main(){
+ const bundle=await esbuild.build({stdin:{contents:entrada,loader:'tsx',resolveDir:resolve('.')},bundle:true,write:false,platform:'browser',format:'iife',jsx:'automatic',define:{'process.env.NODE_ENV':'"production"'},plugins:[{name:'datos-simulados',setup(build:{onResolve:(o:{filter:RegExp},cb:(a:{path:string})=>unknown)=>void;onLoad:(o:{filter:RegExp;namespace:string},cb:(a:{path:string})=>unknown)=>void}){
+  build.onResolve({filter:/@\/app\/.*\/actions$/},()=>({path:'acciones',namespace:'gd6'}));
+  build.onResolve({filter:/^next\/(navigation|link)$/},a=>({path:a.path,namespace:'gd6'}));
+  build.onResolve({filter:/@\/lib\/(seguridad\/acceso|consultas\/cobranza)$/},a=>({path:a.path,namespace:'gd6'}));
+  build.onLoad({filter:/.*/,namespace:'gd6'},a=>({resolveDir:resolve('.'),loader:'js',contents:a.path==='acciones'?acciones:a.path==='next/navigation'?`export function useRouter(){return {refresh:()=>{},replace:()=>{}}}`:a.path==='next/link'?`import React from 'react';export default function Link({children,scroll,...p}){return React.createElement('a',p,children)}`:a.path.includes('acceso')?`export async function exigirAcceso(){return {roles:window.__gd6.roles}}`:`export async function consultarCobranza(){return window.__gd6.cuenta}`}));
+ }}]});
+ const browser=await chromium.launch({headless:true});try{
+  const page=await browser.newPage();const errores:string[]=[];page.on('pageerror',e=>errores.push(e.message));
+  await page.route('**/*',async r=>{if(r.request().url().includes('/api/seguridad')){const datos=r.request().postDataJSON();await page.evaluate(d=>(window as unknown as{__gd6:{acciones:unknown[]}}).__gd6.acciones.push(d),datos);return r.fulfill({json:{ok:true,user:{name:'Usuario de prueba',email:'prueba@example.invalid',roles:['ADMINISTRADOR'],factor:false},sessions:[{id:'actual',current:true,createdAt:'2026-10-27T12:00:00Z',lastActivityAt:'2026-10-27T12:10:00Z',expiresAt:'2026-10-27T20:00:00Z'},{id:'otra',current:false,createdAt:'2026-10-27T11:00:00Z',lastActivityAt:'2026-10-27T12:05:00Z',expiresAt:'2026-10-27T19:00:00Z'}]}});}return r.fulfill({contentType:'text/html',body:'<!doctype html><div id="root"></div>'});});
+  await page.goto('http://127.0.0.1:3031/gd6-simulado');await estilosGrillas(page);await page.addScriptTag({content:bundle.outputFiles[0].text});
+  const abrir=(modo:string)=>page.evaluate(m=>(window as unknown as{abrir:(m:string)=>Promise<void>}).abrir(m),modo);
+  const tabla=(nombre:string)=>page.getByRole('region',{name:nombre,exact:true}).getByRole('table');
+  await abrir('cuenta');await tabla('Historial de abonos').waitFor();assert.equal(await tabla('Historial de abonos').getByRole('row').count(),3);
+  assert.equal(await page.getByRole('button',{name:'Anular abono #9',exact:true}).count(),0);assert.equal(await page.getByRole('button',{name:'Anular abono #7',exact:true}).count(),1);
+  const href=await page.getByRole('link',{name:'Más abonos',exact:true}).getAttribute('href');assert(href?.includes('abonos=3')&&href.includes('promesas=1')&&href.includes('cuenta=1'));
+  await page.getByRole('button',{name:'Ver Abono #7',exact:true}).click();await tabla('Comprobantes del abono #7').waitFor();assert.equal(await page.getByRole('link',{name:'Descargar Anterior.pdf',exact:true}).getAttribute('href'),'/api/cobranza/comprobantes/archivo-a');assert.equal(await page.getByRole('link',{name:'Descargar Corregido.png',exact:true}).count(),1);
+  await page.getByRole('dialog',{name:'Abono #7',exact:true}).evaluate(el=>Promise.all(el.getAnimations().map(a=>a.finished)));
+  await page.keyboard.press('Escape');await page.waitForFunction(()=>document.activeElement?.getAttribute('aria-label')==='Ver Abono #7');assert.equal(await page.getByRole('dialog').count(),1);
+  await page.getByText('Historial de promesas (2)',{exact:true}).click();await tabla('Historial de promesas').waitFor();await page.getByRole('button',{name:'Ver Cambio de promesa #8',exact:true}).click();await page.getByText('Motivo histórico de promesa',{exact:true}).waitFor();await page.getByRole('button',{name:'Cerrar detalle',exact:true}).click();
+  await abrir('lectura');await page.getByRole('button',{name:'Registrar abono',exact:true}).waitFor({state:'hidden'});assert.equal(await page.getByRole('button',{name:/Anular abono|Registrar abono|Adjuntar comprobante|Cambiar promesa/}).count(),0);await page.getByRole('button',{name:'Ver Abono #9',exact:true}).click();await page.getByText(/Error histórico/).waitFor();assert.equal(await page.getByRole('link',{name:'Consultar autoría registrada',exact:true}).count(),0);await page.getByRole('button',{name:'Cerrar detalle',exact:true}).click();
+  await abrir('pdfs');await tabla('Emisiones de cotización').waitFor();await tabla('Emisiones de OT').waitFor();await tabla('Emisiones de guía').waitFor();assert.equal(await page.getByRole('link',{name:'Descargar plantilla 1',exact:true}).getAttribute('href'),'/api/guias/pdfs/g1?descargar=1');
+  await page.getByRole('button',{name:'Ver PDF revisión 1',exact:true}).first().click();assert.equal(await page.locator('iframe').first().getAttribute('src'),'/api/cotizaciones/pdfs/q1');await page.getByRole('button',{name:'Cerrar vista previa',exact:true}).click();
+  await abrir('sesiones');await tabla('Mis sesiones activas').waitFor();assert.equal(await tabla('Mis sesiones activas').getByRole('row').count(),3);assert.equal(await tabla('Mis sesiones activas').getByRole('button').count(),1);await tabla('Mis sesiones activas').getByRole('button').click();await page.getByRole('button',{name:'Cerrar las demás sesiones',exact:true}).click();
+  await page.waitForFunction(()=>(window as unknown as{__gd6:{acciones:{action:string;id?:string}[]}}).__gd6.acciones.some(a=>a.action==='sessions-revoke'&&!a.id));
+  const acciones=await page.evaluate(()=>(window as unknown as{__gd6:{acciones:{action:string;id?:string}[]}}).__gd6.acciones);assert(acciones.some(a=>a.action==='sessions-revoke'&&a.id==='otra'));assert(acciones.some(a=>a.action==='sessions-revoke'&&!a.id));assert(!acciones.some(a=>a.action==='sessions-revoke'&&a.id==='actual'));
+  for(const width of [360,768,1280]){await page.setViewportSize({width,height:900});await tabla('Mis sesiones activas').waitFor();await capturarGrillas(page,`gd6-${width}`);}assert.deepEqual(errores,[]);console.log('GD6 navegador: abonos/promesas paginados, comprobantes preservados, permisos, consulta anidada/foco, PDFs históricos y revocación de sesiones correctos. Transporte simulado; sin servidor ni BD.');
+ }finally{await browser.close();}
+}
+main().catch(e=>{console.error(e);process.exitCode=1;});

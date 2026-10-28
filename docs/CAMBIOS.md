@@ -1478,3 +1478,76 @@ Nueva lista explícita `SEGURIDAD_ORIGENES_DESARROLLO`, usada sólo en desarroll
 Cookies de sesión/desafío por host de petición: HTTP local usa nombres sin prefijo y HTTPS conserva Secure/__Host-. Guardas, archivos y páginas de seguridad leen el nombre correspondiente. No se añaden sesiones compartidas entre dominios, permisos, servicios de BD ni migraciones. Producción ignora la lista adicional y conserva el origen único. Nuevas pruebas puras y de API/cookies en Chromium con servicio/transporte simulados; validación real del túnel pendiente del usuario. Operación en OPERACION-SEGURIDAD.md.
 
 Validación: pruebas puras de orígenes anteriores/nuevos y API/cookies en Chromium correctas; lint, tipos y cobertura S4 (93 acciones, 25 páginas, 7 rutas y 127 entradas) correctos. `pnpm build` ejecutado y bloqueado por el entorno al abrir puerto interno de Turbopack (Operation not permitted). No se inició servidor ni se escribió en BD; navegador de ensayo cerrado.
+
+
+## 27-10-2026 — GD3: planificación OT en grillas
+
+FormularioTrabajo presenta partidas en tabla y delega su edición a EditorLineaPlan con borrador independiente. Necesidades, revisión de receta, distribuciones de materiales y abastecimiento tienen subgrillas/diálogos específicos. Claves locales estables preservan identidad tras quitar filas; aceptación/descarte y confirmación protegen el borrador. Se conservan origen comercial, receta histórica y actualización explícita, revisiones obligatorias, permisos y reintento idéntico. Validación de cobertura y reservas permanece en los servicios existentes. Sin esquema, migraciones ni nuevas acciones.
+
+Lint/tipos, requisitos puros, cobertura S4 y Chromium con guardado simulado correctos. Build ejecutado y bloqueado por puerto interno de Turbopack. Sin servidor ni escrituras de ensayo en BD. Manual y checklist actualizados; alcance y pendientes en GRILLAS-GD3-VALIDACION.md.
+
+
+## 27-10-2026 — GD4: producción y consulta de OT en grillas
+
+Producción incorpora grilla de consumos reales con claves estables y EditorConsumo para edición/revisión de redondeo mediante borrador independiente. Cantidad positiva, motivo obligatorio de revisión, bodega compatible y duplicados material/bodega se comprueban antes de aceptar; el servicio mantiene la validación definitiva. Quitar y reemplazar consumos previstos requieren confirmación. Se conservan lote, fechas, observaciones, referencia de corrección y datos/UUID de un resultado incierto.
+
+ConsultaDetallesTrabajo separa partidas, recursos, registros, reservas/eventos y revisiones en tablas; Ver conserva receta, previsiones y motivos históricos. Registrar, Revertir y Liberar conservan permiso/estado y callbacks existentes. Cierre/reversión presentan preparación, reservas y efectos en tablas sin modificar sus servicios. TablaDetallesTrabajo es un auxiliar visual local para tablas semánticas, vacío, cifras y desplazamiento; no interpreta reglas de negocio. Sin esquema, migraciones, dependencias, DTO ni acciones nuevas.
+
+Lint/tipos, requisitos puros, cobertura S4 y Chromium con acciones simuladas correctos. Build bloqueado por puerto interno de Turbopack, incluso tras reintento con permisos ampliados. Sin servidor de aplicación ni escrituras de prueba en BD. Manual Markdown actualizado; PDF no regenerado. Revisión funcional/visual e integración PostgreSQL pendientes en GRILLAS-GD4-VALIDACION.md.
+
+
+## 27-10-2026 — GD5: preparación y corrección de guías en grillas
+
+FormularioSalida presenta cada partida/bodega en tabla y usa EditorSalidaGuia con borrador independiente de cantidad/conformidad. Reutiliza esquema de guía y Decimal para máximo orientativo por bodega y selección conjunta de una partida. Cantidad vacía excluye sin borrar origen; descartar conserva el borrador padre. Previsualización tabular y snapshot de datos/UUID protegen la confirmación/reintento, bloqueando nueva previsualización mientras el resultado sea incierto.
+
+FormularioCorreccion presenta originales y pendientes retornables en tabla con DialogoCantidadDetalle. La previsualización ahora se revisa como tabla antes del diálogo de confirmación; Modificar selección permite volver al borrador. Conserva recepción física en bodega original, motivo/fecha, cantidades máximas y snapshots de reintento. TablaPartidasGuia es sólo presentación local; los servicios, permisos, stock/deuda, dependencias y documentos históricos no cambian. Sin esquema, migraciones, DTO, dependencias ni acciones nuevas.
+
+Lint/tipos, cobertura S4 y Chromium con acciones simuladas correctos. Selectores/flujo de prueba integral G6 adaptados, sin ejecutarla. Build bloqueado por puerto interno de Turbopack. No se inició servidor ni se escribieron fixtures en BD. Manual Markdown actualizado, PDF anterior sin regenerar; alcance y pendientes en GRILLAS-GD5-VALIDACION.md.
+
+
+## 27-10-2026 — GD6: Cobranza e historiales tabulares
+
+GrillaHistorial y VerDetalleHistorial comparten presentación de consultas, sin cálculos ni escrituras. Abonos/promesas conservan paginación y acciones del servidor; Ver muestra datos ampliados, motivos, comprobantes históricos y acceso a autoría por permiso. Se amplía el detalle de cuenta. Compras muestra cierres/recepciones con Ver para motivos/partidas; OCC muestra operaciones; OT conserva historial tabular de GD4. Cotizaciones/OT/guías presentan emisiones PDF en tablas manteniendo bytes, rutas, acciones y reintentos existentes. Mis sesiones muestra inicio/actividad/vencimiento y conserva revocación individual/de las demás.
+
+No cambian esquema, consultas/servicios, DTO, endpoints, Server Actions ni dependencias. Lint/tipos, cobertura S4 y Chromium con transporte simulado correctos; sin servidor de aplicación ni BD de ensayo. Build bloqueado por puerto interno de Turbopack. Integración real, estilos completos y aceptación pendientes en GRILLAS-GD6-VALIDACION.md. Manual Markdown actualizado, PDF anterior sin regenerar.
+
+
+## 27-10-2026 — GD7: regresión visual y entrega para aceptación
+
+Regresión secuencial de cinco ensayos de componentes GD2–GD6, requisitos puros y cobertura S4: 7/7 correctos. El ejecutor compila globals.css con PostCSS/Tailwind existentes, inyecta tema oscuro local y captura quince estados responsive con controles de desborde de página/diálogo. Transporte simulado, sin servidor ni BD. Se corrige min-width del fieldset del editor OT y se explicita retorno de foco en VerDetalleHistorial. Pruebas ajustadas a animaciones reales y nueva tabla de historia OCC.
+
+Nuevos scripts `grillas:validar` y `manual:pdf`, sin dependencias nuevas. El exportador local cubre el Markdown usado por el manual y rechaza sintaxis no soportada; conserva texto/índice, imágenes locales y numeración en PDF Carta sin solicitudes externas. Manual actualizado y tres capturas ficticias documentadas. Artefactos de ejecución ignorados en var/validacion; muestras revisadas en docs/capturas/grillas-gd7. Sin esquema, migraciones, servicios ni operaciones sobre documentos históricos.
+
+Lint/tipos y referencias correctos; build ejecutado pero bloqueado por puerto interno de Turbopack. GD7 permanece sin cierre funcional; guía de catorce casos, evidencia y pendientes en GRILLAS-GD7-VALIDACION.md. No se aprueban otras validaciones de V1.
+
+
+## 27-10-2026 — TC1: paletas Claro/Oscuro y tokens de contraste
+
+Se completa :root con la paleta clara y se conserva .dark como apariencia impuesta por el layout. Cabeceras usan variables de degradado/brillo y descripción propia para ambos temas. Nuevas variables chart-1…5 respaldan las utilidades de series. Input se separa de control-surface para reforzar bordes manteniendo el relleno oscuro anterior en Input/Textarea/InputGroup/Command y botones outline. Primary-hover conserva texto blanco legible; error/anulación oscuro se aclara para contraste en texto y hover con tintes. Sin selector, persistencia, automatización, dependencias ni cambios de servicios/BD.
+
+Ensayo TC1 con CSS real y componentes: texto >=4,5:1, bordes/series >=3:1 en los pares representativos, diálogo y seis capturas responsive correctos. No certifica todos los módulos ni sustituye TC2–TC4. Lint, tipos, diff y **build de producción correctos**; no se reprodujo el bloqueo anterior de Turbopack. Sin servidor de aplicación ni escrituras de ensayo en BD. Paletas/evidencia y continuidad en TEMAS-TC1-PALETAS.md; muestras ficticias en docs/capturas/temas-tc1.
+
+
+## 27-10-2026 — TC2: selector y persistencia de apariencia
+
+- [x] Claro/Oscuro/Según el sistema en barra del ERP y páginas de acceso; Oscuro predeterminado.
+- [x] Restauración antes de hidratación, preferencia por navegador/origen, sincronización de pestañas y respaldo temporal si falla almacenamiento.
+- [x] Sonner y controles nativos siguen el tema; cambio sin remontar formularios/diálogos.
+- [x] Componentes responsive, teclado, sistema y fallos de almacenamiento comprobados; integración pública Next sin enviar credenciales.
+- [x] Lint, tipos y producción con Webpack correctos. Turbopack bloqueado por permiso de puerto interno; no se cambia el script habitual.
+- [x] Manual Markdown/PDF actualizado (19 páginas Carta). Sin dependencias nuevas ni cambios de BD/autenticación/documentos.
+- [ ] Auditoría transversal TC3, regresión integral y aceptación funcional TC4.
+
+Arquitectura: script estático en head y almacén useSyncExternalStore, sin proveedor que remonte el contenido. Según el sistema se incluye por compartir el mismo mecanismo. Detalle, pruebas y límites: [TEMAS-TC2-VALIDACION.md](TEMAS-TC2-VALIDACION.md). Este checkpoint continúa las entradas históricas TC1; no aprueba validaciones de otros módulos.
+
+
+## 27-10-2026 — TC3: revisión transversal de temas
+
+- [x] Color link separado de primary para enlaces y leyenda; Dashboard usa series temáticas.
+- [x] Avisos informativos con texto apropiado, hover opaco y superposiciones al 50%; documento técnico con color-scheme claro propio.
+- [x] Revisión estática de 204 archivos y excepciones intencionales de imágenes/documentos.
+- [x] Regresión de grillas: 7/7 por tema; Dashboard, editor, controles, mantenedor y reautenticación con datos simulados, navegación móvil/contraída y contraste correctos.
+- [x] Regresión TC1/TC2 y acceso público Next correctos; lint/tipos y producción Webpack correctos (Turbopack bloqueado por permisos de puerto interno).
+- [ ] TC4: recorridos autenticados completos, accesibilidad ampliada y aceptación funcional.
+
+Sin nuevos datos, dependencias ni cambios de reglas. Manual/PDF TC2 vigentes. Cobertura y límites en [TEMAS-TC3-VALIDACION.md](TEMAS-TC3-VALIDACION.md); no se presenta la auditoría de código/componentes como una prueba integral de todos los flujos.

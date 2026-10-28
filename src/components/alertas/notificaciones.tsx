@@ -1,5 +1,6 @@
 "use client";
 
+import { useTema } from "@/components/tema/estado";
 import { Toaster, toast } from "sonner";
 import { CheckCircle2, CircleAlert, Info } from "lucide-react";
 
@@ -10,5 +11,6 @@ export const notificar = {
 };
 
 export function Notificaciones() {
-  return <Toaster theme="dark" position="bottom-right" closeButton containerAriaLabel="Avisos del sistema" toastOptions={{ closeButtonAriaLabel: "Cerrar aviso", style: { background: "var(--card)", color: "var(--foreground)", borderColor: "var(--border)" }, className: "font-sans" }} icons={{ success: <CheckCircle2 className="size-4 text-success" />, error: <CircleAlert className="size-4 text-destructive" />, info: <Info className="size-4 text-ring" /> }} />;
+  const { efectivo } = useTema();
+  return <Toaster theme={efectivo === "claro" ? "light" : "dark"} position="bottom-right" closeButton containerAriaLabel="Avisos del sistema" toastOptions={{ closeButtonAriaLabel: "Cerrar aviso", style: { background: "var(--card)", color: "var(--foreground)", borderColor: "var(--border)" }, className: "font-sans" }} icons={{ success: <CheckCircle2 className="size-4 text-success" />, error: <CircleAlert className="size-4 text-destructive" />, info: <Info className="size-4 text-ring" /> }} />;
 }

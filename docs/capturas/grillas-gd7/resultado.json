@@ -1,0 +1,34 @@
+{
+  "fecha": "2026-10-27T20:29:54.080Z",
+  "alcance": "Componentes reales con CSS Tailwind local y transporte simulado. Sin servidor/BD; no sustituye aceptación ni integración.",
+  "resultados": [
+    {
+      "prueba": "tests/requerimientos-produccion.ts",
+      "codigo": 0
+    },
+    {
+      "prueba": "tests/seguridad-s4-cobertura.ts",
+      "codigo": 0
+    },
+    {
+      "prueba": "tests/grillas-gd2.ui.ts",
+      "codigo": 0
+    },
+    {
+      "prueba": "tests/grillas-gd3.ui.ts",
+      "codigo": 0
+    },
+    {
+      "prueba": "tests/grillas-gd4.ui.ts",
+      "codigo": 0
+    },
+    {
+      "prueba": "tests/grillas-gd5.ui.ts",
+      "codigo": 0
+    },
+    {
+      "prueba": "tests/grillas-gd6.ui.ts",
+      "codigo": 0
+    }
+  ]
+}

@@ -413,3 +413,33 @@ Orden sugerido, siguiendo el flujo del negocio:
 | `next-themes` *(opcional)* | Solo si más adelante se agrega el tema claro | — |
 
 > **Nota:** shadcn/ui evoluciona rápido. Al iniciar la Fase 1 hay que revisar en [ui.shadcn.com](https://ui.shadcn.com) los nombres actuales de los componentes y bloques (por ejemplo, `form` frente a `field`), y que sean compatibles con Next.js 16, React 19 y Tailwind v4.
+
+
+## Actualización TC1 — 27-10-2026
+
+Se implementan paleta clara en :root, tokens de cabecera/series y ajustes de contraste. El layout continúa imponiendo Oscuro; la selección/persistencia corresponde a TC2 y no está disponible todavía. Los valores iniciales anteriores conservan el contexto de diseño; para la implementación vigente consultar [TEMAS-TC1-PALETAS.md](TEMAS-TC1-PALETAS.md) y el seguimiento en [HITO-TEMAS-CLARO-OSCURO.md](HITO-TEMAS-CLARO-OSCURO.md). La prueba de componentes y el build pasaron; revisión transversal y aceptación pendientes.
+
+
+## 27-10-2026 — TC2: selector y persistencia de apariencia
+
+- [x] Claro/Oscuro/Según el sistema en barra del ERP y páginas de acceso; Oscuro predeterminado.
+- [x] Restauración antes de hidratación, preferencia por navegador/origen, sincronización de pestañas y respaldo temporal si falla almacenamiento.
+- [x] Sonner y controles nativos siguen el tema; cambio sin remontar formularios/diálogos.
+- [x] Componentes responsive, teclado, sistema y fallos de almacenamiento comprobados; integración pública Next sin enviar credenciales.
+- [x] Lint, tipos y producción con Webpack correctos. Turbopack bloqueado por permiso de puerto interno; no se cambia el script habitual.
+- [x] Manual Markdown/PDF actualizado (19 páginas Carta). Sin dependencias nuevas ni cambios de BD/autenticación/documentos.
+- [ ] Auditoría transversal TC3, regresión integral y aceptación funcional TC4.
+
+Arquitectura: script estático en head y almacén useSyncExternalStore, sin proveedor que remonte el contenido. Según el sistema se incluye por compartir el mismo mecanismo. Detalle, pruebas y límites: [TEMAS-TC2-VALIDACION.md](TEMAS-TC2-VALIDACION.md). Este checkpoint continúa las entradas históricas TC1; no aprueba validaciones de otros módulos.
+
+
+## 27-10-2026 — TC3: revisión transversal de temas
+
+- [x] Color link separado de primary para enlaces y leyenda; Dashboard usa series temáticas.
+- [x] Avisos informativos con texto apropiado, hover opaco y superposiciones al 50%; documento técnico con color-scheme claro propio.
+- [x] Revisión estática de 204 archivos y excepciones intencionales de imágenes/documentos.
+- [x] Regresión de grillas: 7/7 por tema; Dashboard, editor, controles, mantenedor y reautenticación con datos simulados, navegación móvil/contraída y contraste correctos.
+- [x] Regresión TC1/TC2 y acceso público Next correctos; lint/tipos y producción Webpack correctos (Turbopack bloqueado por permisos de puerto interno).
+- [ ] TC4: recorridos autenticados completos, accesibilidad ampliada y aceptación funcional.
+
+Sin nuevos datos, dependencias ni cambios de reglas. Manual/PDF TC2 vigentes. Cobertura y límites en [TEMAS-TC3-VALIDACION.md](TEMAS-TC3-VALIDACION.md); no se presenta la auditoría de código/componentes como una prueba integral de todos los flujos.

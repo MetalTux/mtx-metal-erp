@@ -51,7 +51,7 @@ export function AppSidebar() {
                       <SidebarMenu className="gap-0.5">
                         {grupo.elementos.map((item) => (
                           <SidebarMenuItem key={item.ruta}>
-                            <SidebarMenuButton asChild isActive={rutaEstaActiva(pathname, item.ruta)} tooltip={item.titulo} className="h-9 gap-3 text-muted-foreground data-active:bg-sidebar-primary data-active:text-sidebar-primary-foreground data-active:hover:bg-sidebar-primary/90 data-active:active:bg-sidebar-primary/90">
+                            <SidebarMenuButton asChild isActive={rutaEstaActiva(pathname, item.ruta)} tooltip={item.titulo} className="h-9 gap-3 text-muted-foreground data-active:bg-sidebar-primary data-active:text-sidebar-primary-foreground data-active:hover:bg-primary-hover data-active:active:bg-primary-hover">
                               <Link href={item.ruta} onClick={cerrarEnMovil} aria-current={rutaEstaActiva(pathname, item.ruta) ? "page" : undefined}>
                                 <item.icono aria-hidden="true" /><span>{item.titulo}</span>
                               </Link>

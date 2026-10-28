@@ -669,3 +669,106 @@ Continuidad: HITO-MANUAL-USABILIDAD.md y REVISION-USABILIDAD-V1.md. No se da por
 - [ ] Revisión visual con estilos reales, teclado completo, zoom y aceptación del usuario; build bloqueado por Turbopack.
 
 Estado/evidencia: [GRILLAS-GD2-VALIDACION.md](GRILLAS-GD2-VALIDACION.md). Sin migraciones, fixtures de BD ni servidores de aplicación.
+
+
+### 27-10-2026 — GD3: planificación de OT
+
+- [x] Grilla de partidas y diálogo con borrador independiente, consulta y restricciones de origen/obra propia.
+- [x] Subgrillas de necesidades, revisión obligatoria, materiales por bodega y abastecimiento desde stock.
+- [x] Identidades estables, confirmación al quitar, descarte y conservación del intento incierto.
+- [x] Lint/tipos, requisitos puros, cobertura S4 y Chromium con guardado simulado correctos.
+- [ ] Revisión funcional y visual con estilos reales, teclado/zoom y guardado/reservas reales. Build bloqueado por Turbopack.
+
+Evidencia y recorrido: [GRILLAS-GD3-VALIDACION.md](GRILLAS-GD3-VALIDACION.md). Manual Markdown actualizado; PDF anterior sin regenerar. GD4 pendiente.
+
+
+### 27-10-2026 — GD4: producción, consulta y efectos de OT
+
+- [x] Consumos reales en grilla con diálogo de edición, descarte, claves estables y confirmación al quitar/reemplazar.
+- [x] Necesidades y revisión obligatoria del lote con cantidad/motivo; efectos del registro en tabla.
+- [x] Partidas, recursos, registros, reservas/eventos e historial en tablas separadas; Ver para trazabilidad y motivos.
+- [x] Efectos de cierre/reversión tabulares; permisos y acciones operativas conservados.
+- [x] Lint/tipos, requisitos puros, cobertura S4 y navegador con acciones simuladas correctos.
+- [ ] Revisión funcional/visual, teclado/zoom completo y operaciones reales en copia de PostgreSQL. Build limitado por Turbopack.
+
+Continuidad y pruebas: [GRILLAS-GD4-VALIDACION.md](GRILLAS-GD4-VALIDACION.md). Sin migraciones ni servidores de aplicación; GD5 pendiente. Manual Markdown actualizado, PDF anterior sin regenerar.
+
+
+### 27-10-2026 — GD5: salida y corrección de guías
+
+- [x] Grilla de salida por partida/bodega y diálogo de cantidad/conformidad con límites conjuntos, descarte y exclusión.
+- [x] Grilla de corrección por original y pendiente retornable; recepción física en bodega original conservada.
+- [x] Previsualizaciones tabulares y confirmación con datos/UUID estables ante respuesta incierta.
+- [x] Lint/tipos, cobertura S4 y Chromium con acciones simuladas correctos; prueba integral G6 adaptada, no ejecutada.
+- [ ] Revisión funcional/visual, teclado/zoom y transacciones reales en copia descartable. Build bloqueado por Turbopack.
+
+Continuidad y pruebas: [GRILLAS-GD5-VALIDACION.md](GRILLAS-GD5-VALIDACION.md). Manual Markdown actualizado; PDF anterior sin regenerar. Sin migraciones ni servidores de aplicación. GD6 pendiente.
+
+
+### 27-10-2026 — GD6: Cobranza e historiales secundarios
+
+- [x] Abonos/promesas tabulares con paginación, detalles, comprobantes y autoría según permiso.
+- [x] Cierres/recepciones de Compras con Ver; operaciones de OCC en tabla y revisiones OT de GD4 conservadas.
+- [x] Emisiones PDF de cotizaciones, OT y guías en tablas con consulta/descarga históricas.
+- [x] Mis sesiones en tabla con inicio, actividad, vencimiento y revocación existente.
+- [x] Auxiliares visuales compartidos, lint/tipos, cobertura S4 y Chromium con transporte simulado correctos.
+- [ ] Aceptación, estilos/teclado/zoom completos e integración real. Build bloqueado por Turbopack.
+
+Evidencia/continuidad: [GRILLAS-GD6-VALIDACION.md](GRILLAS-GD6-VALIDACION.md). Sin esquema, migraciones ni servidores de aplicación. Manual Markdown actualizado, PDF anterior sin regenerar. GD7 pendiente.
+
+
+### 27-10-2026 — GD7: regresión y manual para aceptación
+
+- [x] Regresión de componentes con CSS real/transporte simulado: 7/7 y quince capturas a 360/768/1280 px, sin desbordes en estados comprobados.
+- [x] Corrección de ancho móvil en configuración OT, retorno explícito de foco y pruebas sincronizadas con animaciones.
+- [x] Ejecutor reproducible, manual Markdown/PDF y tres muestras ficticias, sin servidor ni BD.
+- [x] Guía de catorce casos de aprobación con criterios CA y estados pendientes.
+- [ ] Build/integración real, teclado/zoom/contraste completos y aprobación funcional. GD7 no está cerrado.
+
+Continuidad: [GRILLAS-GD7-VALIDACION.md](GRILLAS-GD7-VALIDACION.md). Regresión con `pnpm grillas:validar`; PDF con `pnpm manual:pdf`. Sin migraciones ni dependencias nuevas.
+
+
+### 27-10-2026 — TC1: paletas para Claro/Oscuro
+
+- [x] Tokens claros completos y base oscura conservada; Oscuro sigue activo por defecto, sin selector todavía.
+- [x] Cabeceras temáticas, descripción con contraste, series y separación de borde/relleno de controles.
+- [x] Hover principal y error/anulación oscuro ajustados para legibilidad.
+- [x] Ensayo con CSS/componentes reales, contraste representativo, diálogo y seis capturas responsive correctos.
+- [x] Lint, tipos y build de producción correctos; el bloqueo anterior de Turbopack no se reprodujo.
+- [ ] Selector/persistencia TC2, revisión transversal TC3 y aceptación TC4.
+
+Paletas y límites: [TEMAS-TC1-PALETAS.md](TEMAS-TC1-PALETAS.md). Sin dependencias, migraciones ni cambios de datos. Manual/PDF se actualizarán al entregar la funcionalidad de selección.
+
+
+## 27-10-2026 — TC2: selector y persistencia de apariencia
+
+- [x] Claro/Oscuro/Según el sistema en barra del ERP y páginas de acceso; Oscuro predeterminado.
+- [x] Restauración antes de hidratación, preferencia por navegador/origen, sincronización de pestañas y respaldo temporal si falla almacenamiento.
+- [x] Sonner y controles nativos siguen el tema; cambio sin remontar formularios/diálogos.
+- [x] Componentes responsive, teclado, sistema y fallos de almacenamiento comprobados; integración pública Next sin enviar credenciales.
+- [x] Lint, tipos y producción con Webpack correctos. Turbopack bloqueado por permiso de puerto interno; no se cambia el script habitual.
+- [x] Manual Markdown/PDF actualizado (19 páginas Carta). Sin dependencias nuevas ni cambios de BD/autenticación/documentos.
+- [ ] Auditoría transversal TC3, regresión integral y aceptación funcional TC4.
+
+Arquitectura: script estático en head y almacén useSyncExternalStore, sin proveedor que remonte el contenido. Según el sistema se incluye por compartir el mismo mecanismo. Detalle, pruebas y límites: [TEMAS-TC2-VALIDACION.md](TEMAS-TC2-VALIDACION.md). Este checkpoint continúa las entradas históricas TC1; no aprueba validaciones de otros módulos.
+
+
+## 27-10-2026 — TC3: revisión transversal de temas
+
+- [x] Color link separado de primary para enlaces y leyenda; Dashboard usa series temáticas.
+- [x] Avisos informativos con texto apropiado, hover opaco y superposiciones al 50%; documento técnico con color-scheme claro propio.
+- [x] Revisión estática de 204 archivos y excepciones intencionales de imágenes/documentos.
+- [x] Regresión de grillas: 7/7 por tema; Dashboard, editor, controles, mantenedor y reautenticación con datos simulados, navegación móvil/contraída y contraste correctos.
+- [x] Regresión TC1/TC2 y acceso público Next correctos; lint/tipos y producción Webpack correctos (Turbopack bloqueado por permisos de puerto interno).
+- [ ] TC4: recorridos autenticados completos, accesibilidad ampliada y aceptación funcional.
+
+Sin nuevos datos, dependencias ni cambios de reglas. Manual/PDF TC2 vigentes. Cobertura y límites en [TEMAS-TC3-VALIDACION.md](TEMAS-TC3-VALIDACION.md); no se presenta la auditoría de código/componentes como una prueba integral de todos los flujos.
+
+
+## 28-10-2026 — TC4: conformidad funcional general
+
+- [x] Usuario conforme «de momento» con Claro/Oscuro; aprobación general registrada sin asumir ejecución de cada caso.
+- [x] Evidencia TC2/TC3 revisada y checklist TC4 desglosado con pruebas ya logradas.
+- [ ] Cierre técnico integral: zoom real 200%, lector de pantalla, contraste integral y recorridos privado/túnel/autenticados pendientes.
+
+Estado exacto en [HITO-TEMAS-CLARO-OSCURO.md](HITO-TEMAS-CLARO-OSCURO.md), sección 11. Sólo documentación; no se repiten comprobaciones de código ni se alteran otros hitos.

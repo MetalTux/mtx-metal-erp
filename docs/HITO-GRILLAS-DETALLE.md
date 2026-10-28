@@ -84,11 +84,11 @@ Fuentes: [formulario-orden.tsx](../src/components/ordenes-compra-cliente/formula
 
 Fuente: [ordenes-trabajo/formulario.tsx](../src/components/ordenes-trabajo/formulario.tsx), iteración `d.lines`.
 
-- [ ] Grilla principal: partida, tipo/modo, unidad, cantidad, a fabricar, desde stock, estado de distribución y acciones Ver/Configurar.
-- [ ] Llevar configuración de una línea a un diálogo, con subgrillas GD-04/GD-05.
-- [ ] Agregar/quitar líneas sólo donde hoy se permite para obra propia; una OT comercial conserva el origen y las cantidades contratadas de OCC.
-- [ ] Mantener receta histórica, actualización explícita de receta, revisión de redondeos y motivo de revisión del plan.
-- [ ] Conservar separación entre Guardar borrador y Confirmar/reservar, faltantes y operaciones inciertas.
+- [x] Grilla principal: partida, tipo/modo, unidad, cantidad, a fabricar, desde stock, estado de distribución y acciones Ver/Configurar.
+- [x] Llevar configuración de una línea a un diálogo, con subgrillas GD-04/GD-05.
+- [x] Agregar/quitar líneas sólo donde hoy se permite para obra propia; una OT comercial conserva el origen y las cantidades contratadas de OCC.
+- [x] Mantener receta histórica, actualización explícita de receta, revisión de redondeos y motivo de revisión del plan.
+- [x] Conservar separación entre Guardar borrador y Confirmar/reservar, faltantes y operaciones inciertas.
 
 ### GD-04 — OT: materiales previstos y revisión de receta
 
@@ -96,11 +96,11 @@ Fuente: [ordenes-trabajo/formulario.tsx](../src/components/ordenes-trabajo/formu
 
 Fuente: [ordenes-trabajo/formulario.tsx](../src/components/ordenes-trabajo/formulario.tsx), `needs`, `roundingReviews` y `l.materials`.
 
-- [ ] Subgrilla de necesidad: material, unidad, cantidad exacta, prevista/revisada, diferencia y estado de revisión.
-- [ ] Diálogo específico para cantidad revisada y motivo cuando el cálculo lo exige; no reducir esa revisión a un campo opcional.
-- [ ] Subgrilla de distribución: material, bodega, cantidad prevista, disponibilidad y acciones.
-- [ ] Conservar distintas distribuciones del mismo material por bodega y validación del total necesario.
-- [ ] Mantener materiales a medida distintos de recetas de catálogo; no regenerar recetas históricas automáticamente.
+- [x] Subgrilla de necesidad: material, unidad, cantidad exacta, prevista/revisada, diferencia y estado de revisión.
+- [x] Diálogo específico para cantidad revisada y motivo cuando el cálculo lo exige; no reducir esa revisión a un campo opcional.
+- [x] Subgrilla de distribución: material, bodega, cantidad prevista, disponibilidad y acciones.
+- [x] Conservar distintas distribuciones del mismo material por bodega y validación del total necesario.
+- [x] Mantener materiales a medida distintos de recetas de catálogo; no regenerar recetas históricas automáticamente.
 
 ### GD-05 — OT: abastecimiento desde stock
 
@@ -108,10 +108,10 @@ Fuente: [ordenes-trabajo/formulario.tsx](../src/components/ordenes-trabajo/formu
 
 Fuente: [ordenes-trabajo/formulario.tsx](../src/components/ordenes-trabajo/formulario.tsx).
 
-- [ ] Subgrilla por recurso: bodega, cantidad asignada, unidad, stock/reserva/disponible y acciones de borrador.
-- [ ] Validar clasificación de bodega y cantidad total que debe abastecerse desde stock.
-- [ ] Conservar abastecimiento de materia prima y de producto terminado como recursos distintos.
-- [ ] No presentar reservas como stock consumido ni prometer disponibilidad sin revalidación del servidor.
+- [x] Subgrilla por recurso: bodega, cantidad asignada, unidad, stock/reserva/disponible y acciones de borrador.
+- [x] Validar clasificación de bodega y cantidad total que debe abastecerse desde stock.
+- [x] Conservar abastecimiento de materia prima y de producto terminado como recursos distintos.
+- [x] No presentar reservas como stock consumido ni prometer disponibilidad sin revalidación del servidor.
 
 ### GD-06 — Producción: consumos reales y revisión de lote
 
@@ -119,12 +119,13 @@ Fuente: [ordenes-trabajo/formulario.tsx](../src/components/ordenes-trabajo/formu
 
 Fuente: [produccion.tsx](../src/components/ordenes-trabajo/produccion.tsx), `d.consumptions` y `roundingReviews`.
 
-- [ ] Grilla de consumos reales: material, unidad, bodega, cantidad, información de reserva y acciones de borrador.
-- [ ] Mostrar revisiones de redondeo como grilla de diferencias con diálogo de revisión obligatoria cuando corresponda.
-- [ ] Mantener avance, cantidad producida, bodega de salida/ingreso según modo y referencia opcional al registro revertido.
-- [ ] Convertir los efectos de previsualización a tabla para comparar saldo antes/después y reserva propia/ajena/libre.
-- [ ] Mantener inmutabilidad del registro confirmado; corregir con reversión vinculada, no con edición de una fila histórica.
-- [ ] Probar rollback, concurrencia, consumo real y reintento con el mismo UUID.
+- [x] Grilla de consumos reales: material, unidad, bodega, cantidad, información de reserva y acciones de borrador.
+- [x] Mostrar revisiones de redondeo como grilla de diferencias con diálogo de revisión obligatoria cuando corresponda.
+- [x] Mantener avance, cantidad producida, bodega de salida/ingreso según modo y referencia opcional al registro revertido.
+- [x] Convertir los efectos de previsualización a tabla para comparar saldo antes/después y reserva propia/ajena/libre.
+- [x] Mantener inmutabilidad del registro confirmado; corregir con reversión vinculada, no con edición de una fila histórica.
+- [x] Probar conservación de datos y UUID en reintento de interfaz con acciones simuladas.
+- [ ] Probar rollback, concurrencia y consumo real sobre copia descartable de PostgreSQL.
 
 ### GD-07 — Preparación de guía de despacho
 
@@ -132,11 +133,11 @@ Fuente: [produccion.tsx](../src/components/ordenes-trabajo/produccion.tsx), `d.c
 
 Fuente: [formulario-salida.tsx](../src/components/guia-despacho/formulario-salida.tsx), iteración `lines`.
 
-- [ ] Grilla: partida, bodega o tipo de prestación, unidad, pendiente, reserva propia, máximo orientativo, cantidad de salida y estado de conformidad.
-- [ ] Diálogo para cantidad y conformidad del servicio; mantener campos obligatorios y límites por fecha.
-- [ ] Mantener identidad partida+bodega: una misma partida puede distribuirse en varias bodegas.
-- [ ] No agregar partidas ajenas a la OT ni cambiar el documento de origen desde la grilla.
-- [ ] Grilla de previsualización de lo que efectivamente se confirmará, con revalidación de stock/reservas y protección de reintentos inciertos.
+- [x] Grilla: partida, bodega o tipo de prestación, unidad, pendiente, reserva propia, máximo orientativo, cantidad de salida y estado de conformidad.
+- [x] Diálogo para cantidad y conformidad del servicio; mantener campos obligatorios y límites por fecha.
+- [x] Mantener identidad partida+bodega: una misma partida puede distribuirse en varias bodegas.
+- [x] No agregar partidas ajenas a la OT ni cambiar el documento de origen desde la grilla.
+- [x] Grilla de previsualización de lo que efectivamente se confirmará, con revalidación de stock/reservas y protección de reintentos inciertos.
 
 ### GD-08 — Corrección/devolución de guía
 
@@ -144,11 +145,11 @@ Fuente: [formulario-salida.tsx](../src/components/guia-despacho/formulario-salid
 
 Fuente: [formulario-correccion.tsx](../src/components/guia-despacho/formulario-correccion.tsx).
 
-- [ ] Grilla: partida original, bodega, unidad, pendiente retornable y cantidad de esta corrección; diálogo para editar selección/cantidad.
-- [ ] Conservar cantidades parciales o completas sin superar lo originalmente entregado y aún no corregido.
-- [ ] Mantener confirmación explícita de recepción física en bodega original; servicios revierten entrega acreditada sin inventario.
-- [ ] Conservar motivo/fecha y previsualización; no modificar factura, deuda ni abonos por cambiar el diseño.
-- [ ] No habilitar edición o borrado de guías confirmadas ni permitir que una devolución elimine dependencias de producción.
+- [x] Grilla: partida original, bodega, unidad, pendiente retornable y cantidad de esta corrección; diálogo para editar selección/cantidad.
+- [x] Conservar cantidades parciales o completas sin superar lo originalmente entregado y aún no corregido.
+- [x] Mantener confirmación explícita de recepción física en bodega original; servicios revierten entrega acreditada sin inventario.
+- [x] Conservar motivo/fecha y previsualización; no modificar factura, deuda ni abonos por cambiar el diseño.
+- [x] No habilitar edición o borrado de guías confirmadas ni permitir que una devolución elimine dependencias de producción.
 
 ### GD-09 — Consulta de OT, reservas y efectos de operaciones
 
@@ -156,10 +157,10 @@ Fuente: [formulario-correccion.tsx](../src/components/guia-despacho/formulario-c
 
 Fuentes: [ordenes.tsx](../src/components/ordenes-trabajo/ordenes.tsx), [cierre.tsx](../src/components/ordenes-trabajo/cierre.tsx), [correccion.tsx](../src/components/ordenes-trabajo/correccion.tsx).
 
-- [ ] Tablas separadas para partidas, recursos, registros de producción y reservas; no una sola tabla que mezcle niveles y unidades.
-- [ ] Diálogo Ver para datos extensos, trazabilidad y motivos; conservar las acciones operativas específicas que ya existen.
-- [ ] Tablas de efectos de cierre/reversión con magnitudes antes/después y vínculos de origen.
-- [ ] Mantener restricciones de reversión, dependencias de guías, liberación/reserva y permisos; el cambio es de presentación.
+- [x] Tablas separadas para partidas, recursos, registros de producción y reservas; no una sola tabla que mezcle niveles y unidades.
+- [x] Diálogo Ver para datos extensos, trazabilidad y motivos; conservar las acciones operativas específicas que ya existen.
+- [x] Tablas de efectos de cierre/reversión con magnitudes antes/después y vínculos de origen.
+- [x] Mantener restricciones de reversión, dependencias de guías, liberación/reserva y permisos; el cambio es de presentación.
 
 ### GD-10 — Cobranza: detalle de cuenta e historiales
 
@@ -167,19 +168,19 @@ Fuentes: [ordenes.tsx](../src/components/ordenes-trabajo/ordenes.tsx), [cierre.t
 
 Fuente principal: [ventas/cobranza/page.tsx](<../src/app/(app)/ventas/cobranza/page.tsx>); operación en [operar-abonos.tsx](../src/components/cobranza/operar-abonos.tsx) y [operar-c3.tsx](../src/components/cobranza/operar-c3.tsx).
 
-- [ ] Grilla paginada de abonos: fecha, importe, medio, referencia, estado y acciones autorizadas; Ver abre comprobantes/datos ampliados.
-- [ ] Presentar historial de promesas en tabla y acceso a comprobantes mediante detalle, manteniendo paginación y autoría.
-- [ ] Conservar adjuntos anteriores y sus descargas protegidas; no borrar archivos por quitar una fila de presentación.
-- [ ] Mantener anulación con motivo, prohibición de sobrepago y cuenta/deuda únicas. No introducir edición directa de abonos registrados.
+- [x] Grilla paginada de abonos: fecha, importe, medio, referencia, estado y acciones autorizadas; Ver abre comprobantes/datos ampliados.
+- [x] Presentar historial de promesas en tabla y acceso a comprobantes mediante detalle, manteniendo paginación y autoría.
+- [x] Conservar adjuntos anteriores y sus descargas protegidas; no borrar archivos por quitar una fila de presentación.
+- [x] Mantener anulación con motivo, prohibición de sobrepago y cuenta/deuda únicas. No introducir edición directa de abonos registrados.
 
 ### GD-11 — Historiales y listas secundarias
 
 **Prioridad baja · Complejidad variable.** No son bloques de captura, pero conviene evaluar su lectura tabular después de los flujos anteriores.
 
-- [ ] Historial de recepciones/cierres dentro de [Compras](../src/components/compras/compras.tsx): tabla de operaciones y Ver para partidas.
-- [ ] Emisiones de PDF de [Cotizaciones](../src/components/cotizaciones/historial-pdf-cotizacion.tsx), [OT](../src/components/ordenes-trabajo/historial-pdf.tsx) y [Guías](../src/components/guia-despacho/historial-pdf.tsx): revisión, estado, fecha y Ver/Descargar, sin editar archivos históricos.
-- [ ] Historial de revisiones/operaciones de OCC y OT: tabla o detalle expandible tabular, conservando motivos/autoría.
-- [ ] Mis sesiones en [panel de usuario](../src/components/seguridad/panel.tsx): evaluar tabla de sesión, inicio, actividad, vencimiento y cierre; conservar sesión actual y revocación individual/de las demás. No es requisito previo para las grillas comerciales.
+- [x] Historial de recepciones/cierres dentro de [Compras](../src/components/compras/compras.tsx): tabla de operaciones y Ver para partidas.
+- [x] Emisiones de PDF de [Cotizaciones](../src/components/cotizaciones/historial-pdf-cotizacion.tsx), [OT](../src/components/ordenes-trabajo/historial-pdf.tsx) y [Guías](../src/components/guia-despacho/historial-pdf.tsx): revisión, estado, fecha y Ver/Descargar, sin editar archivos históricos.
+- [x] Historial de revisiones/operaciones de OCC y OT: tabla o detalle expandible tabular, conservando motivos/autoría.
+- [x] Mis sesiones en [panel de usuario](../src/components/seguridad/panel.tsx): evaluar tabla de sesión, inicio, actividad, vencimiento y cierre; conservar sesión actual y revocación individual/de las demás. No es requisito previo para las grillas comerciales.
 
 ## 5. Formularios que no necesitan convertirse en grillas de detalle
 
@@ -194,11 +195,11 @@ También permanecen como formularios la identidad del cliente/proveedor/material
 | GD0 | Inventario de componentes, clasificación y propuesta | Aprobado por el usuario el 27-10-2026 |
 | GD1 | Definir patrón compartido y criterios de aceptación | Completado: [patrón y criterios](PATRON-GRILLAS-DETALLE.md); aplicación pendiente en GD2–GD7 |
 | GD2 | Recepción de compras y OCC (GD-01/GD-02) | Implementado; [verificación y pendientes](GRILLAS-GD2-VALIDACION.md) |
-| GD3 | Planificación OT y subgrillas (GD-03/GD-04/GD-05) | Pendiente |
-| GD4 | Producción y consultas OT (GD-06/GD-09) | Pendiente |
-| GD5 | Preparación y corrección de guías (GD-07/GD-08) | Pendiente |
-| GD6 | Cobranza e historiales secundarios (GD-10/GD-11) | Pendiente |
-| GD7 | Regresión transversal, manual/capturas y revisión funcional | Pendiente |
+| GD3 | Planificación OT y subgrillas (GD-03/GD-04/GD-05) | Implementado; [verificación y pendientes](GRILLAS-GD3-VALIDACION.md) |
+| GD4 | Producción y consultas OT (GD-06/GD-09) | Implementado; [verificación y pendientes](GRILLAS-GD4-VALIDACION.md) |
+| GD5 | Preparación y corrección de guías (GD-07/GD-08) | Implementado; [verificación y pendientes](GRILLAS-GD5-VALIDACION.md) |
+| GD6 | Cobranza e historiales secundarios (GD-10/GD-11) | Implementado; [verificación y pendientes](GRILLAS-GD6-VALIDACION.md) |
+| GD7 | Regresión transversal, manual/capturas y revisión funcional | Regresión de componentes 7/7 y manual/PDF entregados; [cierre funcional pendiente](GRILLAS-GD7-VALIDACION.md) |
 
 Antes de abstraer componentes, contrastar los patrones ya existentes: tabla, selector buscable, acciones con ayuda, confirmación/descarte y diálogo. Compartir estructura visual y manejo de foco; conservar formularios y validaciones específicas por dominio. No iniciar una biblioteca genérica que obligue a reescribir todos los módulos de una vez.
 
@@ -248,3 +249,71 @@ GD1 queda completado como definición. Las verificaciones de navegador y las con
 - [ ] Revisión funcional y visual del usuario; no se sustituyen por el ensayo simulado.
 
 Detalle exacto, criterios CA aplicados y comando de reproducción: [GRILLAS-GD2-VALIDACION.md](GRILLAS-GD2-VALIDACION.md). GD3 no iniciado.
+
+
+## 10. Checkpoint GD3 — 27-10-2026
+
+- [x] Paso 1: grilla principal de planificación y diálogo independiente por partida; identidad estable, consulta y restricciones comerciales/obra propia.
+- [x] Paso 2: necesidades de receta, revisión obligatoria con motivo y distribuciones de materias primas en subgrillas.
+- [x] Paso 3: abastecimiento desde stock en subgrilla con bodegas compatibles y disponibilidad orientativa.
+- [x] Conservar borradores, receta histórica, validaciones de servidor, confirmación/reservas e idempotencia sin cambiar servicios ni esquema.
+- [x] Lint/tipos, requisitos puros, cobertura S4 y ensayo de componentes reales en Chromium con guardado simulado correctos.
+- [ ] Compilación final: build ejecutado y bloqueado por permiso de puerto interno de Turbopack.
+- [ ] Revisión funcional del usuario y visual con estilos reales, teclado completo, zoom y dispositivos; integración de guardado/reservas real pendiente.
+
+Los checks GD-03/GD-04/GD-05 corresponden a implementación; no equivalen a aprobación funcional. Evidencia y recorrido: [GRILLAS-GD3-VALIDACION.md](GRILLAS-GD3-VALIDACION.md). GD4 no iniciado. Sin migraciones ni escrituras de ensayo en BD.
+
+
+## 11. Checkpoint GD4 — 27-10-2026
+
+- [x] Grilla de consumos reales con Agregar/Editar/Quitar, borrador independiente, descarte, claves estables y confirmación de reemplazo.
+- [x] Necesidades y revisión obligatoria del lote en tabla/diálogo; efectos de producción tabulares.
+- [x] Consultas de partidas, recursos, registros, reservas y planificación con Ver para historia y motivos; acciones operativas conservadas.
+- [x] Preparación al cierre y efectos de reversión en tablas con orígenes y saldos disponibles.
+- [x] Sin cambios de esquema, servicios ni acciones; avance y manual Markdown actualizados.
+- [x] Lint/tipos, requisitos puros, cobertura S4 y Chromium con acciones simuladas correctos.
+- [ ] Aprobación funcional, pruebas con PostgreSQL y revisión visual/teclado completa.
+- [ ] Build exitoso: ejecutado pero bloqueado por permisos internos de Turbopack.
+
+Los checks de implementación no equivalen a aprobación funcional. Continuidad exacta en [GRILLAS-GD4-VALIDACION.md](GRILLAS-GD4-VALIDACION.md). GD5 no iniciado; PDF del manual sin regenerar.
+
+
+## 12. Checkpoint GD5 — 27-10-2026
+
+- [x] Preparación en grilla por partida/bodega con editor de cantidad/conformidad, límites orientativos conjuntos, descarte y exclusión sin borrar origen.
+- [x] Corrección en grilla por partida original, con pendiente retornable, edición de cantidad y recepción física conservada.
+- [x] Previsualizaciones tabulares, revisión previa de corrección y copias de datos/UUID estables ante resultado incierto.
+- [x] Lint/tipos, cobertura S4 y Chromium con acciones/router simulados correctos; prueba integral G6 adaptada, no ejecutada.
+- [x] Manual Markdown y registro de arquitectura actualizados. Sin servicios nuevos, esquema, migraciones ni escrituras de ensayo en BD.
+- [ ] Build exitoso: ejecutado pero bloqueado por permiso interno de Turbopack.
+- [ ] Aprobación funcional, estilos/teclado/zoom completos y pruebas reales en copia de PostgreSQL.
+
+Los checks GD-07/GD-08 corresponden a implementación y ensayo de interfaz, no a aprobación funcional ni prueba transaccional. Continuidad: [GRILLAS-GD5-VALIDACION.md](GRILLAS-GD5-VALIDACION.md). GD6 no iniciado; PDF del manual sin regenerar.
+
+
+## 13. Checkpoint GD6 — 27-10-2026
+
+- [x] Abonos/promesas en grillas paginadas con Ver para comprobantes, motivos y autoría; acciones/permisos conservados.
+- [x] Compras: cierres/recepciones tabulares con detalle histórico; OCC: operaciones en tabla. OT conserva lo implementado en GD4.
+- [x] Emisiones PDF de cotizaciones/OT/guías en tablas con rutas y acciones existentes.
+- [x] Evaluar y aplicar tabla a Mis sesiones, con actividad, vencimiento y revocación de otras sesiones.
+- [x] Auxiliares visuales GrillaHistorial/VerDetalleHistorial, sin cambios de consultas/servicios, esquema, migraciones ni acciones.
+- [x] Lint/tipos, cobertura S4 y Chromium con transporte simulado correctos; manual Markdown actualizado.
+- [ ] Build exitoso: ejecutado y bloqueado por permiso interno de Turbopack.
+- [ ] Aprobación funcional, estilos/teclado/zoom y pruebas reales con Next/PostgreSQL/archivos/sesiones.
+
+Checks GD-10/GD-11 de implementación, no de aprobación funcional. Continuidad: [GRILLAS-GD6-VALIDACION.md](GRILLAS-GD6-VALIDACION.md). GD7 pendiente; PDF del manual sin regenerar. Sin servidores de aplicación ni escrituras de ensayo en BD.
+
+
+## 14. Checkpoint GD7 — 27-10-2026
+
+- [x] Ejecutar regresión GD2–GD6 con CSS real y transporte simulado: 7/7 comprobaciones y 15 capturas responsive correctas.
+- [x] Corregir desborde móvil del fieldset de configuración OT, reforzar retorno de foco y sincronizar pruebas con animaciones/tablas actuales.
+- [x] Entregar ejecutor reproducible `pnpm grillas:validar`, soporte visual y resumen de evidencia sin servidor/BD.
+- [x] Actualizar manual Markdown/PDF y tres ejemplos visuales ficticios; exportación local reproducible con `pnpm manual:pdf`.
+- [x] Entregar [guía funcional GD7](GUIA-PRUEBAS-GRILLAS-GD7.md) con catorce casos y criterios CA, todos pendientes de aprobación del usuario.
+- [x] Lint/tipos, referencias y diff correctos.
+- [ ] Build exitoso e integración real con Next/PostgreSQL/archivos/sesiones.
+- [ ] Recorrido completo de teclado, zoom 200%, contraste y aceptación con usuarios.
+
+GD7 queda avanzado técnicamente, **sin cierre funcional**. No marcar aprobados GD2–GD6 ni otras validaciones por haber pasado el ensayo simulado. Continuidad exacta: [GRILLAS-GD7-VALIDACION.md](GRILLAS-GD7-VALIDACION.md). Sin migraciones ni escrituras de ensayo en BD; navegadores cerrados y ningún servidor de aplicación iniciado.

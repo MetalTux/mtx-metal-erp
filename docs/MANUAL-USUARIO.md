@@ -1,6 +1,6 @@
 # Manual de usuario — MTX Metal ERP
 
-Edición del **24-10-2026**, contrastada con rutas, controles y reglas implementadas. Cubre el sistema actual para una empresa. Las revisiones funcionales pendientes de Cobranzas, Dashboard y Seguridad conservan su estado: este manual no las aprueba por el usuario. Primera edición en texto; capturas con datos anonimizados y revisión con usuarios pendientes.
+Edición del **27-10-2026**, contrastada con rutas, controles y reglas implementadas. Cubre el sistema actual para una empresa. Las revisiones funcionales pendientes de Cobranzas, Dashboard y Seguridad conservan su estado: este manual no las aprueba por el usuario. Incluye ejemplos de grillas con datos ficticios; revisión integral con usuarios pendiente.
 
 ## Índice por tarea
 
@@ -22,6 +22,8 @@ Edición del **24-10-2026**, contrastada con rutas, controles y reglas implement
 16. [Resolver bloqueos y respuestas inciertas](#16-resolver-bloqueos-y-respuestas-inciertas)
 17. [Recorrer un caso completo](#17-recorrer-un-caso-completo)
 18. [Límites actuales y entrega al responsable de operación](#18-límites-actuales-y-entrega-al-responsable-de-operación)
+
+19. [Ejemplos visuales de grillas](#19-ejemplos-visuales-de-grillas)
 
 ## 1. Orientarse y evitar errores comunes
 
@@ -46,6 +48,12 @@ En los mantenedores, **Crear**, **Ver**, **Editar** y **Eliminar** se muestran s
 | Registrar abono | Registra dinero recibido y reduce el saldo de la cuenta |
 
 Los importes se muestran en pesos chilenos y las cantidades con su unidad, hasta tres decimales. Las cotizaciones nuevas usan precios unitarios netos: se descuenta sobre el neto, se calcula IVA sobre ese neto y se suma el total. Las cotizaciones históricas conservan su modalidad original. No sumar kilos con metros o unidades. Una fecha escrita en un documento puede ser distinta del momento en que se registró: ambas se conservan cuando corresponde.
+
+### Elegir Claro u Oscuro
+
+En la esquina superior derecha del ingreso y en la barra superior del ERP, abrir **Apariencia** (icono de luna, sol o monitor). Elegir **Claro**, **Oscuro** o **Según el sistema**. Sin elección previa se usa **Oscuro**, aunque el computador esté en Claro. Según el sistema sigue la configuración del equipo sólo después de seleccionarlo.
+
+El cambio es inmediato y conserva lo escrito en los formularios. Se recuerda en ese navegador y dirección, incluso al cerrar sesión; otras pestañas de la misma dirección se actualizan. Localhost y el túnel guardan elecciones independientes. Si aparece el aviso de que no se pudo guardar, la elección dura sólo durante esa visita. La apariencia no modifica los PDF.
 
 ## 2. Ingresar, salir y cuidar la cuenta
 
@@ -80,7 +88,7 @@ El Administrador tampoco puede desactivar el factor de otra persona. Las mismas 
 
 ### Varias sesiones
 
-Puedes mantener la misma cuenta en varios navegadores. En **Mi acceso → Mis sesiones**, identificar **Esta sesión** y **Otra sesión**; usar **Cerrar esta sesión** en una fila ajena propia o **Cerrar las demás sesiones**. Dos pestañas de un mismo perfil comparten sesión.
+Puedes mantener la misma cuenta en varios navegadores. En **Mi acceso → Mis sesiones**, la grilla muestra inicio, última actividad y vencimiento máximo. Identificar **Esta sesión** y **Otra sesión**; usar **Cerrar esta sesión** en una fila ajena propia o **Cerrar las demás sesiones**. Dos pestañas de un mismo perfil comparten sesión.
 
 Se exige nuevo ingreso después de sesenta minutos de inactividad o un máximo de ocho horas. Cambios de contraseña, roles, estado o factor también pueden revocar sesiones. Ingresar en otro navegador, por sí solo, no debe cerrar el primero.
 
@@ -161,7 +169,7 @@ Ejemplo: dos presentaciones con factor seis representan doce unidades de inventa
 1. Localizar el documento y usar la acción **Recibir compra [número]** de su fila; puede mostrarse como icono con ayuda.
 2. En la grilla de partidas, usar **Editar cantidad de…** para indicar lo recibido y **Aceptar cantidad** para seleccionarlo. Se puede dejar vacío o desmarcar una partida para no recibirla; Ver consulta sus datos. Las líneas sin pendiente no admiten edición. Cancelar/descartar conserva la cantidad anterior.
 3. Revisar equivalencias y confirmar. La recepción ingresa stock/Kardex en la bodega de compra.
-4. Volver a consultar stock y el pendiente de la compra. Una entrega posterior del proveedor se registra como otra recepción del mismo documento.
+4. Volver a consultar stock y el pendiente de la compra. En la consulta, las tablas de recepciones y cierres incluyen **Ver** para partidas o motivos históricos. Una entrega posterior del proveedor se registra como otra recepción del mismo documento.
 
 ### Cerrar un pendiente o anular
 
@@ -235,18 +243,20 @@ El contrato confirmado es inmutable. La anulación exige motivo y sólo se permi
 ### Comercial u obra propia
 
 1. Para una OCC: **Ver OCC → Crear trabajo**, con permisos de Producción. Para fabricación interna: **Trabajos → Órdenes de trabajo → Crear OT → Obra propia**.
-2. Revisar líneas y cantidades. Para catálogo, distribuir fabricación y cantidades desde stock; para materia prima directa, revisar abastecimiento; para servicio/a medida, revisar modalidad y materiales cuando corresponda.
-3. Revisar recetas, materiales, cantidades y bodegas. **Guardar borrador** no reserva. **Confirmar plan** intenta reservar parcialmente el stock libre sin consumirlo.
+2. Revisar la grilla de partidas y abrir **Configurar** en la fila correspondiente (**Ver** permite consultar). Para catálogo, distribuir fabricación y cantidades desde stock; para materia prima directa, revisar abastecimiento; para servicio/a medida, revisar modalidad y materiales cuando corresponda. Las cantidades contratadas de una OT comercial se conservan.
+3. Dentro de la partida, revisar las grillas de necesidades, materiales y abastecimiento. Usar **Revisar** si se exige justificar un redondeo; agregar/editar distribuciones con cantidad y bodega, y aceptar cada diálogo. **Aceptar partida** incorpora los cambios al borrador de OT; cancelar permite descartarlos. La receta histórica sólo cambia mediante actualización explícita. **Guardar borrador** no reserva. **Confirmar plan** intenta reservar parcialmente el stock libre sin consumirlo. La disponibilidad mostrada es orientativa y se revalida en servidor.
 4. Revisar reservas propias y faltantes. **Completar reservas** intenta cubrir lo faltante; **liberar** requiere cantidad y motivo y no aumenta stock físico.
 5. **Iniciar OT** fija el plan e indica su fecha; no fabrica ni entrega. Un faltante pendiente debe resolverse antes de ejecutar una operación que necesite esa cobertura.
 
 ### Fabricación o avance
 
-1. En Ver OT, elegir la acción de registrar fabricación/avance de la línea.
-2. Indicar fecha y cantidad; revisar consumos previstos, registrar los reales y justificar diferencias cuando se solicite.
+1. En Ver OT, consultar las grillas de partidas, recursos, registros y reservas. **Ver** en una partida o registro abre su historia y motivos. Elegir **Registrar fabricación/avance** en la fila de la partida correspondiente.
+2. Indicar fecha y cantidad. **Cargar consumos previstos** propone distribuciones históricas; si ya hay filas, solicita confirmar su reemplazo. Revisar las necesidades del lote y usar **Revisar** cuando se exija cantidad y motivo de redondeo. Agregar o **Editar** consumos abre un diálogo: **Aceptar detalle** cambia sólo el borrador; cancelar permite descartarlo. **Quitar** pide confirmación. Registrar los consumos reales por material/bodega y justificar diferencias cuando se solicite.
 3. Para catálogo, elegir la bodega apta de producto terminado. Para servicio puro, registrar avance sin materiales ficticios; a medida consume sus insumos sin crear un producto de catálogo ficticio.
-4. Revisar y confirmar. Catálogo registra salida de materias primas y entrada de terminado; las cantidades desde stock y materia prima directa se entregan sin fabricar de nuevo.
+4. Usar **Previsualizar registro** y revisar la tabla de efectos (físico antes/después, reservas y consumo), luego confirmar. Catálogo registra salida de materias primas y entrada de terminado; las cantidades desde stock y materia prima directa se entregan sin fabricar de nuevo.
 5. Revisar avance neto y stock. Repetir por los lotes realmente ejecutados.
+
+Las tablas de cierre muestran ejecución, entregas netas y reservas; las de reversión muestran materiales a restituir y terminado a retirar con sus saldos antes/después.
 
 **Revertir registro** corrige un error de producción sólo dentro de sus dependencias y antes del cierre. Exige restitución física real cuando corresponde; conserva registro y reversión. Si hubo despacho histórico o consumo posterior que lo bloquee, una devolución o reposición posterior no elimina esa dependencia. Daño o diferencia de conteo corresponde a Ajustes, no a recuperar una receta ficticiamente.
 
@@ -263,13 +273,13 @@ Finalizar no acredita entrega ni cobro. La anulación productiva disponible corr
 ## 12. Entregar y corregir una guía
 
 1. Abrir **Trabajos → Guías de despacho** y seleccionar la OT comercial para preparar la entrega. También se puede acceder desde sus documentos relacionados.
-2. Indicar fecha y cantidades efectivamente entregadas, sólo de partidas disponibles para esa OT.
+2. Indicar fecha y revisar la grilla de partidas disponibles. **Editar** abre la cantidad de una distribución por partida/bodega; **Aceptar detalle** cambia sólo el borrador. Dejar la cantidad vacía la excluye sin borrar el origen; cancelar permite descartar la edición.
 3. Para bienes, revisar bodega de salida y respaldo de reserva/stock. Producto fabricado descuenta terminado sin consumir otra vez su receta. Materia prima directa usa su salida comercial propia.
-4. Para servicio o a medida, registrar nombre y fecha de conformidad, con ejecución neta suficiente. No se mueve inventario por acreditar esa prestación.
-5. Previsualizar y pulsar **Confirmar salida**. Se guarda folio, cantidades, reservas y movimientos; consultar el documento emitido.
+4. Para servicio o a medida, registrar en el diálogo nombre y fecha de conformidad, sin superar la fecha de salida y con ejecución neta suficiente. No se mueve inventario por acreditar esa prestación.
+5. **Previsualizar salida**, comparar la tabla de lo seleccionado y usar **Confirmar salida y entrega → Confirmar salida**. Se guarda folio, cantidades, reservas y movimientos; consultar el documento emitido.
 6. Generar/descargar su PDF archivado cuando se necesite. Puede haber entregas parciales antes de finalizar OT, dentro de las cantidades y dependencias vigentes.
 
-Para una devolución/corrección: abrir la entrega original, usar **Corregir guía**, indicar cantidades afectadas y motivo. En bienes, confirmar recepción física en las mismas bodegas de salida. Previsualizar y **Confirmar corrección**. No devolver más de lo entregado pendiente de corregir.
+Para una devolución/corrección: abrir la entrega original y usar **Corregir guía**. En la grilla, **Editar** permite indicar la cantidad de cada partida original; vacía significa no incluirla. Indicar motivo y fecha. En bienes, confirmar recepción física en las mismas bodegas de salida. Usar **Previsualizar corrección**, revisar la tabla y **Revisar y confirmar corrección → Confirmar corrección**. **Modificar selección** permite volver al borrador antes de confirmar. No devolver más de lo entregado pendiente de corregir.
 
 La corrección crea otro documento y conserva el original. Repone bienes realmente recibidos y reconstruye reserva propia para reentregar; en prestaciones revierte sólo la entrega acreditada. No cambia deuda, factura ni pagos. **Preparar otra entrega** requiere permiso de Despacho. **Ver cuenta por cobrar** permite al perfil financiero revisar la misma cuenta de OCC.
 
@@ -282,8 +292,8 @@ Un registro **Legado no conciliado** conserva historia, sin demostrar cantidades
 3. Como Cobranza o Administrador, **Registrar abono**: importe positivo, fecha de hoy o pasada según Santiago, medio y referencia opcional. Cheque sólo al cobro efectivo. Puede ser anticipo sin factura.
 4. Opcionalmente seleccionar JPG, PNG o PDF de hasta 5 MB. **Revisar operación → Confirmar operación** y comprobar saldo/historial.
 5. Para corregir dinero registrado, **Anular abono #…** con motivo y luego registrar el pago correcto como uno nuevo. La anulación no ejecuta una devolución bancaria ni cancela la venta.
-6. Para documentar un abono existente, **Adjuntar comprobante**, revisar y confirmar. **Descargar [nombre]** entrega el original autorizado. Agregar un archivo corregido conserva los anteriores.
-7. **Cambiar promesa** permite hoy/fecha futura o fecha vacía para quitarla, siempre con motivo; revisar el historial. No cambia el vencimiento contractual ni oculta una deuda vencida.
+6. La grilla de abonos permite **Ver** datos ampliados y comprobantes. **Descargar [nombre]**, dentro del detalle, entrega el original autorizado. Para documentar un abono existente, usar **Adjuntar comprobante** en su fila, revisar y confirmar. Agregar un archivo corregido conserva los anteriores.
+7. **Cambiar promesa** permite hoy/fecha futura o fecha vacía para quitarla, siempre con motivo; revisar la tabla de cambios y abrir **Ver** para el motivo. No cambia el vencimiento contractual ni oculta una deuda vencida.
 
 No se permiten sobrepagos. Si sólo falla el adjunto después de confirmar el pago, el mensaje indica que el abono ya quedó registrado: reintentar sólo el archivo o adjuntarlo después. No volver a cobrar para solucionar un comprobante pendiente.
 
@@ -307,7 +317,7 @@ Detalle de columnas y definiciones: [Operación del Dashboard](OPERACION-DASHBOA
 
 - El **folio interno** identifica el documento del ERP; no confundirlo con la OC externa del cliente, el número de compra del proveedor o el folio literal de factura externa.
 - **Ver** permite consultar contenido/historial sin cambiarlo. Un estado final bloquea ediciones para conservar el hecho; usar la corrección habilitada para ese módulo.
-- **Generar PDF** archiva una emisión. **Ver/Descargar** obtiene bytes históricos; no los recalcula con el cliente, logo o receta actuales. Un original ausente o alterado debe recuperarse desde respaldo por el responsable.
+- Las tablas de emisiones de cotizaciones, OT y guías muestran revisión/plantilla, fecha y acciones de consulta/descarga. **Generar PDF** archiva una emisión. **Ver/Descargar** obtiene bytes históricos; no los recalcula con el cliente, logo o receta actuales. Un original ausente o alterado debe recuperarse desde respaldo por el responsable.
 - Para imprimir, abrir/descargar el PDF y usar la impresión del visor. Revisar documento y versión antes de entregarlo.
 - Como Administrador, abrir **Administración → Auditoría y autoría**; distinguir eventos de acceso/seguridad y autoría de operaciones nuevas. Los documentos anteriores sin evidencia no reciben autores inventados.
 - Conservar comprobantes y documentos privados en canales autorizados; cerrar sesión no elimina copias descargadas del equipo.
@@ -402,3 +412,28 @@ La recepción de Compras y la aceptación de una cotización muestran partidas e
 En aceptación de OCC, marcar las partidas contratadas y usar **Editar cantidad de…** para la aceptación parcial. Aceptar cantidad no guarda la OCC. Cambiar cantidad o selección obliga a revisar nuevamente el alcance técnico. **Revisar importes** y **Confirmar aceptación** conservan sus pasos. La consulta de OCC muestra una tabla de cotizado/contratado/no contratado y **Ver** por partida; las columnas monetarias dependen del permiso de precios.
 
 Si una confirmación queda sin resultado comprobable, se conservan datos y UUID: recepción ofrece **Reintentar la misma recepción**; OCC permite reintentar desde la misma confirmación. No iniciar otra operación para repetirla ni cambiar sus datos. Las tablas admiten desplazamiento horizontal. El PDF anterior del manual todavía no incorpora esta sección.
+
+
+## 19. Ejemplos visuales de grillas
+
+Estas capturas muestran componentes reales y estilos locales con datos ficticios de ensayo. No son documentos de trabajo ni capturas de una operación confirmada en la instalación. El menú completo del ERP no forma parte del montaje ilustrado. Las opciones visibles dependen de los permisos y del estado del documento.
+
+### Consulta de OCC
+
+La tabla separa cantidades cotizadas, contratadas y excluidas. Ver abre el detalle; la consulta histórica no habilita cambios de esas cantidades.
+
+![Consulta de OCC en grilla con datos ficticios](capturas/grillas-gd7/occ-consulta.png)
+
+### Configuración de una partida de OT
+
+El diálogo conserva la partida mientras se revisan receta, necesidades y distribuciones. La muestra ilustra un lote pequeño con revisión de redondeo; Aceptar partida actualiza el borrador, no reserva existencias por sí solo. En móvil se desplaza cada tabla y el diálogo se recorre verticalmente.
+
+![Configuración de OT con revisión de receta y subgrillas ficticias](capturas/grillas-gd7/ot-configuracion.png)
+
+### Revisión de una corrección de guía
+
+La tabla superior conserva lo entregado y el pendiente retornable. La tabla inferior contiene sólo lo seleccionado para esta corrección. Modificar selección permite volver al borrador antes de confirmar; la recepción física y la conservación de deuda siguen siendo obligatorias según el tipo de partida.
+
+![Previsualización de corrección de guía con datos ficticios](capturas/grillas-gd7/guia-correccion.png)
+
+La guía [Pruebas funcionales de grillas GD7](GUIA-PRUEBAS-GRILLAS-GD7.md) reúne los casos pendientes de aprobación. Los enlaces a otros documentos requieren conservar la carpeta docs junto al manual fuente.

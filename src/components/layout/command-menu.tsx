@@ -27,7 +27,7 @@ export function CommandMenu() {
   }, []);
 
   return <>
-    <Button variant="outline" className="h-9 w-9 justify-center px-0 text-muted-foreground xl:w-60 xl:justify-start xl:gap-2 xl:px-3" onClick={() => setOpen(true)} aria-label="Buscar página" aria-haspopup="dialog" aria-keyshortcuts="Control+k Meta+k">
+    <Button variant="outline" className="h-9 w-9 transition-colors justify-center px-0 text-muted-foreground xl:w-60 xl:justify-start xl:gap-2 xl:px-3" onClick={() => setOpen(true)} aria-label="Buscar página" aria-haspopup="dialog" aria-keyshortcuts="Control+k Meta+k">
       <Search aria-hidden="true" /><span className="hidden xl:inline">Buscar página…</span>
       <kbd className="ml-auto hidden rounded border border-border px-1.5 py-0.5 font-sans text-[10px] xl:inline">Ctrl K</kbd>
     </Button>

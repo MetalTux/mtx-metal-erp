@@ -1,3 +1,4 @@
+import { SCRIPT_INICIAL_TEMA } from "@/lib/tema-config";
 import type { Metadata } from "next";
 import { Inter, Geist_Mono } from "next/font/google";
 import "./globals.css";
@@ -25,8 +26,10 @@ export default function RootLayout({
   return (
     <html
       lang="es"
+      suppressHydrationWarning
       className={`dark ${inter.variable} ${geistMono.variable} min-h-full antialiased`}
     >
+      <head><script dangerouslySetInnerHTML={{ __html: SCRIPT_INICIAL_TEMA }} /></head>
       <body>{children}</body>
     </html>
   );

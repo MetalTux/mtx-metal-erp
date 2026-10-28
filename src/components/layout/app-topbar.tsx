@@ -1,4 +1,5 @@
 "use client";
+import { SelectorTema } from "@/components/tema/selector-tema";
 import { Permiso } from "@/components/seguridad/permisos";
 
 import Link from "next/link";
@@ -39,6 +40,7 @@ export function AppTopbar({sesion,avisos}:{sesion?:{name:string;roles:string[]}|
       <AppBreadcrumbs />
       <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-3">
         <CommandMenu />
+        <SelectorTema />
         <Popover>
           <PopoverTrigger asChild><Button variant="ghost" size="icon-lg" aria-label="Notificaciones" title="Avisos internos"><Bell className="size-5" aria-hidden="true" /></Button></PopoverTrigger>
           <PopoverContent align="end" className="w-72 p-4"><h2 className="mb-2 font-medium">Notificaciones</h2>{avisos?.datos?<ul className="space-y-3 text-sm">{avisos.datos.filter(a=>a.cantidad>0).map(a=><li key={a.ruta}><Link className="underline" href={a.ruta}>{a.titulo}: <strong className="tabular-nums">{a.cantidad}</strong></Link></li>)}{!avisos.datos.some(a=>a.cantidad>0)&&<li>Sin avisos pendientes para tus áreas.</li>}</ul>:<p role="status" className="text-sm">{avisos?.error??"No se pudieron consultar los avisos."}</p>}<p className="mt-3 text-xs text-muted-foreground">Se actualizan al navegar o recargar. No envían correos ni tienen estado de lectura.</p></PopoverContent>

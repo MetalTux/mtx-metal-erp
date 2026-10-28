@@ -10,7 +10,9 @@
     "seguridad:administrador": "node --import tsx scripts/provisionar-administrador.ts",
     "seguridad:depurar-auditoria": "node --import tsx scripts/depurar-auditoria.ts",
     "seguridad:validar-s6": "node --import tsx scripts/validar-seguridad-s6.ts",
-    "seguridad:revocar-restauracion": "node --import tsx scripts/revocar-accesos-restauracion.ts"
+    "seguridad:revocar-restauracion": "node --import tsx scripts/revocar-accesos-restauracion.ts",
+    "grillas:validar": "node --import tsx scripts/validar-grillas.ts",
+    "manual:pdf": "node --import tsx scripts/exportar-manual.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",

@@ -1,4 +1,6 @@
 "use client";
+import { GrillaHistorial } from "@/components/grilla-historial";
+import { VerDetalleHistorial } from "@/components/ver-detalle-historial";
 import { AltaProveedor } from "@/components/mantenedores/altas-desde-documento";
 import { Permiso } from "@/components/seguridad/permisos";
 import { FormularioMaterial } from "@/components/mantenedores/materiales";
@@ -426,31 +428,9 @@ function FormularioCompra({
                   {c.estado} · Total: {dinero(c.totalAmount)}
                 </p>
                 {c.voidReason && <p>Motivo de anulación: {c.voidReason}</p>}
-                {c.closures.map((r) => (
-                  <div
-                    key={r.id}
-                    className="rounded border border-border p-3 text-sm"
-                  >
-                    Pendiente cerrado: {r.material} · {formatearCantidad(r.cantidad)}{" "}
-                    presentaciones · {formatearFecha(r.fecha)}
-                    <p>Motivo: {r.motivo}</p>
-                  </div>
-                ))}
-                <p>Recepciones: {c.receipts.length}</p>
-                {c.receipts.map((r) => (
-                  <div
-                    key={r.id}
-                    className="rounded border border-border p-3 text-sm"
-                  >
-                    Recepción #{r.id} · {formatearFecha(r.fecha)}
-                    {r.lineas.map((l, i) => (
-                      <p key={i}>
-                        {l.material}: {formatearCantidad(l.cantidad)} presentaciones →{" "}
-                        {formatearCantidad(l.equivalente)} en unidad de inventario
-                      </p>
-                    ))}
-                  </div>
-                ))}
+                <GrillaHistorial titulo="Cierres de pendientes de compra" columnas={["Cierre","Material","Presentaciones","Registro","Detalle"]} numericas={["Presentaciones"]} filas={c.closures.map(r=>({id:r.id,celdas:[`#${r.id}`,r.material,formatearCantidad(r.cantidad),formatearFecha(r.fecha),<VerDetalleHistorial key="ver" titulo={`Cierre de pendiente #${r.id}`}><p className="whitespace-pre-wrap">Motivo: {r.motivo}</p></VerDetalleHistorial>]}))}/>
+                <GrillaHistorial titulo="Recepciones de compra" columnas={["Recepción","Fecha del hecho","Partidas","Detalle"]} filas={c.receipts.map(r=>({id:r.id,celdas:[`#${r.id}`,formatearFecha(r.fecha),r.lineas.length,<VerDetalleHistorial key="ver" titulo={`Recepción #${r.id}`}><GrillaHistorial titulo={`Partidas de recepción #${r.id}`} columnas={["Material","Presentaciones","Cantidad inventario"]} numericas={["Presentaciones","Cantidad inventario"]} filas={r.lineas.map((l,i)=>({id:i,celdas:[l.material,formatearCantidad(l.cantidad),formatearCantidad(l.equivalente)]}))}/></VerDetalleHistorial>]}))}/>
+
               </div>
             )}
             {calculo && (
@@ -596,7 +576,7 @@ function FormularioCompra({
                         presentaciones
                       </p>
                       <Link
-                        className="text-primary underline"
+                        className="text-link underline"
                         href={`/inventario/movimientos?material=${l.rawMaterialId}&bodega=${c.warehouseId}`}
                       >
                         Ver movimientos del material en esta bodega

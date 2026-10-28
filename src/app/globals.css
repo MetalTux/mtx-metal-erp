@@ -15,6 +15,8 @@
   --color-popover: var(--popover);
   --color-popover-foreground: var(--foreground);
   --color-primary: var(--primary);
+  --color-link: var(--link);
+  --color-primary-hover: var(--primary-hover);
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--muted);
   --color-secondary-foreground: var(--foreground);
@@ -25,6 +27,7 @@
   --color-destructive: var(--destructive);
   --color-border: var(--border);
   --color-input: var(--input);
+  --color-control-surface: var(--control-surface);
   --color-ring: var(--ring);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--foreground);
@@ -36,16 +39,17 @@
   --color-sidebar-ring: var(--ring);
   --color-topbar: var(--topbar);
   --color-card-header: var(--card-header);
+  --color-card-header-muted-foreground: var(--card-header-muted-foreground);
   --color-brand: var(--brand);
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-info: var(--info);
   --color-info-foreground: var(--info-foreground);
-  --color-chart-1: var(--ring);
-  --color-chart-2: var(--success);
-  --color-chart-3: var(--warning);
-  --color-chart-4: var(--brand);
-  --color-chart-5: var(--muted-foreground);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -55,7 +59,44 @@
   --radius-4xl: calc(var(--radius) + 16px);
 }
 
-:root { --radius: 0.5rem; }
+/* Paletas de interfaz; el arranque y la preferencia se gestionan en TC2. */
+:root {
+  --radius: 0.5rem;
+  color-scheme: light;
+  --background: #f4f6fa;
+  --foreground: #172033;
+  --sidebar: #e9eef5;
+  --topbar: #ffffff;
+  --card: #ffffff;
+  --popover: var(--card);
+  --card-header: #e9eef5;
+  --card-header-muted-foreground: #475569;
+  --card-header-start: #f1f4f8;
+  --card-header-end: #e3e9f1;
+  --card-header-highlight: rgb(255 255 255 / 80%);
+  --muted: #e9eef5;
+  --accent: var(--muted);
+  --border: #cbd3df;
+  --input: #7a8595;
+  --control-surface: #e9eef5;
+  --muted-foreground: #526174;
+  --primary: #245dc4;
+  --link: #245dc4;
+  --primary-hover: color-mix(in oklch, var(--primary), black 12%);
+  --primary-foreground: #ffffff;
+  --ring: #1d4ed8;
+  --brand: #9a3412;
+  --success: #166534;
+  --warning: #854d0e;
+  --destructive: #b91c1c;
+  --info: #e7effc;
+  --info-foreground: #234c85;
+  --chart-1: var(--ring);
+  --chart-2: var(--success);
+  --chart-3: var(--warning);
+  --chart-4: var(--brand);
+  --chart-5: var(--muted-foreground);
+}
 
 .dark {
   color-scheme: dark;
@@ -66,20 +107,32 @@
   --card: oklch(0.256 0.018 266.3);
   --popover: var(--card);
   --card-header: oklch(0.333 0.018 268.1);
+  --card-header-muted-foreground: #b4b9c2;
+  --card-header-start: #3a3e48;
+  --card-header-end: #2c3039;
+  --card-header-highlight: rgb(255 255 255 / 6%);
   --muted: oklch(0.301 0.019 268.1);
   --accent: var(--muted);
   --border: oklch(0.371 0.020 266.0);
-  --input: oklch(0.419 0.021 264.3);
+  --input: #929cac;
+  --control-surface: oklch(0.419 0.021 264.3);
   --muted-foreground: oklch(0.701 0.014 262.4);
   --primary: oklch(0.559 0.174 259.9);
+  --link: #8ab4ff;
+  --primary-hover: color-mix(in oklch, var(--primary), black 12%);
   --primary-foreground: #ffffff;
   --ring: oklch(0.667 0.148 259.7);
   --brand: oklch(0.684 0.185 44.9);
   --success: oklch(0.679 0.157 153.4);
   --warning: oklch(0.775 0.168 65.4);
-  --destructive: oklch(0.563 0.179 22.9);
+  --destructive: #ffc0c4;
   --info: oklch(0.366 0.050 254.5);
   --info-foreground: oklch(0.813 0.058 251.7);
+  --chart-1: var(--ring);
+  --chart-2: var(--success);
+  --chart-3: var(--warning);
+  --chart-4: var(--brand);
+  --chart-5: var(--muted-foreground);
 }
 
 @layer base {
@@ -94,8 +147,8 @@
 
 /* Identidad metálica reservada a la cabecera; el cuerpo conserva una superficie plana. */
 .section-card-header {
-  background: linear-gradient(180deg, #3a3e48, #2c3039);
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 6%);
+  background: linear-gradient(180deg, var(--card-header-start), var(--card-header-end));
+  box-shadow: inset 0 1px 0 var(--card-header-highlight);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -130,7 +183,7 @@
 }
 
 /* Superficie de documento: conserva legibilidad de colores copiados de Word. */
-.detalle-cotizacion { background: #fff; color: #181818; border-radius: .5rem; }
+.detalle-cotizacion { color-scheme: light; background: #fff; color: #181818; border-radius: .5rem; }
 .detalle-cotizacion th { background: #f3f3f3; }
 
 /* El contenedor de los tiradores flota como la imagen anterior: no limpiar cada li. */

@@ -1,3 +1,4 @@
+import { estilosGrillas, capturarGrillas } from "./soporte/grillas-navegador";
 // Ensayo de interacción de componentes reales con API simulada: sin servidor ni BD.
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
@@ -43,6 +44,7 @@ async function main() {
     const errores: string[] = []; page.on('pageerror', e => errores.push(e.message));
     await page.route('**/*', route => route.fulfill({ contentType: 'text/html', body: '<html><body><div id="root"></div></body></html>' }));
     await page.goto('http://127.0.0.1:3031/gd2-simulado');
+    await estilosGrillas(page);
     await page.addScriptTag({ content: resultado.outputFiles[0].text });
     await page.getByRole('button', { name: 'Abrir recepción', exact: true }).click();
     assert(await page.getByRole('button', { name: 'Editar cantidad de Sin pendiente', exact: true }).isDisabled());
@@ -54,7 +56,7 @@ async function main() {
     await cantidad.fill('3'); await page.getByRole('button', { name: 'Cancelar', exact: true }).last().click();
     await page.getByRole('button', { name: 'Seguir editando', exact: true }).click(); assert.equal(await cantidad.inputValue(), '3');
     await page.getByRole('button', { name: 'Aceptar cantidad', exact: true }).click(); await editar.waitFor();
-    assert(await editar.evaluate(e => e === document.activeElement));
+    await page.waitForFunction(e => e === document.activeElement, await editar.elementHandle());
     await editar.click();
     await cantidad.fill('4'); await page.getByRole('button', { name: 'Cancelar', exact: true }).last().click();
     await page.getByRole('button', { name: 'Descartar cambios', exact: true }).click();
@@ -97,7 +99,7 @@ async function main() {
     await page.getByRole('button', { name: 'Consulta sin precios', exact: true }).click();
     assert.equal(await page.getByRole('columnheader', { name: 'Precio neto', exact: true }).count(), 0);
     assert.equal(await page.getByRole('button', { name: /Editar cantidad/ }).count(), 0);
-    for (const width of [360, 768, 1280]) { await page.setViewportSize({ width, height: 900 }); await page.getByRole('table').waitFor(); }
+    for (const width of [360, 768, 1280]) { await page.setViewportSize({ width, height: 900 }); await page.getByRole('table').first().waitFor(); await capturarGrillas(page,`gd2-${width}`); }
     assert.deepEqual(errores, []);
     console.log('GD2 navegador: validación, cancelar/seguir, foco, formularios separados, reintento idéntico, aceptación parcial, consulta y ocultación de precios correctos. API simulada; sin BD ni servidor.');
   } finally { await browser.close(); }
