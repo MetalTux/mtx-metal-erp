@@ -5,9 +5,9 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --font-sans: var(--font-inter);
+  --font-sans: var(--font-plex);
   --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-inter);
+  --font-heading: var(--font-plex);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -59,39 +59,36 @@
   --radius-4xl: calc(var(--radius) + 16px);
 }
 
-/* Paletas de interfaz; el arranque y la preferencia se gestionan en TC2. */
+/* Base mineral compartida por todas las rutas y portales. */
 :root {
-  --radius: 0.5rem;
   color-scheme: light;
-  --background: #f4f6fa;
-  --foreground: #172033;
-  --sidebar: #e9eef5;
-  --topbar: #ffffff;
-  --card: #ffffff;
+  --radius: .25rem;
+  --background: #f0f3f3;
+  --foreground: #202a2e;
+  --sidebar: #e6ebeb;
+  --topbar: #fafbfb;
+  --card: #fafbfb;
   --popover: var(--card);
-  --card-header: #e9eef5;
-  --card-header-muted-foreground: #475569;
-  --card-header-start: #f1f4f8;
-  --card-header-end: #e3e9f1;
-  --card-header-highlight: rgb(255 255 255 / 80%);
-  --muted: #e9eef5;
+  --card-header: #e6ebeb;
+  --card-header-muted-foreground: #506168;
+  --muted: #e6ebeb;
   --accent: var(--muted);
-  --border: #cbd3df;
-  --input: #7a8595;
-  --control-surface: #e9eef5;
-  --muted-foreground: #526174;
-  --primary: #245dc4;
-  --link: #245dc4;
-  --primary-hover: color-mix(in oklch, var(--primary), black 12%);
+  --border: #bdc9cc;
+  --input: #63777d;
+  --control-surface: #e6ebeb;
+  --muted-foreground: #506168;
+  --primary: #285a54;
+  --primary-hover: #214b46;
   --primary-foreground: #ffffff;
-  --ring: #1d4ed8;
-  --brand: #9a3412;
-  --success: #166534;
-  --warning: #854d0e;
-  --destructive: #b91c1c;
-  --info: #e7effc;
-  --info-foreground: #234c85;
-  --chart-1: var(--ring);
+  --link: #285a54;
+  --ring: #285a54;
+  --brand: #815426;
+  --success: #246044;
+  --warning: #815000;
+  --destructive: #a52b37;
+  --info: #dce9e6;
+  --info-foreground: #285a54;
+  --chart-1: var(--link);
   --chart-2: var(--success);
   --chart-3: var(--warning);
   --chart-4: var(--brand);
@@ -100,55 +97,39 @@
 
 .dark {
   color-scheme: dark;
-  --background: oklch(0.205 0.015 266.9);
-  --foreground: oklch(0.967 0.003 264.5);
-  --sidebar: oklch(0.222 0.014 266.9);
-  --topbar: oklch(0.253 0.019 271.9);
-  --card: oklch(0.256 0.018 266.3);
-  --popover: var(--card);
-  --card-header: oklch(0.333 0.018 268.1);
-  --card-header-muted-foreground: #b4b9c2;
-  --card-header-start: #3a3e48;
-  --card-header-end: #2c3039;
-  --card-header-highlight: rgb(255 255 255 / 6%);
-  --muted: oklch(0.301 0.019 268.1);
-  --accent: var(--muted);
-  --border: oklch(0.371 0.020 266.0);
-  --input: #929cac;
-  --control-surface: oklch(0.419 0.021 264.3);
-  --muted-foreground: oklch(0.701 0.014 262.4);
-  --primary: oklch(0.559 0.174 259.9);
-  --link: #8ab4ff;
-  --primary-hover: color-mix(in oklch, var(--primary), black 12%);
-  --primary-foreground: #ffffff;
-  --ring: oklch(0.667 0.148 259.7);
-  --brand: oklch(0.684 0.185 44.9);
-  --success: oklch(0.679 0.157 153.4);
-  --warning: oklch(0.775 0.168 65.4);
-  --destructive: #ffc0c4;
-  --info: oklch(0.366 0.050 254.5);
-  --info-foreground: oklch(0.813 0.058 251.7);
-  --chart-1: var(--ring);
-  --chart-2: var(--success);
-  --chart-3: var(--warning);
-  --chart-4: var(--brand);
-  --chart-5: var(--muted-foreground);
+  --background: #191f22;
+  --foreground: #e3e9e9;
+  --sidebar: #21292d;
+  --topbar: #21292d;
+  --card: #21292d;
+  --card-header: #293438;
+  --card-header-muted-foreground: #a7b8bc;
+  --muted: #293438;
+  --border: #46585f;
+  --input: #899fa6;
+  --control-surface: #46585f;
+  --muted-foreground: #a7b8bc;
+  --primary: #a2cac2;
+  --primary-hover: #bad9d3;
+  --primary-foreground: #162723;
+  --link: #a2cac2;
+  --ring: #a2cac2;
+  --brand: #d4b17e;
+  --success: #9bc5aa;
+  --warning: #e2bf7d;
+  --destructive: #ffa7ac;
+  --info: #2a403d;
+  --info-foreground: #b8d7d0;
 }
 
 @layer base {
-  * { @apply border-border outline-ring/50; }
+  * { @apply border-border outline-ring; }
   body { @apply bg-background font-sans text-sm text-foreground; }
   button:not(:disabled), a { -webkit-tap-highlight-color: transparent; }
   button:not(:disabled):not([aria-disabled="true"]),
   [role="button"]:not(:disabled):not([aria-disabled="true"]) { cursor: pointer; }
   input::placeholder, textarea::placeholder { color: var(--muted-foreground); }
   ::selection { background: var(--primary); color: var(--primary-foreground); }
-}
-
-/* Identidad metálica reservada a la cabecera; el cuerpo conserva una superficie plana. */
-.section-card-header {
-  background: linear-gradient(180deg, var(--card-header-start), var(--card-header-end));
-  box-shadow: inset 0 1px 0 var(--card-header-highlight);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -189,8 +170,8 @@
 /* El contenedor de los tiradores flota como la imagen anterior: no limpiar cada li. */
 .detalle-cotizacion .imagen-cotizacion { position: relative; display: block; max-width: 100%; }
 .detalle-cotizacion .imagen-cotizacion img { display: block; width: 100%; height: auto; float: none; clear: none; margin: 0; }
-.detalle-cotizacion .imagen-seleccionada { outline: 2px solid var(--primary); }
-.detalle-cotizacion .tirador-imagen { position: absolute; width: 16px; height: 16px; min-width: 0; padding: 0; border: 2px solid #fff; border-radius: 2px; background: var(--primary); touch-action: none; user-select: none; z-index: 1; }
+.detalle-cotizacion .imagen-seleccionada { outline: 2px solid #285a54; }
+.detalle-cotizacion .tirador-imagen { position: absolute; width: 16px; height: 16px; min-width: 0; padding: 0; border: 2px solid #fff; border-radius: 2px; background: #285a54; touch-action: none; user-select: none; z-index: 1; }
 .detalle-cotizacion .tirador-imagen[hidden] { display: none; }
 .detalle-cotizacion .tirador-imagen:focus-visible { outline: 2px solid #181818; outline-offset: 1px; }
 .detalle-cotizacion .tirador-imagen[data-esquina="superior-izquierda"] { top: 0; left: 0; cursor: nwse-resize; }
@@ -204,3 +185,34 @@
 /* El cuerpo mueve la imagen; los tiradores conservan su cursor de tamaño. */
 .detalle-cotizacion[contenteditable="true"] .imagen-cotizacion img { cursor: grab; }
 .detalle-cotizacion[contenteditable="true"] .imagen-cotizacion img:active { cursor: grabbing; }
+
+
+/* Superficies y controles compartidos, sin dependencia de rutas. */
+.section-card-header {
+  background: transparent;
+  box-shadow: none;
+  padding: .75rem;
+}
+.section-card-header h2 { font-size: 15px; font-weight: 600; }
+.section-card-header p { font-size: 13px; }
+:is([data-slot="dialog-content"], [data-slot="alert-dialog-content"], [data-slot="dropdown-menu-content"], [data-slot="popover-content"]) { box-shadow: none; border: 1px solid var(--border); }
+[data-slot="dialog-content"] > form { min-width: 0; max-width: 100%; }
+[data-slot="sidebar-container"] { box-shadow: none; }
+:is(a, summary):focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }
+.dashboard-indicadores { padding-block: .25rem 1rem; border-bottom: 1px solid var(--border); }
+.dashboard-indicador { padding: .5rem .75rem; border-left: 1px solid var(--border); }
+.dashboard-indicador:first-child { border-left: 0; padding-left: 0; }
+[data-slot="table-head"] { font-size: 13px; }
+[data-slot="table-cell"] { padding: .5rem .75rem; }
+@media (min-width: 640px) {
+  [data-slot="dialog-content"]:has([aria-label="Detalles de compra"]) { max-width: min(76rem, calc(100vw - 2rem)); }
+}
+@media (max-width: 639px) {
+  .dashboard-indicador { border-left: 0; padding-left: 0; border-bottom: 1px solid var(--border); }
+  [data-slot="button"] { min-height: 40px; }
+}
+[data-sidebar="menu-button"][data-active="true"] { background: var(--info); color: var(--link); }
+[data-sidebar="menu-button"][data-active="true"]:hover { background: var(--muted); color: var(--link); }
+/* Los pies dentro del formulario no deben heredar los márgenes negativos del diálogo. */
+[data-slot="dialog-content"] form > [data-slot="dialog-footer"] { margin-inline: 0; margin-bottom: 0; padding-inline: 0; background: transparent; }
+table[aria-label="Compras"] th:nth-child(5) { text-align: right; }

@@ -21,15 +21,15 @@ export function SelectorBuscable({ id, opciones, valor, onChange, onBlur, nombre
   return <Popover open={abierto} onOpenChange={(estado) => { setAbierto(estado); if (!estado) onBlur?.(); }}>
     <PopoverTrigger asChild>
       <Button ref={ref} id={id} type="button" variant="outline" role="combobox" aria-expanded={abierto} aria-haspopup="listbox" aria-controls={abierto ? listaId : undefined} aria-invalid={invalido} aria-describedby={descripcionId} disabled={disabled} className="h-9 w-full justify-between font-normal" onKeyDown={(event) => { if (event.key === "ArrowDown" || event.key === "ArrowUp") { event.preventDefault(); setAbierto(true); } }}>
-        <span className={`truncate ${seleccionada ? "" : "text-muted-foreground"}`}>{seleccionada?.etiqueta ?? placeholder}</span><ChevronsUpDown aria-hidden="true" className="shrink-0 opacity-50" />
+        <span className={`truncate ${seleccionada ? "" : "text-muted-foreground"}`}>{seleccionada?.etiqueta ?? placeholder}</span><ChevronsUpDown aria-hidden="true" className="shrink-0 text-muted-foreground" />
       </Button>
     </PopoverTrigger>
-    <PopoverContent align="start" className="w-[var(--radix-popover-trigger-width)] p-0">
-      <Command label={`Buscar ${nombre}`} filter={(valorItem, filtro, keywords) => normalizar(`${valorItem} ${(keywords ?? []).join(" ")}`).includes(normalizar(filtro.trim())) ? 1 : 0}>
+    <PopoverContent align="start" className="max-h-[var(--radix-popover-content-available-height)] w-[var(--radix-popover-trigger-width)] p-0">
+      <Command className="min-h-0" label={`Buscar ${nombre}`} filter={(valorItem, filtro, keywords) => normalizar(`${valorItem} ${(keywords ?? []).join(" ")}`).includes(normalizar(filtro.trim())) ? 1 : 0}>
         <CommandInput aria-label={`Buscar ${nombre}`} placeholder={`Buscar ${nombre}…`} />
-        <CommandList id={listaId} aria-label={`Opciones de ${nombre}`}>
+        <CommandList className="min-h-0 overscroll-contain" id={listaId} label={`Opciones de ${nombre}`}>
           <CommandEmpty>{opciones.length ? "No hay coincidencias." : "No hay opciones disponibles."}</CommandEmpty>
-          <CommandGroup>{opciones.map((opcion) => <CommandItem key={opcion.valor} value={opcion.valor} keywords={[opcion.etiqueta, opcion.busqueda ?? ""]} data-checked={opcion.valor === valor} className="cursor-pointer" onSelect={() => { onChange(opcion.valor); setAbierto(false); onBlur?.(); }}>{opcion.etiqueta}</CommandItem>)}</CommandGroup>
+          <CommandGroup>{opciones.map((opcion) => <CommandItem key={opcion.valor} value={opcion.valor} keywords={[opcion.etiqueta, opcion.busqueda ?? ""]} data-checked={opcion.valor === valor} className="min-w-0 cursor-pointer [overflow-wrap:anywhere]" onSelect={() => { onChange(opcion.valor); setAbierto(false); onBlur?.(); }}>{opcion.etiqueta}</CommandItem>)}</CommandGroup>
         </CommandList>
       </Command>
     </PopoverContent>

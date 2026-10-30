@@ -12,5 +12,5 @@ export const notificar = {
 
 export function Notificaciones() {
   const { efectivo } = useTema();
-  return <Toaster theme={efectivo === "claro" ? "light" : "dark"} position="bottom-right" closeButton containerAriaLabel="Avisos del sistema" toastOptions={{ closeButtonAriaLabel: "Cerrar aviso", style: { background: "var(--card)", color: "var(--foreground)", borderColor: "var(--border)" }, className: "font-sans" }} icons={{ success: <CheckCircle2 className="size-4 text-success" />, error: <CircleAlert className="size-4 text-destructive" />, info: <Info className="size-4 text-ring" /> }} />;
+  return <Toaster theme={efectivo === "claro" ? "light" : "dark"} position="bottom-right" closeButton containerAriaLabel="Avisos del sistema" toastOptions={{ closeButtonAriaLabel: "Cerrar aviso", style: { background: "var(--card)", color: "var(--foreground)", borderColor: "var(--border)", boxShadow: "none" }, className: "font-sans" }} icons={{ success: <CheckCircle2 className="size-4 text-success" />, error: <CircleAlert className="size-4 text-destructive" />, info: <Info className="size-4 text-ring" /> }} />;
 }

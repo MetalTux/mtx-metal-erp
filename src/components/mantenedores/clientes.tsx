@@ -1,5 +1,5 @@
 "use client";
-import { Permiso } from "@/components/seguridad/permisos";
+import { Permiso, usePermiso } from "@/components/seguridad/permisos";
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -84,7 +84,7 @@ export function FormularioCliente({ editor, pendiente, onCerrar, onGuardar }: { 
         }}
         onQuitar={uid => { const i = fields.findIndex(b => b.claveFormulario === uid); if (i >= 0 && !branches[i].isHeadOffice) remove(i); }}
       />
-      {editor.cliente && <p className="text-xs text-muted-foreground">Cotizaciones: {editor.cliente.cotizaciones} · Última actualización: {fecha(editor.cliente.updatedAt)}</p>}
+      {editor.cliente && <p className="text-[13px] text-muted-foreground">Cotizaciones: {editor.cliente.cotizaciones} · Última actualización: {fecha(editor.cliente.updatedAt)}</p>}
       <DialogFooter><Button type="button" variant="outline" disabled={pendiente} id="cliente-cancelar" onClick={cerrar}>{consulta ? "Cerrar" : "Cancelar"}</Button>{!consulta && <Permiso permiso="clientes.operar"><Button type="submit" disabled={pendiente}>{pendiente ? "Guardando…" : editor.modo === "crear" ? "Crear cliente" : "Guardar cambios"}</Button></Permiso>}</DialogFooter>
     </form>
     <ConfirmarDescarte abierto={descarte} onAbiertoChange={setDescarte} onConfirmar={onCerrar} onDevolverFoco={() => document.getElementById("cliente-rut")?.focus()} />
@@ -93,6 +93,7 @@ export function FormularioCliente({ editor, pendiente, onCerrar, onGuardar }: { 
 }
 
 export function Clientes({ clientes }: { clientes: Cliente[] }) {
+  const puedeOperar = usePermiso("clientes.operar");
   const router = useRouter();
   const [editor, setEditor] = useState<Editor>();
   const [aEliminar, setAEliminar] = useState<Cliente>();
@@ -149,14 +150,14 @@ export function Clientes({ clientes }: { clientes: Cliente[] }) {
       <Permiso permiso="clientes.operar"><Button variant="ghost" size="sm" disabled={pendiente} className="hover:bg-destructive/15" aria-label={`Eliminar ${row.original.name}`} onClick={() => { recordarFoco(); setErrorEliminar(undefined); setAEliminar(row.original); }}><Trash2 className="text-destructive" aria-hidden="true" />Eliminar</Button></Permiso>
     </div> },
   ];
-  return <div className="space-y-6">
+  return <div className="min-w-0 space-y-4">
     <PageHeader titulo="Clientes" descripcion="Administra tus clientes y sus datos de contacto." acciones={<Permiso permiso="clientes.operar"><Button ref={crearBoton} disabled={pendiente} className="h-9" onClick={() => { recordarFoco(); setEditor({ modo: "crear" }); }}><Plus aria-hidden="true" />Crear cliente</Button></Permiso>} />
     <SectionCard titulo="Catálogo de clientes" descripcion="Consulta el RUT, los datos de contacto y las cotizaciones asociadas." contentClassName="p-0">
-      <DataTable datos={clientes} columnas={columnas} textoBusqueda={buscarCliente} filtroPlaceholder="Buscar por nombre, RUT o contacto…" nombre="clientes" acciones={<Button variant="outline" size="sm" disabled={pendiente} onClick={() => router.refresh()}><RefreshCw aria-hidden="true" />Actualizar</Button>} vacio={<EmptyState icono={Users} titulo="Todavía no hay clientes" descripcion="Crea el primer cliente para preparar tus cotizaciones." />} />
+      <DataTable datos={clientes} columnas={columnas} textoBusqueda={buscarCliente} filtroPlaceholder="Buscar por nombre, RUT o contacto…" nombre="clientes" acciones={<Button variant="outline" size="sm" disabled={pendiente} onClick={() => router.refresh()}><RefreshCw aria-hidden="true" />Actualizar</Button>} vacio={<EmptyState icono={Users} titulo="Todavía no hay clientes" descripcion={puedeOperar ? "Crea el primer cliente para preparar tus cotizaciones." : "Los clientes aparecerán aquí cuando una persona con permisos los registre."} />} />
     </SectionCard>
     {pendiente && !editor && !aEliminar && <p role="status" className="flex items-center gap-2 text-sm text-muted-foreground"><LoaderCircle className="size-4 animate-spin" aria-hidden="true" />Consultando cliente…</p>}
     <Dialog open={Boolean(editor)} onOpenChange={(abierto) => { if (!abierto && !pendiente) setEditor(undefined); }}>
-      <DialogContent showCloseButton={false} className="max-h-[90dvh] overflow-y-auto rounded-lg sm:max-w-3xl" onCloseAutoFocus={(event) => { event.preventDefault(); restaurarFoco(); }} onEscapeKeyDown={(event) => { event.preventDefault(); if (!pendiente) document.getElementById("cliente-cancelar")?.click(); }} onInteractOutside={(event) => event.preventDefault()}>
+      <DialogContent showCloseButton={false} className="max-h-[90dvh] min-w-0 overflow-y-auto overscroll-contain rounded-lg sm:max-w-3xl" onCloseAutoFocus={(event) => { event.preventDefault(); restaurarFoco(); }} onEscapeKeyDown={(event) => { event.preventDefault(); if (!pendiente) document.getElementById("cliente-cancelar")?.click(); }} onInteractOutside={(event) => event.preventDefault()}>
         <DialogHeader><DialogTitle>{editor?.modo === "crear" ? "Crear cliente" : editor?.modo === "sucursales" ? "Sucursales del cliente" : editor?.modo === "editar" ? "Editar cliente" : "Ver cliente"}</DialogTitle><DialogDescription>{editor?.modo === "ver" ? "Consulta los datos de contacto y las cotizaciones asociadas a este cliente." : editor?.modo === "sucursales" ? "Administra las sucursales y sus contactos. Los datos generales del cliente son de sólo lectura; para modificarlos, utiliza Editar." : "Completa datos generales y sucursales. Nombre y teléfono de contacto, dirección y ciudad son obligatorios; correo opcional."}</DialogDescription></DialogHeader>
         {editor && <FormularioCliente key={`${editor.modo}-${editor.cliente?.updatedAt ?? "nueva"}`} editor={editor} pendiente={pendiente} onCerrar={() => setEditor(undefined)} onGuardar={guardar} />}
       </DialogContent>

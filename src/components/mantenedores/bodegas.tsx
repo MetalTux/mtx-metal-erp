@@ -1,5 +1,5 @@
 "use client";
-import { Permiso } from "@/components/seguridad/permisos";
+import { Permiso, usePermiso } from "@/components/seguridad/permisos";
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -45,10 +45,10 @@ function FormularioBodega({ editor, pendiente, onCerrar, onGuardar }: { editor: 
       }
     }
   });
-  return <form onSubmit={event => { if (consulta || pendiente) { event.preventDefault(); return; } void submit(event); }} noValidate aria-busy={pendiente} className="space-y-4">
+  return <form onSubmit={event => { if (consulta || pendiente) { event.preventDefault(); return; } void submit(event); }} noValidate aria-busy={pendiente} className="min-w-0 space-y-4">
     {error && <Aviso titulo={error} />}
     <div className="space-y-2"><Label htmlFor="bodega-nombre">Nombre{!consulta && " *"}</Label><Input id="bodega-nombre" {...register("name")} readOnly={consulta} disabled={pendiente} maxLength={100} autoComplete="off" placeholder="Ej.: Bodega principal" aria-invalid={Boolean(errors.name)} aria-describedby={errors.name ? "bodega-nombre-error" : undefined} className="h-9" />{errors.name && <p id="bodega-nombre-error" className="text-sm text-foreground" role="alert">{errors.name.message}</p>}</div>
-    <div className="space-y-2"><Label htmlFor="bodega-ubicacion">Ubicación (opcional)</Label><Input id="bodega-ubicacion" {...register("location")} readOnly={consulta} disabled={pendiente} maxLength={200} autoComplete="off" placeholder="Ej.: Patio norte, sector A" aria-invalid={Boolean(errors.location)} aria-describedby={errors.location ? "bodega-ubicacion-error" : "bodega-ubicacion-ayuda"} className="h-9" /><p id="bodega-ubicacion-ayuda" className="text-xs text-muted-foreground">Puedes indicar una dirección o un sector de tu taller.</p>{errors.location && <p id="bodega-ubicacion-error" className="text-sm text-foreground" role="alert">{errors.location.message}</p>}</div>
+    <div className="space-y-2"><Label htmlFor="bodega-ubicacion">Ubicación (opcional)</Label><Input id="bodega-ubicacion" {...register("location")} readOnly={consulta} disabled={pendiente} maxLength={200} autoComplete="off" placeholder="Ej.: Patio norte, sector A" aria-invalid={Boolean(errors.location)} aria-describedby={errors.location ? "bodega-ubicacion-error" : "bodega-ubicacion-ayuda"} className="h-9" /><p id="bodega-ubicacion-ayuda" className="text-[13px] text-muted-foreground">Puedes indicar una dirección o un sector de tu taller.</p>{errors.location && <p id="bodega-ubicacion-error" className="text-sm text-foreground" role="alert">{errors.location.message}</p>}</div>
     <div className="space-y-2">
       <Label htmlFor="bodega-clasificacion">Clasificación{!consulta && " *"}</Label>
       <AyudaCampo nombre="Clasificación de bodega" texto="Materia prima almacena materiales; Producto terminado almacena productos finales; Mixta admite ambos. Las bodegas anteriores quedan sin clasificar hasta que las edites. Las referencias de materias primas impiden cambiar a Producto terminado exclusivo; el historial de terminado impide cambiar a Materia prima exclusiva." />
@@ -72,6 +72,7 @@ function FormularioBodega({ editor, pendiente, onCerrar, onGuardar }: { editor: 
 }
 
 export function Bodegas({ bodegas }: { bodegas: Bodega[] }) {
+  const puedeOperar = usePermiso("catalogos.operar");
   const router = useRouter();
   const [editor, setEditor] = useState<Editor>();
   const [aEliminar, setAEliminar] = useState<Bodega>();
@@ -124,14 +125,14 @@ export function Bodegas({ bodegas }: { bodegas: Bodega[] }) {
       <Permiso permiso="catalogos.operar"><Button variant="ghost" size="sm" disabled={pendiente} className="hover:bg-destructive/15" aria-label={`Eliminar ${row.original.name}`} onClick={() => { recordarFoco(); setErrorEliminar(undefined); setAEliminar(row.original); }}><Trash2 className="text-destructive" aria-hidden="true" />Eliminar</Button></Permiso>
     </div> },
   ];
-  return <div className="space-y-6">
+  return <div className="min-w-0 space-y-4">
     <PageHeader titulo="Bodegas" descripcion="Organiza bodegas de materia prima, producto terminado o uso mixto." acciones={<Permiso permiso="catalogos.operar"><Button ref={crearBoton} disabled={pendiente} className="h-9" onClick={() => { recordarFoco(); setEditor({ modo: "crear" }); }}><Plus aria-hidden="true" />Crear bodega</Button></Permiso>} />
     <SectionCard titulo="Catálogo de bodegas" descripcion="Identifica cada bodega y consulta sus referencias de inventario y documentos." contentClassName="p-0">
-      <DataTable datos={bodegas} columnas={columnas} textoBusqueda={buscarBodega} filtroPlaceholder="Buscar nombre, ubicación o clasificación…" nombre="bodegas" acciones={<Button variant="outline" size="sm" disabled={pendiente} onClick={() => router.refresh()}><RefreshCw aria-hidden="true" />Actualizar</Button>} vacio={<EmptyState icono={Warehouse} titulo="Todavía no hay bodegas" descripcion="Crea la primera bodega para organizar dónde guardas tus materiales." />} />
+      <DataTable datos={bodegas} columnas={columnas} textoBusqueda={buscarBodega} filtroPlaceholder="Buscar nombre, ubicación o clasificación…" nombre="bodegas" acciones={<Button variant="outline" size="sm" disabled={pendiente} onClick={() => router.refresh()}><RefreshCw aria-hidden="true" />Actualizar</Button>} vacio={<EmptyState icono={Warehouse} titulo="Todavía no hay bodegas" descripcion={puedeOperar ? "Crea la primera bodega para organizar dónde guardas tus materiales." : "Las bodegas aparecerán aquí cuando una persona con permisos las registre."} />} />
     </SectionCard>
     {pendiente && !editor && !aEliminar && <p role="status" className="flex items-center gap-2 text-sm text-muted-foreground"><LoaderCircle className="size-4 animate-spin" aria-hidden="true" />Consultando bodega…</p>}
     <Dialog open={Boolean(editor)} onOpenChange={(abierto) => { if (!abierto && !pendiente) setEditor(undefined); }}>
-      <DialogContent showCloseButton={!pendiente} className="max-h-[90dvh] overflow-y-auto rounded-lg sm:max-w-lg" onCloseAutoFocus={(event) => { event.preventDefault(); restaurarFoco(); }} onEscapeKeyDown={(event) => { if (pendiente) event.preventDefault(); }} onInteractOutside={(event) => event.preventDefault()}>
+      <DialogContent showCloseButton={!pendiente} className="max-h-[90dvh] min-w-0 overflow-y-auto overscroll-contain rounded-lg sm:max-w-lg" onCloseAutoFocus={(event) => { event.preventDefault(); restaurarFoco(); }} onEscapeKeyDown={(event) => { if (pendiente) event.preventDefault(); }} onInteractOutside={(event) => event.preventDefault()}>
         <DialogHeader><DialogTitle>{editor?.modo === "crear" ? "Crear bodega" : editor?.modo === "editar" ? "Editar bodega" : "Ver bodega"}</DialogTitle><DialogDescription>{editor?.modo === "ver" ? "Consulta la ubicación y las referencias asociadas a esta bodega." : "Completa nombre y clasificación. La ubicación es opcional."}</DialogDescription></DialogHeader>
         {editor && <FormularioBodega key={`${editor.modo}-${editor.bodega?.updatedAt ?? "nueva"}`} editor={editor} pendiente={pendiente} onCerrar={() => setEditor(undefined)} onGuardar={guardar} />}
       </DialogContent>

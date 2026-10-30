@@ -150,7 +150,7 @@ export function ConfigurarMinimo({
         }}
       >
         <DialogContent
-          className="max-h-[90dvh] overflow-y-auto sm:max-w-xl"
+          className="max-h-[90dvh] min-w-0 overflow-y-auto overscroll-contain sm:max-w-xl"
           onEscapeKeyDown={(e) => {
             if (ocupado) e.preventDefault();
           }}
@@ -294,7 +294,7 @@ export function ConfigurarMinimo({
                 Quitar configuración
               </Button>
             )}
-            <p className="text-xs text-muted-foreground">
+            <p className="text-[13px] text-muted-foreground">
               No se eliminan combinaciones al quitar el mínimo. Una combinación
               de stock, incluso con saldo cero, impide cambiar la unidad del
               material.

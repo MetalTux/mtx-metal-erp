@@ -65,7 +65,7 @@ function DetalleMaterial({ editor, materiales, onAplicar, onCerrar, onCambio }: 
       <Input id="receta-detalle-cantidad" inputMode="decimal" autoComplete="off" value={consulta ? formatearCantidad(cantidad) : cantidad} readOnly={consulta} onChange={event => { setCantidad(event.target.value); setError(undefined); onCambio(); }} />
       <p className="text-sm text-muted-foreground">Unidad: {material ? `${material.unitName} (${material.abbreviation})` : "Selecciona una materia prima"}</p>
     </div>
-    <p className="text-xs text-muted-foreground">El detalle se incorpora al formulario. Para registrarlo en el sistema debes guardar el producto.</p>
+    <p className="text-[13px] text-muted-foreground">El detalle se incorpora al formulario. Para registrarlo en el sistema debes guardar el producto.</p>
     <DialogFooter>
       <Button type="button" variant="outline" onClick={onCerrar}>{consulta ? "Cerrar" : "Cancelar"}</Button>
       {!consulta && <Button type="submit">{editor.modo === "agregar" ? "Agregar al detalle" : "Aplicar cambios"}</Button>}
@@ -110,7 +110,7 @@ export function RecetaProducto({ lineas, materiales, unidadProducto, consulta, p
   return <>
     <fieldset disabled={pendiente} className="min-w-0 space-y-3">
       <legend className="mb-2 font-medium">Receta por una unidad de producto</legend>
-      <p className="text-xs text-muted-foreground">Material necesario para 1 {unidadProducto} de producto. Guardar no descuenta stock. Sin receta puedes cotizar; será necesaria para la futura fabricación.</p>
+      <p className="text-[13px] text-muted-foreground">Material necesario para 1 {unidadProducto} de producto. Guardar no descuenta stock. Sin receta puedes cotizar; será necesaria para la futura fabricación.</p>
       <div className="min-w-0 rounded-md border">
         <Table aria-label="Materias primas de la receta">
           <TableHeader className="bg-card-header">
@@ -125,10 +125,10 @@ export function RecetaProducto({ lineas, materiales, unidadProducto, consulta, p
                 <TableCell className="text-right tabular-nums">{formatearCantidad(linea.quantity)}</TableCell>
                 <TableCell>{material?.abbreviation ?? "—"}</TableCell>
                 <TableCell><div className="flex gap-1">
-                  <BotonConAyuda type="button" variant="ghost" size="sm" aria-label={`Ver material ${nombre}`} ayuda="Consulta la cantidad y unidad de esta materia prima." disabled={pendiente} onClick={() => abrir("ver", linea)}><Eye /><span className="sr-only sm:not-sr-only">Ver</span></BotonConAyuda>
+                  <BotonConAyuda type="button" variant="ghost" size="sm" aria-label={`Ver material ${nombre}`} ayuda="Consulta la cantidad y unidad de esta materia prima." disabled={pendiente} onClick={() => abrir("ver", linea)}><Eye /><span className="">Ver</span></BotonConAyuda>
                   {!consulta && <>
-                    <Permiso permiso="catalogos.operar"><BotonConAyuda type="button" variant="ghost" size="sm" aria-label={`Editar material ${nombre}`} ayuda="Edita esta fila sin salir del producto." disabled={pendiente} onClick={() => abrir("editar", linea)}><Pencil /><span className="sr-only sm:not-sr-only">Editar</span></BotonConAyuda></Permiso>
-                    <BotonConAyuda type="button" variant="ghost" size="sm" aria-label={`Quitar material ${nombre}`} ayuda="Quita esta materia prima del borrador con confirmación." disabled={pendiente} onClick={() => onQuitar(linea.uid)}><Trash2 /><span className="sr-only sm:not-sr-only">Quitar</span></BotonConAyuda>
+                    <Permiso permiso="catalogos.operar"><BotonConAyuda type="button" variant="ghost" size="sm" aria-label={`Editar material ${nombre}`} ayuda="Edita esta fila sin salir del producto." disabled={pendiente} onClick={() => abrir("editar", linea)}><Pencil /><span className="">Editar</span></BotonConAyuda></Permiso>
+                    <BotonConAyuda type="button" variant="ghost" size="sm" aria-label={`Quitar material ${nombre}`} ayuda="Quita esta materia prima del borrador con confirmación." disabled={pendiente} onClick={() => onQuitar(linea.uid)}><Trash2 /><span className="">Quitar</span></BotonConAyuda>
                   </>}
                 </div></TableCell>
               </TableRow>;
@@ -138,13 +138,13 @@ export function RecetaProducto({ lineas, materiales, unidadProducto, consulta, p
         </Table>
       </div>
       {!consulta && <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-xs text-muted-foreground">{lineas.length} de 100 materias primas</p>
+        <p className="text-[13px] text-muted-foreground">{lineas.length} de 100 materias primas</p>
         <Button ref={agregar} type="button" variant="outline" disabled={pendiente || lineas.length >= 100 || disponibles.length === 0} onClick={() => abrir("agregar")}><Plus />Agregar materia prima</Button>
         {disponibles.length === 0 && <p className="w-full text-xs text-muted-foreground">No hay más materias primas disponibles para agregar.</p>}
       </div>}
     </fieldset>
     <Dialog open={Boolean(editor)} onOpenChange={abierto => { if (!abierto) cerrar(); }}>
-      <DialogContent ref={detalle} className="max-h-[85dvh] overflow-y-auto sm:max-w-lg" showCloseButton={!pendiente} onInteractOutside={event => event.preventDefault()} onEscapeKeyDown={event => { if (pendiente || descarte) event.preventDefault(); }} onCloseAutoFocus={event => { event.preventDefault(); (retorno.current?.isConnected ? retorno.current : agregar.current)?.focus(); }}>
+      <DialogContent ref={detalle} className="max-h-[85dvh] min-w-0 overflow-y-auto overscroll-contain sm:max-w-lg" showCloseButton={!pendiente} onInteractOutside={event => event.preventDefault()} onEscapeKeyDown={event => { if (pendiente || descarte) event.preventDefault(); }} onCloseAutoFocus={event => { event.preventDefault(); (retorno.current?.isConnected ? retorno.current : agregar.current)?.focus(); }}>
         <DialogHeader><DialogTitle>{editor?.modo === "agregar" ? "Agregar materia prima" : editor?.modo === "editar" ? "Editar materia prima" : "Ver materia prima"}</DialogTitle><DialogDescription>Detalle de la receta para una unidad de producto terminado.</DialogDescription></DialogHeader>
         {editor && <DetalleMaterial key={`${editor.modo}-${editor.linea.uid}`} editor={editor} materiales={disponibles} onCerrar={cerrar} onCambio={() => { modificado.current = true; }} onAplicar={linea => {
           onChange(editor.modo === "agregar" ? [...lineas, linea] : lineas.map(l => l.uid === linea.uid ? linea : l));

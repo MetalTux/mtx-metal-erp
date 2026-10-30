@@ -50,7 +50,7 @@ export function AppTopbar({sesion,avisos}:{sesion?:{name:string;roles:string[]}|
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="h-10 gap-2 px-1.5" aria-label="Menú de usuario">
               <Avatar className="size-8"><AvatarFallback className="border border-border bg-muted"><UserRound className="size-4" aria-hidden="true" /></AvatarFallback></Avatar>
-              <span className="hidden text-left leading-tight lg:flex lg:flex-col"><span>{sesion?.name??"Usuario"}</span><span className="mt-0.5 text-xs font-normal text-muted-foreground">{sesion?"Sesión personal":"Sin sesión iniciada"}</span></span>
+              <span className="hidden min-w-0 max-w-36 text-left leading-tight lg:flex lg:flex-col"><span className="truncate" title={sesion?.name??"Usuario"}>{sesion?.name??"Usuario"}</span><span className="mt-0.5 text-xs font-normal text-muted-foreground">{sesion?"Sesión personal":"Sin sesión iniciada"}</span></span>
               <ChevronDown className="hidden size-3 text-muted-foreground sm:block" aria-hidden="true" />
             </Button>
           </DropdownMenuTrigger>

@@ -127,11 +127,11 @@ function FiltrosConsulta({
           ...(movimientos ? { tipo, desde, hasta } : { reposicion }),
         });
       }}
-      className="space-y-4 border-b border-border p-4"
+      className="space-y-4 border-b border-border p-3"
     >
       <fieldset
         disabled={pendiente}
-        className="grid min-w-0 gap-4 sm:grid-cols-2 lg:grid-cols-3"
+        className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-3"
       >
         <div className="min-w-0 space-y-2">
           <Label htmlFor="inventario-busqueda">Buscar</Label>
@@ -200,7 +200,7 @@ function FiltrosConsulta({
               id="inventario-reposicion"
               value={reposicion}
               onChange={(e) => setReposicion(e.target.value)}
-              className="h-9 w-full rounded-md border border-border bg-card px-3 text-sm focus-visible:outline-ring"
+              className="h-9 w-full rounded-md border border-input bg-card px-3 text-sm focus-visible:outline-ring"
             >
               <option value="todos">Todas las combinaciones</option>
               <option value="reposicion">Requieren reposición</option>
@@ -215,7 +215,7 @@ function FiltrosConsulta({
                 id="inventario-tipo"
                 value={tipo}
                 onChange={(event) => setTipo(event.target.value as typeof tipo)}
-                className="h-9 w-full rounded-md border border-border bg-card px-3 text-sm focus-visible:outline-ring"
+                className="h-9 w-full rounded-md border border-input bg-card px-3 text-sm focus-visible:outline-ring"
               >
                 <option value="">Todos los tipos</option>
                 {Object.entries(nombresTipo).map(([valor, etiqueta]) => (
@@ -264,7 +264,7 @@ function FiltrosConsulta({
         </Button>
       </div>
       {movimientos && (
-        <p className="text-xs text-muted-foreground">
+        <p className="text-[13px] text-muted-foreground">
           Desde y Hasta incluyen el día completo en la zona horaria de Santiago.
         </p>
       )}
@@ -385,7 +385,7 @@ export function ConsultaInventario({
       contenido: (fila) => fila.bodega.name,
     },
     {
-      id: "cantidad",
+      id: "cantidad", numerica: true,
       titulo: movimientos ? "Cantidad (+/−)" : "Existencias",
       orden: "cantidad",
       contenido: (fila) => (
@@ -403,7 +403,7 @@ export function ConsultaInventario({
         ]
       : [
           {
-            id: "minimo",
+            id: "minimo", numerica: true,
             titulo: "Mínimo",
             orden: "minimo",
             contenido: (fila: StockInventario | MovimientoInventario) =>
@@ -485,7 +485,7 @@ export function ConsultaInventario({
   ];
   const titulo = movimientos ? "Movimientos" : "Stock por bodega";
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 space-y-4">
       <PageHeader
         titulo={titulo}
         descripcion={
@@ -602,7 +602,7 @@ export function ConsultaInventario({
         }}
       >
         <DialogContent
-          className="max-h-[90dvh] overflow-y-auto rounded-lg sm:max-w-xl"
+          className="max-h-[90dvh] min-w-0 overflow-y-auto overscroll-contain rounded-lg sm:max-w-xl"
           onCloseAutoFocus={(event) => {
             event.preventDefault();
             (retornoFoco.current?.isConnected
@@ -655,7 +655,7 @@ export function ConsultaInventario({
                   ["Fecha de registro", formatearFecha(detalle.createdAt)],
                 ].map(([etiqueta, valor]) => (
                   <div key={String(etiqueta)} className="min-w-0">
-                    <dt className="text-xs text-muted-foreground">
+                    <dt className="text-[13px] text-muted-foreground">
                       {etiqueta}
                     </dt>
                     <dd className="mt-1 whitespace-pre-wrap break-words text-sm tabular-nums">

@@ -31,7 +31,7 @@ export function EditorConsumo({ inicial, catalogos: c, onAceptar, onCerrar, devo
       if (mensaje) setError(mensaje);
     } else { const mensaje = onAceptar({ ...d, datos: produccionSchema.shape.roundingReviews.element.parse(d.datos) }); if (mensaje) setError(mensaje); }
   }
-  return <><Dialog open onOpenChange={v => { if (!v) cerrar(); }}><DialogContent showCloseButton={false} className="max-h-[90dvh] overflow-y-auto" onInteractOutside={e => e.preventDefault()} onEscapeKeyDown={e => { e.preventDefault(); cerrar(); }} onCloseAutoFocus={e => { e.preventDefault(); devolverFoco(); }}>
+  return <><Dialog open onOpenChange={v => { if (!v) cerrar(); }}><DialogContent showCloseButton={false} className="max-h-[90dvh] min-w-0 overflow-y-auto overscroll-contain" onInteractOutside={e => e.preventDefault()} onEscapeKeyDown={e => { e.preventDefault(); cerrar(); }} onCloseAutoFocus={e => { e.preventDefault(); devolverFoco(); }}>
     <DialogHeader><DialogTitle>{d.tipo === "consumo" ? "Consumo real" : "Revisión de redondeo del lote"}</DialogTitle><DialogDescription>Aceptar aplica al borrador del registro; todavía no mueve stock.</DialogDescription></DialogHeader>
     <form className="space-y-4" onSubmit={e => { e.preventDefault(); e.stopPropagation(); aceptar(); }}>
       {error && <p role="alert" className="text-sm text-destructive">{error}</p>}

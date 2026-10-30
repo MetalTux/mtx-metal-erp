@@ -24,7 +24,9 @@ import {
   PackageCheck,
   ListX,
   Ban,
+  MoreHorizontal,
 } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { PageHeader } from "@/components/page-header";
 import { SectionCard } from "@/components/section-card";
 import {
@@ -147,6 +149,7 @@ function FormularioCompra({
   const [clave] = useState(() => crypto.randomUUID());
   const [ocupado, setOcupado] = useState(false);
   const [error, setError] = useState<string>();
+  const [erroresCampos, setErroresCampos] = useState<Partial<Record<keyof DatosCompra, string>>>({});
   const [calculo, setCalculo] = useState<CalculoCompra>();
   const [confirmar, setConfirmar] = useState(false);
   const [descarte, setDescarte] = useState(false);
@@ -214,6 +217,7 @@ function FormularioCompra({
     valor: DatosCompra[K],
   ) {
     setDatos((d) => ({ ...d, [campo]: valor }));
+    setErroresCampos(actual => { const siguientes = { ...actual }; delete siguientes[campo]; return siguientes; });
     setSucio(true);
     setCalculo(undefined);
   }
@@ -227,9 +231,22 @@ function FormularioCompra({
     setError(undefined);
     const v = compraSchema.safeParse(datos);
     if (!v.success) {
-      setError(
-        "Completa proveedor, documento, bodega y líneas con valores válidos. Revisa decimales y fecha.",
-      );
+      const mensajes: Record<keyof DatosCompra, string> = {
+        date: "Indica una fecha de compra válida.", supplierId: "Selecciona un proveedor.",
+        documentTypeId: "Selecciona el tipo de documento.", documentNumber: "Indica el número de documento (hasta 100 caracteres).",
+        warehouseId: "Selecciona la bodega de recepción.", lines: "Agrega al menos un detalle válido y revisa sus cantidades y decimales.",
+      };
+      const invalidos: Partial<Record<keyof DatosCompra, string>> = {};
+      for (const issue of v.error.issues) {
+        const campo = issue.path[0] as keyof DatosCompra;
+        if (campo in mensajes) invalidos[campo] = mensajes[campo];
+      }
+      setErroresCampos(invalidos);
+      setError("Revisa los campos indicados antes de continuar.");
+      const ids: Record<keyof DatosCompra, string> = { date: "compra-fecha", supplierId: "supplierId", documentTypeId: "documentTypeId", documentNumber: "compra-numero", warehouseId: "warehouseId", lines: "compra-agregar-detalle" };
+      const ordenVisual: (keyof DatosCompra)[] = ["supplierId", "documentTypeId", "documentNumber", "warehouseId", "date", "lines"];
+      const primero = ordenVisual.find(campo => invalidos[campo]);
+      requestAnimationFrame(() => { if (primero) document.getElementById(ids[primero])?.focus(); });
       return;
     }
     setOcupado(true);
@@ -294,11 +311,14 @@ function FormularioCompra({
             etiqueta: o.name,
             busqueda: o.rut,
           }))}
+          invalido={Boolean(erroresCampos[campo])}
+          descripcionId={erroresCampos[campo] ? `compra-${campo}-error` : undefined}
           valor={String(datos[campo] || "")}
           onChange={(v) => cambiar(campo, Number(v))}
           placeholder={`Seleccionar ${nombre.toLowerCase()}`}
           disabled={bloqueada || ocupado}
         />
+        {erroresCampos[campo] && <p id={`compra-${campo}-error`} role="alert" className="text-[13px] text-destructive">{erroresCampos[campo]}</p>}
       </div>
     );
   }
@@ -311,7 +331,7 @@ function FormularioCompra({
         }}
       >
         <DialogContent
-          className="max-h-[90dvh] overflow-y-auto rounded-lg sm:max-w-4xl"
+          className="max-h-[92dvh] min-w-0 overflow-y-auto overscroll-contain rounded-lg sm:max-w-[min(76rem,calc(100vw-2rem))]"
           onEscapeKeyDown={(e) => {
             // Radix escucha Escape antes que el input: primero cerrar sus sugerencias, no el formulario.
             const destino = e.target;
@@ -341,7 +361,7 @@ function FormularioCompra({
               e.preventDefault();
               void preparar();
             }}
-            className="space-y-5"
+            className="min-w-0 max-w-full space-y-4"
             noValidate
             aria-busy={ocupado}
           >
@@ -352,7 +372,7 @@ function FormularioCompra({
                 titulo="Compra con recepciones o cierres: identidad, bodega y líneas bloqueadas."
               />
             )}
-            <div className="grid min-w-0 gap-4 sm:grid-cols-2">
+            <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-3">
               <div className="min-w-0 space-y-2">
                 {selector("supplierId", "Proveedor", proveedores)}
                 {!bloqueada && <Permiso permiso="compras.operar"><Permiso permiso="proveedores.operar"><Button type="button" variant="outline" size="sm" disabled={ocupado} onClick={() => setAltaProveedor(true)}><Plus aria-hidden="true" /> Crear proveedor</Button></Permiso></Permiso>}
@@ -367,13 +387,15 @@ function FormularioCompra({
                   />
                 </div>
                 <Input
-                  id="compra-numero"
+                  id="compra-numero" name="documentNumber" autoComplete="off" spellCheck={false}
+                  aria-invalid={Boolean(erroresCampos.documentNumber)} aria-describedby={erroresCampos.documentNumber ? "compra-documentNumber-error" : undefined}
                   value={datos.documentNumber}
                   readOnly={bloqueada}
                   disabled={ocupado}
                   maxLength={100}
                   onChange={(e) => cambiar("documentNumber", e.target.value)}
                 />
+                {erroresCampos.documentNumber && <p id="compra-documentNumber-error" role="alert" className="text-[13px] text-destructive">{erroresCampos.documentNumber}</p>}
               </div>
               {selector("warehouseId", "Bodega", catalogos.bodegas)}
               <div className="space-y-2">
@@ -385,19 +407,22 @@ function FormularioCompra({
                   />
                 </div>
                 <Input
-                  id="compra-fecha"
+                  id="compra-fecha" name="date"
+                  aria-invalid={Boolean(erroresCampos.date)} aria-describedby={erroresCampos.date ? "compra-date-error" : undefined}
                   type="date"
                   value={datos.date}
                   readOnly={consulta}
                   disabled={ocupado}
                   onChange={(e) => cambiar("date", e.target.value)}
                 />
+                {erroresCampos.date && <p id="compra-date-error" role="alert" className="text-[13px] text-destructive">{erroresCampos.date}</p>}
               </div>
             </div>
             <section className="min-w-0 space-y-3" aria-label="Detalles de compra">
+              {erroresCampos.lines && <p id="compra-lines-error" role="alert" className="text-[13px] text-destructive">{erroresCampos.lines}</p>}
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h3 className="font-medium">Detalles de compra ({datos.lines.length})</h3>
-                {!bloqueada && <Permiso permiso="compras.operar"><Button ref={botonAgregarDetalle} type="button" variant="outline" disabled={ocupado || datos.lines.length >= 50} onClick={() => abrirDetalle()}><Plus aria-hidden="true" /> Agregar detalle de compra</Button></Permiso>}
+                {!bloqueada && <Permiso permiso="compras.operar"><Button ref={botonAgregarDetalle} id="compra-agregar-detalle" aria-describedby={erroresCampos.lines ? "compra-lines-error" : undefined} type="button" variant="outline" disabled={ocupado || datos.lines.length >= 50} onClick={() => abrirDetalle()}><Plus aria-hidden="true" /> Agregar detalle de compra</Button></Permiso>}
               </div>
               <div className="overflow-x-auto rounded-md border border-border" role="region" aria-label="Grilla de detalles" tabIndex={0}>
                 <table className="w-full text-sm">
@@ -696,8 +721,9 @@ export function Compras({
   async function abrir(
     c: Compra,
     modo: "ver" | "editar" | "recibir" | "cerrar" | "anular",
+    origen?: HTMLElement | null,
   ) {
-    foco.current = document.activeElement as HTMLElement;
+    foco.current = origen ?? document.activeElement as HTMLElement;
     setCargando(true);
     setError(undefined);
     try {
@@ -770,7 +796,7 @@ export function Compras({
       id: "total",
       titulo: "Total",
       orden: "total",
-      contenido: (c) => dinero(c.totalAmount),
+      contenido: (c) => <span className="block text-right tabular-nums">{dinero(c.totalAmount)}</span>,
     },
     {
       id: "estado",
@@ -785,83 +811,19 @@ export function Compras({
       id: "acciones",
       titulo: "Acciones",
       contenido: (c) => (
-        <div className="flex gap-1">
-          <BotonConAyuda
-            variant="ghost"
-            size="icon"
-            aria-label={`Ver compra ${c.documentNumber}`}
-            ayuda="Consulta los datos, recepciones y cierres de esta compra."
-            disabled={cargando || pendiente}
-            onClick={() => void abrir(c, "ver")}
-          >
-            <Eye />
-          </BotonConAyuda>
-          <Permiso permiso="compras.operar"><BotonConAyuda
-            variant="ghost"
-            size="icon"
-            aria-label={`Editar compra ${c.documentNumber}`}
-            ayuda="Edita los datos permitidos. El precio queda fijo al guardar; la estructura se bloquea desde la primera recepción o cierre."
-            disabled={cargando || pendiente || Boolean(c.voidedAt)}
-            onClick={() => void abrir(c, "editar")}
-          >
-            <Pencil />
-          </BotonConAyuda></Permiso>
-          <BotonConAyuda
-            variant="ghost"
-            size="icon"
-            aria-label={`Recibir compra ${c.documentNumber}`}
-            ayuda="Registrar recepción parcial o completa"
-            disabled={
-              cargando ||
-              pendiente ||
-              Boolean(c.voidedAt) ||
-              !c.lines.some((l) => l.pendiente !== "0")
-            }
-            onClick={() => void abrir(c, "recibir")}
-          >
-            <PackageCheck />
-          </BotonConAyuda>
-          <BotonConAyuda
-            variant="ghost"
-            size="icon"
-            aria-label={`Cerrar pendiente compra ${c.documentNumber}`}
-            ayuda="Cierra la cantidad restante de una línea que ya no llegará. No modifica el stock ni anula lo recibido."
-            disabled={
-              cargando ||
-              pendiente ||
-              Boolean(c.voidedAt) ||
-              !c.lines.some((l) => l.pendiente !== "0")
-            }
-            onClick={() => void abrir(c, "cerrar")}
-          >
-            <ListX />
-          </BotonConAyuda>
-          <Permiso permiso="compras.operar"><BotonConAyuda
-            variant="ghost"
-            size="icon"
-            aria-label={`Anular compra ${c.documentNumber}`}
-            ayuda="Anula la compra completa y revierte lo recibido si cumple las condiciones de stock e historial."
-            disabled={cargando || pendiente || Boolean(c.voidedAt)}
-            onClick={() => void abrir(c, "anular")}
-          >
-            <Ban />
-          </BotonConAyuda></Permiso>
-          <Permiso permiso="compras.operar"><BotonConAyuda
-            variant="ghost"
-            size="icon"
-            aria-label={`Eliminar compra ${c.documentNumber}`}
-            disabled={cargando || pendiente || !c.voidedAt}
-            ayuda={
-              c.voidedAt
-                ? "Ocultar del listado conservando el historial"
-                : "Primero debes anular la compra"
-            }
-            onClick={() =>
-              setEliminacion({ compra: c, clave: crypto.randomUUID() })
-            }
-          >
-            <Trash2 />
-          </BotonConAyuda></Permiso>
+        <div className="flex items-center gap-1">
+          <BotonConAyuda variant="ghost" size="sm" aria-label={`Ver compra ${c.documentNumber}`} ayuda="Consulta los datos, recepciones y cierres de esta compra." disabled={cargando || pendiente} onClick={() => void abrir(c, "ver")}><Eye aria-hidden="true" />Ver</BotonConAyuda>
+          <BotonConAyuda variant="outline" size="sm" aria-label={`Recibir compra ${c.documentNumber}`} ayuda={c.voidedAt ? "La compra está anulada." : !c.lines.some(l => l.pendiente !== "0") ? "No quedan cantidades pendientes de recibir." : "Registrar recepción parcial o completa"} disabled={cargando || pendiente || Boolean(c.voidedAt) || !c.lines.some(l => l.pendiente !== "0")} onClick={() => void abrir(c, "recibir")}><PackageCheck aria-hidden="true" />Recibir</BotonConAyuda>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild><Button id={`acciones-compra-${c.id}`} variant="ghost" size="sm" disabled={cargando || pendiente} aria-label={`Más acciones de compra ${c.documentNumber}`}><MoreHorizontal aria-hidden="true" />Más</Button></DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-80 max-w-[calc(100vw-2rem)]">
+              <DropdownMenuLabel>Compra {c.documentNumber}</DropdownMenuLabel>
+              <Permiso permiso="compras.operar"><DropdownMenuItem className="items-start data-disabled:opacity-100" disabled={cargando || pendiente || Boolean(c.voidedAt)} onSelect={() => void abrir(c, "editar", document.getElementById(`acciones-compra-${c.id}`))}><Pencil aria-hidden="true" /><span>Editar compra<span className="block whitespace-normal text-[13px] text-muted-foreground">{c.voidedAt ? "No disponible: compra anulada." : "Sólo campos permitidos; el precio guardado permanece fijo."}</span></span></DropdownMenuItem></Permiso>
+              <DropdownMenuItem className="items-start data-disabled:opacity-100" disabled={cargando || pendiente || Boolean(c.voidedAt) || !c.lines.some(l => l.pendiente !== "0")} onSelect={() => void abrir(c, "cerrar", document.getElementById(`acciones-compra-${c.id}`))}><ListX aria-hidden="true" /><span>Cerrar cantidades pendientes<span className="block whitespace-normal text-[13px] text-muted-foreground">{c.voidedAt ? "No disponible: compra anulada." : !c.lines.some(l => l.pendiente !== "0") ? "No quedan cantidades pendientes." : "Cierra lo que no llegará; no anula lo recibido."}</span></span></DropdownMenuItem>
+              <Permiso permiso="compras.operar"><DropdownMenuSeparator /><DropdownMenuItem className="items-start data-disabled:opacity-100" disabled={cargando || pendiente || Boolean(c.voidedAt)} onSelect={() => void abrir(c, "anular", document.getElementById(`acciones-compra-${c.id}`))}><Ban aria-hidden="true" /><span>Anular compra<span className="block whitespace-normal text-[13px] text-muted-foreground">{c.voidedAt ? "La compra ya está anulada." : "Requiere motivo y validación de stock e historial."}</span></span></DropdownMenuItem>
+              <DropdownMenuItem className="items-start data-disabled:opacity-100" disabled={cargando || pendiente || !c.voidedAt} onSelect={() => { foco.current = document.getElementById(`acciones-compra-${c.id}`); setEliminacion({ compra: c, clave: crypto.randomUUID() }); }}><Trash2 aria-hidden="true" /><span>Ocultar del listado<span className="block whitespace-normal text-[13px] text-muted-foreground">{c.voidedAt ? "Conserva el documento y su historial." : "Primero debes anular la compra."}</span></span></DropdownMenuItem></Permiso>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       ),
     },
@@ -870,7 +832,7 @@ export function Compras({
     ? consulta.pagina
     : { datos: [], total: 0, pagina: 1, tamano: filtros.tamano };
   return (
-    <>
+    <div className="min-w-0 space-y-4">
       <PageHeader
         titulo="Compras"
         descripcion="Materiales comprados, proveedor, valor y documento de respaldo."
@@ -911,9 +873,9 @@ export function Compras({
             e.preventDefault();
             navegar({ q, pagina: "1" });
           }}
-          className="flex flex-wrap gap-3 border-b border-border p-4"
+          className="grid grid-cols-1 items-end gap-3 border-b border-border p-3 sm:flex sm:flex-wrap"
         >
-          <div className="min-w-0 flex-1">
+          <div className="min-w-0 sm:min-w-48 sm:flex-1">
             <Label htmlFor="compras-buscar">
               Buscar proveedor, RUT o número
             </Label>
@@ -1012,6 +974,6 @@ export function Compras({
           }}
         />
       )}
-    </>
+    </div>
   );
 }

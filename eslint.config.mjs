@@ -8,6 +8,8 @@ const eslintConfig = defineConfig([
   // Override default ignores of eslint-config-next.
   globalIgnores([
     "backups/**",
+    // Código externo de la skill de diseño; no forma parte de la aplicación.
+    ".agents/skills/impeccable/**",
     // Default ignores of eslint-config-next:
     ".next/**",
     "out/**",

@@ -1,0 +1,1 @@
+Fuente IBM Plex Sans, Regular/SemiBold. Repositorio https://github.com/IBM/plex, commit 71f558992315a12ca1f06a2215d57962a1992162. Licencia OFL-1.1 adjunta. Sólo para la maqueta documental, no instalada en el ERP.

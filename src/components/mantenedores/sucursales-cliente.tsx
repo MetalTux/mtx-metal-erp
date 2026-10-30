@@ -59,7 +59,7 @@ function DetalleSucursal({ editor, lineas, onAplicar, onCerrar, onCambio }: {
         {errors[campo] && <p id={`sucursal-detalle-${campo}-error`} role="alert" className="text-sm text-destructive">{errors[campo]?.message}</p>}
       </div>)}
     </div>
-    <p className="text-xs text-muted-foreground">Casa Central es obligatoria. Los datos de contacto pertenecen a esta sucursal. Para registrarlos en el sistema debes guardar el cliente.</p>
+    <p className="text-[13px] text-muted-foreground">Casa Central es obligatoria. Los datos de contacto pertenecen a esta sucursal. Para registrarlos en el sistema debes guardar el cliente.</p>
     <DialogFooter>
       <Button type="button" variant="outline" onClick={onCerrar}>{consulta ? "Cerrar" : "Cancelar"}</Button>
       {!consulta && <Button type="submit">{editor.modo === "agregar" ? "Agregar al detalle" : "Aplicar cambios"}</Button>}
@@ -103,15 +103,15 @@ export function SucursalesCliente({ lineas, consulta, pendiente, error, onAplica
           <TableHeader className="hidden bg-card-header md:table-header-group"><TableRow><TableHead className="w-[20%]">Sucursal</TableHead><TableHead className="w-[25%] whitespace-normal">Dirección / Ciudad</TableHead><TableHead className="w-[17%]">Contacto</TableHead><TableHead className="w-[20%] whitespace-normal">Teléfono / Correo</TableHead><TableHead className="w-[18%]">Acciones</TableHead></TableRow></TableHeader>
           <TableBody className="block md:table-row-group">
             {lineas.map(linea => <TableRow key={linea.uid} className="grid min-w-0 grid-cols-1 gap-1 p-3 sm:grid-cols-2 md:table-row md:p-0">
-              <TableCell className="block min-w-0 whitespace-normal [overflow-wrap:anywhere] sm:col-span-2 md:table-cell"><span className="mb-1 block text-xs font-medium text-muted-foreground md:hidden">Sucursal</span><p className="font-medium">{linea.name || "Sin nombre"}</p>{linea.isHeadOffice && <p className="text-xs text-muted-foreground">Casa Central obligatoria</p>}{!sucursalClienteSchema.safeParse(linea).success && <p className="text-xs text-warning">Datos pendientes</p>}</TableCell>
-              <TableCell className="block min-w-0 whitespace-normal [overflow-wrap:anywhere] md:table-cell"><span className="mb-1 block text-xs font-medium text-muted-foreground md:hidden">Dirección / Ciudad</span><p>{linea.address || "Sin dirección"}</p><p className="text-xs text-muted-foreground">{linea.city || "Sin ciudad"}</p></TableCell>
+              <TableCell className="block min-w-0 whitespace-normal [overflow-wrap:anywhere] sm:col-span-2 md:table-cell"><span className="mb-1 block text-xs font-medium text-muted-foreground md:hidden">Sucursal</span><p className="font-medium">{linea.name || "Sin nombre"}</p>{linea.isHeadOffice && <p className="text-[13px] text-muted-foreground">Casa Central obligatoria</p>}{!sucursalClienteSchema.safeParse(linea).success && <p className="text-xs text-warning">Datos pendientes</p>}</TableCell>
+              <TableCell className="block min-w-0 whitespace-normal [overflow-wrap:anywhere] md:table-cell"><span className="mb-1 block text-xs font-medium text-muted-foreground md:hidden">Dirección / Ciudad</span><p>{linea.address || "Sin dirección"}</p><p className="text-[13px] text-muted-foreground">{linea.city || "Sin ciudad"}</p></TableCell>
               <TableCell className="block min-w-0 whitespace-normal [overflow-wrap:anywhere] md:table-cell"><span className="mb-1 block text-xs font-medium text-muted-foreground md:hidden">Contacto</span>{linea.contact || "Sin contacto"}</TableCell>
-              <TableCell className="block min-w-0 whitespace-normal [overflow-wrap:anywhere] md:table-cell"><span className="mb-1 block text-xs font-medium text-muted-foreground md:hidden">Teléfono / Correo</span><p>{linea.phone || "Sin teléfono"}</p><p className="text-xs text-muted-foreground">{linea.email || "Sin correo"}</p></TableCell>
+              <TableCell className="block min-w-0 whitespace-normal [overflow-wrap:anywhere] md:table-cell"><span className="mb-1 block text-xs font-medium text-muted-foreground md:hidden">Teléfono / Correo</span><p>{linea.phone || "Sin teléfono"}</p><p className="text-[13px] text-muted-foreground">{linea.email || "Sin correo"}</p></TableCell>
               <TableCell className="block min-w-0 sm:col-span-2 md:table-cell"><span className="mb-1 block text-xs font-medium text-muted-foreground md:hidden">Acciones</span><div className="flex flex-wrap gap-1">
-                <BotonConAyuda type="button" variant="ghost" size="icon-sm" aria-label={`Ver sucursal ${linea.name}`} ayuda="Consulta dirección y contacto de esta sucursal." disabled={pendiente} onClick={() => abrir("ver", linea)}><Eye /><span className="sr-only">Ver</span></BotonConAyuda>
+                <BotonConAyuda type="button" variant="ghost" size="sm" aria-label={`Ver sucursal ${linea.name}`} ayuda="Consulta dirección y contacto de esta sucursal." disabled={pendiente} onClick={() => abrir("ver", linea)}><Eye />Ver</BotonConAyuda>
                 {!consulta && <>
-                  <Permiso permiso="clientes.operar"><BotonConAyuda type="button" variant="ghost" size="icon-sm" aria-label={`Editar sucursal ${linea.name}`} ayuda="Edita esta sucursal sin salir del cliente." disabled={pendiente} onClick={() => abrir("editar", linea)}><Pencil /><span className="sr-only">Editar</span></BotonConAyuda></Permiso>
-                  {!linea.isHeadOffice && <BotonConAyuda type="button" variant="ghost" size="icon-sm" aria-label={`Quitar sucursal ${linea.name}`} ayuda="Quita la sucursal del borrador con confirmación. Una sucursal con cotizaciones no se podrá eliminar al guardar." disabled={pendiente} onClick={() => { retorno.current = document.activeElement as HTMLElement; onBloqueo(true); setAQuitar(linea); }}><Trash2 /><span className="sr-only">Quitar</span></BotonConAyuda>}
+                  <Permiso permiso="clientes.operar"><BotonConAyuda type="button" variant="ghost" size="sm" aria-label={`Editar sucursal ${linea.name}`} ayuda="Edita esta sucursal sin salir del cliente." disabled={pendiente} onClick={() => abrir("editar", linea)}><Pencil />Editar</BotonConAyuda></Permiso>
+                  {!linea.isHeadOffice && <BotonConAyuda type="button" variant="ghost" size="sm" aria-label={`Quitar sucursal ${linea.name}`} ayuda="Quita la sucursal del borrador con confirmación. Una sucursal con cotizaciones no se podrá eliminar al guardar." disabled={pendiente} onClick={() => { retorno.current = document.activeElement as HTMLElement; onBloqueo(true); setAQuitar(linea); }}><Trash2 />Quitar</BotonConAyuda>}
                 </>}
               </div></TableCell>
             </TableRow>)}
@@ -119,12 +119,12 @@ export function SucursalesCliente({ lineas, consulta, pendiente, error, onAplica
         </Table>
       </div>
       {!consulta && <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-xs text-muted-foreground">{lineas.length} de 100 sucursales · Se guardan junto con el cliente.</p>
+        <p className="text-[13px] text-muted-foreground">{lineas.length} de 100 sucursales · Se guardan junto con el cliente.</p>
         <Button ref={agregar} id="cliente-agregar-sucursal" type="button" variant="outline" disabled={pendiente || lineas.length >= 100} onClick={() => abrir("agregar")}><Plus />Agregar sucursal</Button>
       </div>}
     </fieldset>
     <Dialog open={Boolean(editor)} onOpenChange={abierto => { if (!abierto) cerrar(); }}>
-      <DialogContent ref={detalle} className="max-h-[85dvh] overflow-y-auto sm:max-w-xl" showCloseButton={!pendiente} onInteractOutside={e => e.preventDefault()} onEscapeKeyDown={e => { e.stopPropagation(); if (pendiente || descarte) e.preventDefault(); }} onCloseAutoFocus={e => { e.preventDefault(); restaurar(); }}>
+      <DialogContent ref={detalle} className="max-h-[85dvh] min-w-0 overflow-y-auto overscroll-contain sm:max-w-xl" showCloseButton={!pendiente} onInteractOutside={e => e.preventDefault()} onEscapeKeyDown={e => { e.stopPropagation(); if (pendiente || descarte) e.preventDefault(); }} onCloseAutoFocus={e => { e.preventDefault(); restaurar(); }}>
         <DialogHeader><DialogTitle>{editor?.modo === "agregar" ? "Agregar sucursal" : editor?.modo === "editar" ? "Editar sucursal" : "Ver sucursal"}</DialogTitle><DialogDescription>Dirección, ciudad y contacto propios de la sucursal.</DialogDescription></DialogHeader>
         {editor && <DetalleSucursal key={`${editor.modo}-${editor.linea.uid}`} editor={editor} lineas={lineas} onCambio={() => { modificado.current = true; }} onCerrar={cerrar} onAplicar={datos => { onAplicar(editor.modo === "agregar" ? null : editor.linea.uid, datos); terminar(); }} />}
       </DialogContent>

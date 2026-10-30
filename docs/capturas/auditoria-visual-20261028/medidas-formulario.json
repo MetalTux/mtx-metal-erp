@@ -1,0 +1,100 @@
+[
+  {
+    "tema": "oscuro",
+    "ancho": 1440,
+    "datos": {
+      "ancho": 896,
+      "contenido": 1388,
+      "form": [
+        {
+          "ancho": 1356,
+          "contenido": 1372
+        }
+      ],
+      "campos": [
+        {
+          "id": "supplierId",
+          "ancho": 670,
+          "derecha": 958
+        },
+        {
+          "id": "documentTypeId",
+          "ancho": 670,
+          "derecha": 1644
+        },
+        {
+          "id": "compra-numero",
+          "ancho": 670,
+          "derecha": 958
+        },
+        {
+          "id": "warehouseId",
+          "ancho": 670,
+          "derecha": 1644
+        },
+        {
+          "id": "compra-fecha",
+          "ancho": 670,
+          "derecha": 958
+        }
+      ]
+    }
+  },
+  {
+    "tema": "oscuro",
+    "ancho": 360,
+    "datos": {
+      "ancho": 360,
+      "contenido": 1388
+    }
+  },
+  {
+    "tema": "claro",
+    "ancho": 1440,
+    "datos": {
+      "ancho": 896,
+      "contenido": 1388,
+      "form": [
+        {
+          "ancho": 1356,
+          "contenido": 1372
+        }
+      ],
+      "campos": [
+        {
+          "id": "supplierId",
+          "ancho": 670,
+          "derecha": 958
+        },
+        {
+          "id": "documentTypeId",
+          "ancho": 670,
+          "derecha": 1644
+        },
+        {
+          "id": "compra-numero",
+          "ancho": 670,
+          "derecha": 958
+        },
+        {
+          "id": "warehouseId",
+          "ancho": 670,
+          "derecha": 1644
+        },
+        {
+          "id": "compra-fecha",
+          "ancho": 670,
+          "derecha": 958
+        }
+      ]
+    }
+  },
+  {
+    "tema": "claro",
+    "ancho": 360,
+    "datos": {
+      "ancho": 360,
+      "contenido": 1388
+    }
+  }
+]

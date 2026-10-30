@@ -89,7 +89,7 @@ export function TrasladosInventario({
     { id: "origen", titulo: "Origen", contenido: (t) => t.origen },
     { id: "destino", titulo: "Destino", contenido: (t) => t.destino },
     {
-      id: "cantidad",
+      id: "cantidad", numerica: true,
       titulo: "Cantidad",
       contenido: (t) => `${formatearCantidad(t.cantidad)} ${t.unidad}`,
     },
@@ -107,11 +107,12 @@ export function TrasladosInventario({
       id: "acciones",
       titulo: "Acciones",
       contenido: (t) => (
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button
             size="sm"
             variant="outline"
             disabled={pendiente}
+            aria-label={`Ver traslado ${t.id}`}
             onClick={(e) => {
               ultimoBoton.current = e.currentTarget;
               setVista(t);
@@ -123,6 +124,7 @@ export function TrasladosInventario({
             size="sm"
             variant="outline"
             disabled={pendiente || t.correccionId !== null}
+            aria-label={`Corregir traslado ${t.id}`}
             onClick={(e) => abrir(e, t)}
           >
             Corregir
@@ -145,16 +147,16 @@ export function TrasladosInventario({
     })),
   ];
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Traslados entre bodegas</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <h1 className="text-[23px] leading-tight font-semibold">Traslados entre bodegas</h1>
+          <p className="mt-1 text-[13px] text-muted-foreground">
             Un material por documento, con salida e ingreso inmediato y
             trazabilidad.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button
             ref={actualizar}
             variant="outline"
@@ -302,7 +304,7 @@ export function TrasladosInventario({
           />
         </div>
       )}
-      <p className="text-xs text-muted-foreground">
+      <p className="text-[13px] text-muted-foreground">
         Cada traslado conserva sus dos movimientos. Las correcciones registran
         una devolución completa; no eliminan el historial ni el bloqueo
         histórico de anulación de Compras.
@@ -335,7 +337,7 @@ export function TrasladosInventario({
               e.preventDefault();
               foco();
             }}
-            className="max-h-[90dvh] overflow-y-auto"
+            className="max-h-[90dvh] min-w-0 overflow-y-auto overscroll-contain"
           >
             <DialogHeader>
               <DialogTitle>Ver traslado #{vista.id}</DialogTitle>

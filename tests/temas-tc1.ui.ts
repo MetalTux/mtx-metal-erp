@@ -20,7 +20,7 @@ async function main(){
  try{
   const page=await browser.newPage({viewport:{width:1280,height:1000}});const errores:string[]=[];page.on('pageerror',e=>errores.push(e.message));await page.route('**/*',r=>r.fulfill({contentType:'text/html',body:'<!doctype html><html lang="es" class="dark"><body><div id="root"></div></body></html>'}));await page.goto('http://127.0.0.1:3031/paletas-tc1');await page.addStyleTag({content:css.css});await page.addScriptTag({content:'window.__name = (funcion) => funcion;'});await page.addScriptTag({content:bundle.outputFiles[0].text});
   for(const oscuro of [true,false]){
-   const tema=oscuro?'oscuro':'claro';await page.evaluate(d=>{document.documentElement.classList.toggle('dark',d);document.body.style.setProperty('--font-inter','Arial, sans-serif');},oscuro);await page.getByRole('heading',{name:'Tarjeta representativa',exact:true}).waitFor();
+   const tema=oscuro?'oscuro':'claro';await page.evaluate(d=>{document.documentElement.classList.toggle('dark',d);document.body.style.setProperty('--font-plex','Arial, sans-serif');},oscuro);await page.getByRole('heading',{name:'Tarjeta representativa',exact:true}).waitFor();
    const medir=()=>page.evaluate(()=>{
     const ctx=document.createElement('canvas').getContext('2d',{willReadFrequently:true})!;
     function color(v:string){ctx.clearRect(0,0,1,1);ctx.fillStyle=v;ctx.fillRect(0,0,1,1);return [...ctx.getImageData(0,0,1,1).data];}
@@ -29,7 +29,7 @@ async function main(){
     function fondo(el:Element){const ar:Element[]=[];for(let e:Element|null=el;e;e=e.parentElement)ar.unshift(e);return ar.reduce((bg,e)=>{const c=color(getComputedStyle(e).backgroundColor),a=c[3]/255;return bg.map((v,i)=>c[i]*a+v*(1-a));},[255,255,255]);}
     const texto=[...document.querySelectorAll('[data-contraste]')].map(el=>({elemento:el.textContent,ratio:ratio(color(getComputedStyle(el).color),fondo(el)),minimo:4.5}));
     const header=document.querySelector('.section-card-header')!,description=header.querySelector('p')!;
-    for(const token of ['--card-header-start','--card-header-end'])texto.push({elemento:'Descripción de cabecera '+token,ratio:ratio(color(getComputedStyle(description).color),color(getComputedStyle(header).getPropertyValue(token))),minimo:4.5});
+    for(const token of ['--card'])texto.push({elemento:'Descripción de cabecera '+token,ratio:ratio(color(getComputedStyle(description).color),color(getComputedStyle(header).getPropertyValue(token))),minimo:4.5});
     const campo=document.querySelector('#campo')!;texto.push({elemento:'Borde de campo',ratio:ratio(color(getComputedStyle(campo).borderColor),fondo(campo)),minimo:3});
     for(const el of document.querySelectorAll('svg rect'))texto.push({elemento:'Serie gráfica',ratio:ratio(color(getComputedStyle(el).fill),fondo(el)),minimo:3});
     texto.push({elemento:'Placeholder del campo',ratio:ratio(color(getComputedStyle(campo,'::placeholder').color),fondo(campo)),minimo:4.5});
@@ -41,7 +41,7 @@ async function main(){
    await page.mouse.move(0,0);await page.getByRole('button',{name:'Ver diálogo',exact:true}).click();await page.getByRole('dialog').evaluate(el=>Promise.all(el.getAnimations().map(a=>a.finished)));const dialogo=await medir();assert.deepEqual(dialogo.texto.filter(d=>d.ratio+.01<d.minimo),[],`${tema}: contraste en diálogo`);await page.getByRole('button',{name:'Cerrar muestra',exact:true}).click();await page.getByRole('dialog').waitFor({state:'hidden'});
    for(const width of [360,768,1280]){await page.setViewportSize({width,height:1000});assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await page.screenshot({path:join(destino,`${tema}-${width}.png`),fullPage:true,animations:'disabled'});}
   }
-  assert.deepEqual(errores,[]);await writeFile(join(destino,'contrastes.json'),JSON.stringify(resultados,null,2)+'\n');assert.match(await readFile('src/app/layout.tsx','utf8'),/dark \$\{inter.variable\}/);console.log('TC1: tokens completos, contraste de componentes/hover/cabeceras/campos, diálogo y seis capturas responsive correctos. Oscuro conservado como respaldo SSR; sin servidor ni BD.');
+  assert.deepEqual(errores,[]);await writeFile(join(destino,'contrastes.json'),JSON.stringify(resultados,null,2)+'\n');assert.match(await readFile('src/app/layout.tsx','utf8'),/dark \$\{geistMono.variable\}/);console.log('TC1: tokens completos, contraste de componentes/hover/cabeceras/campos, diálogo y seis capturas responsive correctos. Oscuro conservado como respaldo SSR; sin servidor ni BD.');
  }finally{await browser.close();}
 }
 main().catch(e=>{console.error(e);process.exitCode=1;});

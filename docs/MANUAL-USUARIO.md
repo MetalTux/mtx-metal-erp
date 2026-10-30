@@ -1,6 +1,6 @@
 # Manual de usuario — MTX Metal ERP
 
-Edición del **27-10-2026**, contrastada con rutas, controles y reglas implementadas. Cubre el sistema actual para una empresa. Las revisiones funcionales pendientes de Cobranzas, Dashboard y Seguridad conservan su estado: este manual no las aprueba por el usuario. Incluye ejemplos de grillas con datos ficticios; revisión integral con usuarios pendiente.
+Edición del **30-10-2026**, contrastada con rutas, controles y reglas implementadas. Cubre el sistema actual para una empresa. Las revisiones funcionales pendientes de Cobranzas, Dashboard y Seguridad conservan su estado: este manual no las aprueba por el usuario. Incluye ejemplos actuales en Claro y Oscuro con datos ficticios; revisión integral con usuarios pendiente. El PDF se genera desde esta misma edición.
 
 ## Índice por tarea
 
@@ -31,7 +31,7 @@ La barra lateral agrupa Mantenedores, Inventario, Compras, Ventas, Trabajos, Acc
 
 La barra superior contiene la campana de avisos, el menú de usuario y **Cerrar sesión**. En ventanas estrechas algunas acciones muestran sólo un icono: mantener el puntero o enfocarlo con Tab permite identificar su nombre/ayuda. La ruta de navegación superior ayuda a reconocer la sección actual.
 
-En los mantenedores, **Crear**, **Ver**, **Editar** y **Eliminar** se muestran según permisos y referencias. Los formularios se abren sobre el listado. **Ver** es sólo consulta; **Cancelar** o **Cerrar** permiten volver, salvo una operación pendiente que exija resolver primero su resultado. En compras/cotizaciones y otros procesos varias acciones aparecen como iconos en la columna Acciones; sus ayudas y nombres accesibles identifican su función.
+En los mantenedores, **Crear**, **Ver**, **Editar** y **Eliminar** se muestran según permisos y referencias. Los formularios se abren sobre el listado. **Ver** es sólo consulta; **Cancelar** o **Cerrar** permiten volver, salvo una operación pendiente que exija resolver primero su resultado. En cotizaciones y otros procesos varias acciones aparecen como iconos en la columna Acciones; sus ayudas y nombres accesibles identifican su función.
 
 | Acción | Resultado que debes esperar |
 | --- | --- |
@@ -49,7 +49,17 @@ En los mantenedores, **Crear**, **Ver**, **Editar** y **Eliminar** se muestran s
 
 Los importes se muestran en pesos chilenos y las cantidades con su unidad, hasta tres decimales. Las cotizaciones nuevas usan precios unitarios netos: se descuenta sobre el neto, se calcula IVA sobre ese neto y se suma el total. Las cotizaciones históricas conservan su modalidad original. No sumar kilos con metros o unidades. Una fecha escrita en un documento puede ser distinta del momento en que se registró: ambas se conservan cuando corresponde.
 
+### Usar teclado, grillas y pantallas pequeñas
+
+- **Tab** y **Mayús+Tab** recorren los controles; el contorno visible identifica dónde estás. **Enter** o **Espacio** activan el control enfocado según su tipo.
+- En selectores buscables, escribir parte del nombre, recorrer opciones con las flechas y confirmar con **Enter**. **Escape** cierra el selector o menú; no guarda cambios. Al cerrar un diálogo, el foco vuelve al control de origen cuando sigue disponible.
+- Las grillas mantienen sus columnas en pantallas pequeñas. Desplazar horizontalmente la tabla para alcanzar cantidades y acciones de la derecha; con teclado, enfocar la región de la tabla y usar las flechas. El formulario o diálogo puede tener su propio desplazamiento vertical.
+- **Agregar** o **Editar** un detalle abre su borrador. Aceptarlo actualiza la grilla; guardar o confirmar el documento es un paso posterior. Cancelar la edición conserva el detalle anterior. Si aparece una confirmación para descartar, revisar antes de salir.
+- Un listado vacío puede significar que no hay registros o que los filtros no encontraron coincidencias. En el segundo caso, limpiar o cambiar los filtros. Si tu perfil sólo consulta, pedir el alta a la persona autorizada; no necesitas un botón Crear para consultar.
+
 ### Elegir Claro u Oscuro
+
+Toda la aplicación utiliza IBM Plex Sans y la misma paleta mineral Claro/Oscuro. Los controles compartidos, cabeceras, listados y formularios mantienen superficies planas y una presentación compacta. La extensión visual está implementada; queda la revisión final con usuarios. La preferencia de apariencia se conserva al navegar.
 
 En la esquina superior derecha del ingreso y en la barra superior del ERP, abrir **Apariencia** (icono de luna, sol o monitor). Elegir **Claro**, **Oscuro** o **Según el sistema**. Sin elección previa se usa **Oscuro**, aunque el computador esté en Claro. Según el sistema sigue la configuración del equipo sólo después de seleccionarlo.
 
@@ -66,13 +76,15 @@ El cambio es inmediato y conserva lo escrito en los formularios. Se recuerda en 
 5. Al ingresar se abre el **Dashboard**. Para cambios personales, abrir **Mi acceso** desde el menú o la barra lateral.
 6. Para salir, pulsar **Cerrar sesión** en la barra superior; también está disponible en Mi acceso. Cierra la sesión de ese navegador.
 
+Si falta el enlace completo al activar o restablecer, aparece un aviso y no se permite guardar. Abre el enlace recibido o solicita uno nuevo. Los errores aparecen junto al formulario y también como aviso emergente. El botón del ojo permite mostrar u ocultar la contraseña de entrada.
+
 Una invitación sirve una vez y vence a los treinta minutos. Si no funciona, solicitar al Administrador **Reemitir invitación**; usar sólo el enlace nuevo. No compartir invitaciones, contraseñas ni códigos como evidencia de un problema.
 
 ### Contraseña y recuperación
 
 1. En **Mi acceso**, completar **Confirmar mi identidad** con contraseña y, si está habilitado, código propio del segundo factor.
 2. En **Cambiar contraseña**, escribir la nueva y pulsar **Guardar contraseña**. La confirmación de identidad dura cinco minutos.
-3. Si olvidaste la contraseña, usar **Olvidé mi contraseña** con el correo autorizado; el envío requiere que el responsable haya configurado correo saliente.
+3. Si olvidaste la contraseña, escribir el correo autorizado en Inicio de Sesión y pulsar **Olvidé mi contraseña**; el envío requiere que el responsable haya configurado correo saliente. La respuesta no confirma si la cuenta existe.
 4. Como alternativa, pedir recuperación asistida al Administrador, quien verifica al titular y entrega un enlace privado desde **Usuarios y acceso → Recuperar acceso**.
 5. Completar el restablecimiento y volver a ingresar. Recuperar contraseña conserva el doble factor y revoca sesiones anteriores al completarse.
 
@@ -99,6 +111,16 @@ Se exige nuevo ingreso después de sesenta minutos de inactividad o un máximo d
 3. Para cambiar nombre, roles o estado, usar **Editar**. El correo identifica la cuenta y se conserva en esta entrega.
 4. Si falta confirmación reciente, se abre un diálogo en la misma pantalla con contraseña del Administrador en sesión y su factor, si lo tiene. El formulario se conserva; después hay que confirmar el cambio pendiente.
 5. Cambiar a Inactivo retira el acceso y conserva historia. Reactivar permite un ingreso nuevo, sin resucitar sesiones anteriores. No se puede retirar al último Administrador utilizable.
+
+Las tablas de Usuarios, sesiones y Auditoría permiten desplazamiento horizontal y foco con Tab. Al cerrar una consulta de usuario o los códigos de respaldo, el foco vuelve al botón de origen. Las secciones de Mi acceso separan identidad, contraseña, doble factor y sesiones.
+
+### Consultar auditoría y autoría
+
+1. Como Administrador, abrir **Administración → Auditoría**. Seleccionar eventos de seguridad o autoría documental y aplicar los filtros necesarios.
+2. Revisar fecha, actor, afectado, acción, resultado y referencia; usar la paginación para continuar. Los documentos anteriores sin evidencia conservan «Sin autoría registrada».
+3. **Depurar eventos antiguos** requiere confirmar identidad y la operación. Elimina únicamente eventos de seguridad que cumplieron doce meses; conserva la autoría documental.
+
+Si una dirección no existe, **Página no encontrada → Volver al Dashboard** permite continuar. Un acceso denegado se resuelve con los permisos correspondientes; volver al inicio no los amplía.
 
 ## 3. Elegir el recorrido según el perfil
 
@@ -128,14 +150,14 @@ Cambiar Empresa, cliente, banco o tasa no actualiza retrospectivamente las copia
 
 ## 5. Mantener catálogos y contactos
 
-Para cada mantenedor: abrirlo, filtrar para evitar duplicados, elegir **Crear**, completar datos y guardar. Usar **Ver** para consulta, **Editar** para cambios permitidos y **Eliminar** sólo si no tiene referencias que lo impidan. Un bloqueo por uso conserva la relación y debe resolverse sin borrar documentos históricos.
+Para cada mantenedor: abrirlo, filtrar para evitar duplicados, elegir **Crear**, completar datos y guardar. Los formularios se abren sobre el listado; **Cancelar** o **Cerrar** permite volver a él. Si la tabla es más ancha que la pantalla, desplázala horizontalmente dentro de su área para llegar a las demás columnas y acciones. Usar **Ver** para consulta, **Editar** para cambios permitidos y **Eliminar** sólo si no tiene referencias que lo impidan. Un bloqueo por uso conserva la relación y debe resolverse sin borrar documentos históricos.
 
 | Sección | Qué revisar al crear o editar |
 | --- | --- |
 | Unidades de medida | Nombre único y abreviatura comprensible. Todas las cantidades de un material usan una sola unidad; no hay conversiones automáticas |
 | Bodegas | Nombre/datos y clasificación Materia prima, Producto terminado o Mixta, según lo que podrá recibir |
 | Proveedores | RUT y datos de contacto/dirección del proveedor real; la compra utiliza esa identidad |
-| Clientes | Datos generales y contacto; revisar Casa Central y las demás sucursales, cada una con dirección, ciudad y contacto propios |
+| Clientes | Datos generales y contacto; revisar Casa Central y las demás sucursales, cada una con dirección, ciudad y contacto propios. Las filas muestran Ver/Editar; Quitar sólo aparece cuando corresponde |
 | Materias primas | Código, nombre y unidad. Cambiar unidad sólo se permite sin stock —incluso cero—, movimientos ni otras referencias |
 | Condiciones de Pago | Nombre y plazo de días. El vencimiento comercial usa ese plazo histórico desde factura, no desde guía o abono |
 
@@ -152,6 +174,8 @@ En selectores con búsqueda, escribir parte del nombre y elegir la coincidencia;
 
 ## 7. Comprar y recibir materias primas
 
+En el listado de Compras están visibles **Ver** y **Recibir**. **Más** abre las acciones secundarias: **Editar compra**, **Cerrar cantidades pendientes**, **Anular compra** y **Ocultar del listado**, según tus permisos y el estado del documento. Las opciones no disponibles explican su motivo. Se puede recorrer el menú con flechas y elegir con Enter; al cerrar la edición el foco regresa a Más.
+
 ### Registrar el documento
 
 1. Abrir **Compras → Compras** y elegir la acción de crear compra.
@@ -166,22 +190,24 @@ Ejemplo: dos presentaciones con factor seis representan doce unidades de inventa
 
 ### Recibir parcial o totalmente
 
-1. Localizar el documento y usar la acción **Recibir compra [número]** de su fila; puede mostrarse como icono con ayuda.
+1. Localizar el documento y usar **Recibir** en su fila.
 2. En la grilla de partidas, usar **Editar cantidad de…** para indicar lo recibido y **Aceptar cantidad** para seleccionarlo. Se puede dejar vacío o desmarcar una partida para no recibirla; Ver consulta sus datos. Las líneas sin pendiente no admiten edición. Cancelar/descartar conserva la cantidad anterior.
 3. Revisar equivalencias y confirmar. La recepción ingresa stock/Kardex en la bodega de compra.
 4. Volver a consultar stock y el pendiente de la compra. En la consulta, las tablas de recepciones y cierres incluyen **Ver** para partidas o motivos históricos. Una entrega posterior del proveedor se registra como otra recepción del mismo documento.
 
 ### Cerrar un pendiente o anular
 
-- Si una cantidad restante no llegará, usar **Cerrar pendiente compra [número]**, elegir la línea e indicar motivo. Cierra todo su pendiente y no crea stock.
-- **Anular compra [número]** requiere motivo y comprueba movimientos, dependencias y stock. Cuando corresponde, revierte lo recibido mediante ajustes vinculados y conserva la historia. Un consumo, traslado o ajuste negativo posterior puede impedirla aun si después se repuso stock.
-- **Eliminar** retira del listado una compra previamente anulada; no borra historia ni libera su identidad para duplicarla.
+- Si una cantidad restante no llegará, usar **Más → Cerrar cantidades pendientes**, elegir la línea e indicar motivo. Cierra todo su pendiente y no crea stock.
+- **Más → Anular compra** requiere motivo y comprueba movimientos, dependencias y stock. Cuando corresponde, revierte lo recibido mediante ajustes vinculados y conserva la historia. Un consumo, traslado o ajuste negativo posterior puede impedirla aun si después se repuso stock.
+- **Más → Ocultar del listado** retira una compra previamente anulada; no borra historia ni libera su identidad para duplicarla.
 
 La primera recepción o primer cierre bloquea la estructura; la fecha conserva la edición permitida por el módulo. No registrar una compra adicional para encubrir un error de la anterior ni usar ajustes para eludir dependencias de anulación.
 
 ## 8. Consultar y corregir inventario
 
 ### Stock, movimientos y mínimos
+
+Las cantidades se muestran alineadas junto a su unidad. En pantallas pequeñas puedes desplazar horizontalmente la tabla para llegar a todas sus columnas y acciones; con teclado, enfoca su área y usa las flechas.
 
 1. Abrir **Inventario → Stock por bodega**, filtrar material/bodega y revisar cantidad, unidad y mínimo.
 2. Para configurar reposición, usar el control de mínimo correspondiente, indicar un valor no negativo y confirmar. Puede crearse una combinación con saldo cero sólo para configurar su mínimo.
@@ -216,7 +242,7 @@ Devolver material a la bodega original no elimina el traslado histórico ni desb
 
 ## 9. Cotizar y generar PDF
 
-1. Abrir **Ventas → Cotizaciones → Crear cotización**.
+1. Abrir **Ventas → Cotizaciones → Crear cotización**. En el listado, **Ver**, **Editar** y **PDF** permiten consultar, modificar lo autorizado o acceder a las emisiones. La cabecera del formulario indica si usa precios unitarios netos o conserva precios históricos con IVA.
 2. Elegir cliente/sucursal, fecha y vencimiento opcional, condición de pago y cuenta bancaria cuando corresponda.
 3. Agregar líneas de materia prima, producto o servicio, con descripción, unidad, cantidad y precio unitario neto en pesos enteros.
 4. Revisar el detalle técnico, imágenes y condiciones comerciales. El descuento global se aplica al subtotal neto; luego se calcula IVA sobre el neto descontado y TOTAL = NETO + IVA, con la tasa del documento.
@@ -242,7 +268,9 @@ El contrato confirmado es inmutable. La anulación exige motivo y sólo se permi
 
 ### Comercial u obra propia
 
-1. Para una OCC: **Ver OCC → Crear trabajo**, con permisos de Producción. Para fabricación interna: **Trabajos → Órdenes de trabajo → Crear OT → Obra propia**.
+En el listado usa **Ver OT** para consultar una orden. Las grillas de planificación se desplazan horizontalmente para acceder a todas las columnas; **Ver** consulta una partida y **Configurar** modifica su borrador.
+
+1. Para una OCC: **Ver OCC → Crear trabajo**, con permisos de Producción. Para fabricación interna: **Trabajos → Órdenes de trabajo → Crear OT → Crear obra propia**.
 2. Revisar la grilla de partidas y abrir **Configurar** en la fila correspondiente (**Ver** permite consultar). Para catálogo, distribuir fabricación y cantidades desde stock; para materia prima directa, revisar abastecimiento; para servicio/a medida, revisar modalidad y materiales cuando corresponda. Las cantidades contratadas de una OT comercial se conservan.
 3. Dentro de la partida, revisar las grillas de necesidades, materiales y abastecimiento. Usar **Revisar** si se exige justificar un redondeo; agregar/editar distribuciones con cantidad y bodega, y aceptar cada diálogo. **Aceptar partida** incorpora los cambios al borrador de OT; cancelar permite descartarlos. La receta histórica sólo cambia mediante actualización explícita. **Guardar borrador** no reserva. **Confirmar plan** intenta reservar parcialmente el stock libre sin consumirlo. La disponibilidad mostrada es orientativa y se revalida en servidor.
 4. Revisar reservas propias y faltantes. **Completar reservas** intenta cubrir lo faltante; **liberar** requiere cantidad y motivo y no aumenta stock físico.
@@ -255,6 +283,8 @@ El contrato confirmado es inmutable. La anulación exige motivo y sólo se permi
 3. Para catálogo, elegir la bodega apta de producto terminado. Para servicio puro, registrar avance sin materiales ficticios; a medida consume sus insumos sin crear un producto de catálogo ficticio.
 4. Usar **Previsualizar registro** y revisar la tabla de efectos (físico antes/después, reservas y consumo), luego confirmar. Catálogo registra salida de materias primas y entrada de terminado; las cantidades desde stock y materia prima directa se entregan sin fabricar de nuevo.
 5. Revisar avance neto y stock. Repetir por los lotes realmente ejecutados.
+
+Las grillas permiten desplazamiento horizontal; usa Tab para enfocarlas y las flechas para consultar las columnas fuera de pantalla. Las acciones se mantienen separadas para registrar fabricación, finalizar y despachar.
 
 Las tablas de cierre muestran ejecución, entregas netas y reservas; las de reversión muestran materiales a restituir y terminado a retirar con sus saldos antes/después.
 
@@ -283,12 +313,14 @@ Para una devolución/corrección: abrir la entrega original y usar **Corregir gu
 
 La corrección crea otro documento y conserva el original. Repone bienes realmente recibidos y reconstruye reserva propia para reentregar; en prestaciones revierte sólo la entrega acreditada. No cambia deuda, factura ni pagos. **Preparar otra entrega** requiere permiso de Despacho. **Ver cuenta por cobrar** permite al perfil financiero revisar la misma cuenta de OCC.
 
+En la consulta de guía, las tablas de partidas y compromiso comercial se desplazan horizontalmente con teclado o barra de desplazamiento. Los botones disponibles dependen de los permisos del usuario y del estado del documento.
+
 Un registro **Legado no conciliado** conserva historia, sin demostrar cantidades nuevas ni reconstruir pagos/folios retrospectivos.
 
 ## 13. Cobrar, corregir abonos y adjuntar comprobantes
 
 1. Abrir **Ventas → Cobranza**, buscar cliente/OCC/factura y elegir **Ver cuenta**. También se accede desde OCC, OT o guía.
-2. Comparar importe, abonos vigentes, saldo, factura, vencimiento y promesa. Las tarjetas de Cobranzas totalizan el filtro completo, no sólo la página visible; anuladas no suman deuda.
+2. Comparar importe, abonos vigentes y saldo en el resumen del detalle; revisar factura, vencimiento y promesa por separado. Los totales de Cobranzas consideran el filtro completo, no sólo la página visible; anuladas no suman deuda.
 3. Como Cobranza o Administrador, **Registrar abono**: importe positivo, fecha de hoy o pasada según Santiago, medio y referencia opcional. Cheque sólo al cobro efectivo. Puede ser anticipo sin factura.
 4. Opcionalmente seleccionar JPG, PNG o PDF de hasta 5 MB. **Revisar operación → Confirmar operación** y comprobar saldo/historial.
 5. Para corregir dinero registrado, **Anular abono #…** con motivo y luego registrar el pago correcto como uno nuevo. La anulación no ejecuta una devolución bancaria ni cancela la venta.
@@ -301,13 +333,15 @@ La cuenta del ejemplo de $100.000 con dos guías sigue debiendo $100.000 antes d
 
 Detalle de tareas y recuperación: [Operación de Cobranzas](OPERACION-COBRANZAS.md).
 
+La tabla de cuentas y los historiales permiten desplazamiento horizontal. Usa Tab para enfocar la grilla y las flechas para consultar columnas fuera de pantalla. Los importes se alinean a la derecha; Pago y Vencimiento muestran estados con texto.
+
 ## 14. Leer el Dashboard y sus avisos
 
-El Dashboard muestra bloques según los roles: cotizaciones pendientes vigentes/vencidas, OT activas con borradores aparte, cuentas por cobrar y mínimos por material/bodega. En caso de error aparece un aviso; no interpretar ese bloque como cero.
+El Dashboard muestra bloques según los roles: cotizaciones pendientes vigentes/vencidas, OT activas con borradores aparte, cuentas por cobrar y mínimos por material/bodega. En caso de error aparece un aviso; no interpretar ese bloque como cero. Los enlaces de los indicadores permiten revisar cotizaciones, trabajos, cobranza o reposición según el área.
 
 La tabla de materiales compara consumo pendiente de planes activos con físico, reservado, libre y faltante. No suma unidades distintas ni representa todas las salidas comerciales pendientes. Para actuar, abrir Stock/OT/Compras según el caso.
 
-El gráfico de seis meses agrupa por fecha de la cotización: **Cotizado** frente a lo **Contratado** en OCC vigentes de esas mismas ofertas. No representa dinero cobrado ni necesariamente contratos emitidos en ese mes. La tabla bajo las barras muestra los importes exactos.
+El gráfico de seis meses agrupa por fecha de la cotización: **Cotizado** frente a lo **Contratado** en OCC vigentes de esas mismas ofertas. No representa dinero cobrado ni necesariamente contratos emitidos en ese mes. Abrir **Ver importes mensuales** bajo las barras para consultar la tabla de importes exactos.
 
 La campana informa mínimos bajos, cotizaciones por vencer hoy o en siete días y cuentas vencidas de las áreas autorizadas. Se actualiza al navegar/recargar; no envía correos ni gestiona leído/no leído.
 
@@ -357,7 +391,7 @@ Caso ilustrativo para una copia de pruebas o capacitación con datos ficticios:
 9. Si hubo un error de abono, anula con motivo y registra la corrección. Si hubo devolución de bienes, Despacho registra recepción física en la bodega original y eventual reentrega; la deuda permanece según el contrato.
 10. Administrador revisa autoría y el responsable técnico verifica el respaldo de base y archivos.
 
-Para una obra propia, comenzar en **Crear OT → Obra propia**; planificar, producir y finalizar sin inventar cliente/OCC/cuenta. No usar el circuito de despacho comercial para simular una venta inexistente.
+Para una obra propia, comenzar en **Crear OT → Crear obra propia**; planificar, producir y finalizar sin inventar cliente/OCC/cuenta. No usar el circuito de despacho comercial para simular una venta inexistente.
 
 No crear pagos, compras o movimientos ficticios en la instalación de trabajo sólo para practicar este manual. Solicitar una copia de capacitación preparada para ello.
 
@@ -384,7 +418,7 @@ La instalación, actualizaciones, pruebas y respaldo se encargan al responsable 
 
 En una cotización nueva, editable o de corrección, usar **Crear cliente** junto al selector de Cliente. Se abre el formulario del mantenedor, con datos generales y sucursales; completar Casa Central mediante su acción Editar antes de guardar. Al crear, se seleccionan el cliente y Casa Central, conservando fecha, líneas, importes y detalle técnico de la cotización. Cancelar el alta no cambia la selección anterior. Si el cliente ya fue creado, cancelar luego la cotización no lo elimina. No cambia el cliente de una OCC histórica: las ventas comienzan en Cotizaciones.
 
-Crear proveedor exige permisos de operación de Compras y Proveedores; crear cliente, de Cotizaciones y Clientes. Se mantienen validación de RUT, controles de duplicados y permisos de servidor. Los mantenedores completos siguen disponibles para consultar, editar o eliminar según sus reglas. Los accesos dentro del documento permiten crear registros nuevos. El PDF anterior del manual no incorpora todavía estas adiciones.
+Crear proveedor exige permisos de operación de Compras y Proveedores; crear cliente, de Cotizaciones y Clientes. Se mantienen validación de RUT, controles de duplicados y permisos de servidor. Los mantenedores completos siguen disponibles para consultar, editar o eliminar según sus reglas. Los accesos dentro del documento permiten crear registros nuevos. Estas instrucciones están incorporadas en el PDF de esta edición.
 
 
 ### Cotizaciones con precios netos — 26-10-2026
@@ -393,7 +427,7 @@ Ejemplo: una unidad a $100.000 netos y tasa 19% produce NETO $100.000, IVA $19.0
 
 Las cotizaciones anteriores mantienen precios con IVA incluido y muestran un aviso al consultar o editar; no se recalculan por actualizar el sistema. Al corregir una antigua se propone una oferta nueva con precios netos, convirtiendo precios y descuento fijo con la tasa histórica y redondeando al peso; revisar antes de guardar porque el total puede variar por redondeo. La OCC conserva la modalidad y el IVA de su oferta, incluso al aceptar cantidades parciales; su cuenta por cobrar usa el total con IVA. Los PDF ya emitidos conservan sus bytes; las nuevas emisiones identifican Precio neto o Precio con IVA según el documento.
 
-El precio sugerido del catálogo de Productos conserva su definición anterior con IVA incluido: no se copia automáticamente como precio neto en las nuevas líneas; indicar el valor neto correspondiente. El PDF previo de este manual aún no contiene estos cambios.
+El precio sugerido del catálogo de Productos conserva su definición anterior con IVA incluido: no se copia automáticamente como precio neto en las nuevas líneas; indicar el valor neto correspondiente.
 
 
 ### Grilla de detalles en Compras — 27-10-2026
@@ -402,7 +436,7 @@ La compra nueva comienza sin filas. Usar **Agregar detalle de compra** para ingr
 
 **Editar** abre un borrador de la fila; cancelar o descartar conserva su valor anterior. **Quitar** pide confirmación y se puede quitar la última fila, pero la compra no se puede guardar sin al menos un detalle. Los precios de líneas ya guardadas permanecen protegidos. En consulta o después de recepciones/cierres se permite **Ver**, conservando cantidades recibidas/cerradas/pendientes y vínculo al Kardex para líneas guardadas; no se habilitan edición ni eliminación de líneas bloqueadas.
 
-La tabla permite desplazamiento horizontal en pantallas pequeñas. Estos cambios aún no están en el PDF anterior del manual.
+La tabla permite desplazamiento horizontal en pantallas pequeñas.
 
 
 ### Grillas de recepción y OCC — 27-10-2026 (GD2)
@@ -411,29 +445,49 @@ La recepción de Compras y la aceptación de una cotización muestran partidas e
 
 En aceptación de OCC, marcar las partidas contratadas y usar **Editar cantidad de…** para la aceptación parcial. Aceptar cantidad no guarda la OCC. Cambiar cantidad o selección obliga a revisar nuevamente el alcance técnico. **Revisar importes** y **Confirmar aceptación** conservan sus pasos. La consulta de OCC muestra una tabla de cotizado/contratado/no contratado y **Ver** por partida; las columnas monetarias dependen del permiso de precios.
 
-Si una confirmación queda sin resultado comprobable, se conservan datos y UUID: recepción ofrece **Reintentar la misma recepción**; OCC permite reintentar desde la misma confirmación. No iniciar otra operación para repetirla ni cambiar sus datos. Las tablas admiten desplazamiento horizontal. El PDF anterior del manual todavía no incorpora esta sección.
+Si una confirmación queda sin resultado comprobable, se conservan datos y UUID: recepción ofrece **Reintentar la misma recepción**; OCC permite reintentar desde la misma confirmación. No iniciar otra operación para repetirla ni cambiar sus datos. Las tablas admiten desplazamiento horizontal. Esta sección también forma parte del PDF de esta edición.
 
 
 ## 19. Ejemplos visuales de grillas
 
-Estas capturas muestran componentes reales y estilos locales con datos ficticios de ensayo. No son documentos de trabajo ni capturas de una operación confirmada en la instalación. El menú completo del ERP no forma parte del montaje ilustrado. Las opciones visibles dependen de los permisos y del estado del documento.
+Las capturas ilustran la interfaz actual con datos ficticios. No representan compras, clientes, pagos o movimientos reales ni una operación confirmada. Las opciones visibles dependen de tus roles y del estado del documento. El texto de los capítulos anteriores explica cada tarea; las imágenes permiten reconocer sus controles.
 
-### Consulta de OCC
+### Ingreso en Claro y Oscuro
 
-La tabla separa cantidades cotizadas, contratadas y excluidas. Ver abre el detalle; la consulta histórica no habilita cambios de esas cantidades.
+Usar la cuenta personal autorizada. El selector de apariencia está arriba a la derecha y no cambia los requisitos de acceso. Después de ingresar se abre el Dashboard; los cambios de cuenta se realizan desde Mi acceso.
 
-![Consulta de OCC en grilla con datos ficticios](capturas/grillas-gd7/occ-consulta.png)
+![Ingreso en tema Claro, sin credenciales](capturas/manual-vg9-10/ingreso-claro.png)
 
-### Configuración de una partida de OT
+![Ingreso en tema Oscuro, sin credenciales](capturas/manual-vg9-10/ingreso-oscuro.png)
 
-El diálogo conserva la partida mientras se revisan receta, necesidades y distribuciones. La muestra ilustra un lote pequeño con revisión de redondeo; Aceptar partida actualiza el borrador, no reserva existencias por sí solo. En móvil se desplaza cada tabla y el diálogo se recorre verticalmente.
+### Dashboard en ambos temas
 
-![Configuración de OT con revisión de receta y subgrillas ficticias](capturas/grillas-gd7/ot-configuracion.png)
+Los indicadores enlazan a los módulos correspondientes. En el requerimiento de materiales, comparar físico, reservado, libre y faltante; no sumar materiales con unidades diferentes. Las cifras y fechas de estas imágenes son ilustrativas.
 
-### Revisión de una corrección de guía
+![Dashboard Claro con indicadores y materiales ficticios](capturas/manual-vg9-10/dashboard-claro.png)
 
-La tabla superior conserva lo entregado y el pendiente retornable. La tabla inferior contiene sólo lo seleccionado para esta corrección. Modificar selección permite volver al borrador antes de confirmar; la recepción física y la conservación de deuda siguen siendo obligatorias según el tipo de partida.
+![Dashboard Oscuro con los mismos datos ficticios](capturas/manual-vg9-10/dashboard-oscuro.png)
 
-![Previsualización de corrección de guía con datos ficticios](capturas/grillas-gd7/guia-correccion.png)
+### Grilla de detalles de compra
 
-La guía [Pruebas funcionales de grillas GD7](GUIA-PRUEBAS-GRILLAS-GD7.md) reúne los casos pendientes de aprobación. Los enlaces a otros documentos requieren conservar la carpeta docs junto al manual fuente.
+Agregar detalle de compra abre la captura de una línea. Ver consulta su contenido y Editar modifica el borrador cuando el estado lo permite. Revisar y guardar registra el documento; las entradas de existencias se registran después mediante recepciones. Los precios de líneas guardadas permanecen protegidos.
+
+![Compra en Claro con dos materiales ficticios en grilla](capturas/manual-vg9-10/compra-claro.png)
+
+![La misma compra ficticia en Oscuro](capturas/manual-vg9-10/compra-oscuro.png)
+
+### Consultar Compras desde un teléfono
+
+El menú lateral se abre con el botón superior izquierdo. Aplicar filtros busca documentos; Limpiar filtros vuelve al conjunto sin esa búsqueda. Desplazar la tabla horizontalmente para ver las columnas y acciones restantes; la paginación aparece debajo.
+
+![Listado de Compras en pantalla estrecha con datos ficticios](capturas/manual-vg9-10/compras-movil.png)
+
+### Registrar un abono y adjuntar comprobante
+
+Indicar el dinero efectivamente recibido, fecha y medio; para cheques, usar la fecha de cobro efectivo. El archivo es opcional y admite JPG, PNG o PDF de hasta 5 MB. Revisar operación permite comprobar el contenido antes de confirmar; no registrar un segundo pago si sólo falló el archivo del primero.
+
+![Diálogo de abono en Oscuro, sin pago confirmado ni archivo adjunto](capturas/manual-vg9-10/abono-oscuro.png)
+
+En el PDF puede ampliarse cada página para leer el detalle de las capturas; el texto sigue siendo seleccionable. La impresión del manual usa fondo claro para facilitar su lectura en papel, independientemente del tema elegido en el ERP.
+
+La guía [Pruebas funcionales de grillas GD7](GUIA-PRUEBAS-GRILLAS-GD7.md) conserva sus casos pendientes de aprobación. Para consultar las guías enlazadas, conservar la carpeta docs junto al manual fuente; el PDF incluye las imágenes, pero no los documentos externos completos.

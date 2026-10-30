@@ -193,7 +193,7 @@ export function FormularioTraslado({
             e.preventDefault();
             onDevolverFoco();
           }}
-          className="max-h-[90dvh] overflow-y-auto sm:max-w-xl"
+          className="max-h-[90dvh] min-w-0 overflow-y-auto overscroll-contain sm:max-w-xl"
           onEscapeKeyDown={(e) => {
             if (ocupado) e.preventDefault();
           }}

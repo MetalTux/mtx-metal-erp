@@ -14,7 +14,7 @@ import { FormularioProveedor } from "./proveedores";
 export function AltaProveedor({ abierto, onCerrar, onCreado }: { abierto: boolean; onCerrar: () => void; onCreado: (proveedor: Proveedor) => void }) {
   const [pendiente, setPendiente] = useState(false);
   return <Dialog open={abierto}>
-    <DialogContent showCloseButton={false} className="max-h-[90dvh] overflow-y-auto" onEscapeKeyDown={e => e.preventDefault()} onInteractOutside={e => e.preventDefault()}>
+    <DialogContent showCloseButton={false} className="max-h-[90dvh] min-w-0 overflow-y-auto overscroll-contain" onEscapeKeyDown={e => e.preventDefault()} onInteractOutside={e => e.preventDefault()}>
       <DialogHeader><DialogTitle>Crear proveedor para la compra</DialogTitle><DialogDescription>Se seleccionará al guardar. El proveedor se conserva en el mantenedor aunque canceles la compra.</DialogDescription></DialogHeader>
       {abierto && <FormularioProveedor editor={{ modo: "crear" }} pendiente={pendiente} onCerrar={onCerrar} onGuardar={async datos => {
         setPendiente(true);
@@ -32,7 +32,7 @@ export function AltaProveedor({ abierto, onCerrar, onCreado }: { abierto: boolea
 export function AltaCliente({ abierto, onCerrar, onCreado }: { abierto: boolean; onCerrar: () => void; onCreado: (cliente: Cliente) => void }) {
   const [pendiente, setPendiente] = useState(false);
   return <Dialog open={abierto}>
-    <DialogContent showCloseButton={false} className="max-h-[90dvh] min-w-0 overflow-y-auto sm:max-w-3xl" onEscapeKeyDown={e => e.preventDefault()} onInteractOutside={e => e.preventDefault()}>
+    <DialogContent showCloseButton={false} className="max-h-[90dvh] min-w-0 overflow-y-auto overscroll-contain sm:max-w-3xl" onEscapeKeyDown={e => e.preventDefault()} onInteractOutside={e => e.preventDefault()}>
       <DialogHeader><DialogTitle>Crear cliente para la cotización</DialogTitle><DialogDescription>Completa también Casa Central. El cliente se conserva en el mantenedor aunque canceles la cotización.</DialogDescription></DialogHeader>
       {abierto && <FormularioCliente editor={{ modo: "crear" }} pendiente={pendiente} onCerrar={onCerrar} onGuardar={async datos => {
         setPendiente(true);

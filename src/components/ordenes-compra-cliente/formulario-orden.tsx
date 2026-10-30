@@ -58,7 +58,7 @@ export function FormularioOrden({ oferta: o, hoy, onCambio, onBloqueo, onCerrar,
     catch { setIncierto(true); setError("No se pudo comprobar el resultado. Los datos y el UUID quedan bloqueados; reintenta con esta misma confirmación."); }
     finally { enCurso.current = false; bloqueando(false); }
   }
-  return <><form className="min-w-0 space-y-5" onSubmit={e => { e.preventDefault(); void revisar(true); }}>
+  return <><form className="min-w-0 space-y-4" onSubmit={e => { e.preventDefault(); void revisar(true); }}>
     <div className="rounded-md border border-border p-3 text-sm"><p className="font-medium">Cotización {o.folio} · Revisión {o.version} · {o.status === "PENDIENTE" ? "Pendiente" : "Aprobada"}</p><p className="break-words">{o.clientName} · {o.branchName}</p><p>Oferta: {monedaOrden(o.totalAmount)} · IVA histórico {formatearCantidad(o.vatRate)}% · {o.paymentConditionName} ({o.paymentTermDays} días desde factura)</p><p className="text-muted-foreground">{o.status === "PENDIENTE" ? "Al confirmar se aprobará la oferta y se registrará la orden." : "La oferta aprobada conserva su revisión actual."}</p></div>
     {error && <p role="alert" className="break-words text-sm text-destructive">{error}</p>}
     <div className="grid min-w-0 gap-4 sm:grid-cols-2">
@@ -76,14 +76,14 @@ export function FormularioOrden({ oferta: o, hoy, onCambio, onBloqueo, onCerrar,
           const s = seleccion.find(v => v.quoteDetailId === l.id)!;
           return <TableRow key={l.id}>
             <TableCell><input type="checkbox" aria-label={`Contratar ${l.description}`} disabled={bloqueado} checked={s.seleccionada} onChange={e => { setSeleccion(v => v.map(f => f.quoteDetailId === l.id ? { ...f, seleccionada: e.target.checked } : f)); setRevisado(false); cambiar(); }} /></TableCell>
-            <TableCell className="min-w-48 whitespace-normal"><p className="font-medium">{l.description}</p><p className="text-xs text-muted-foreground">{l.code} · {l.kind === "PRODUCTO" ? "Producto" : l.kind === "MATERIA_PRIMA" ? "Materia prima" : "Servicio"}</p>{erroresLineas[l.id] && <p role="alert" id={`error-cantidad-${l.id}`} className="text-xs text-destructive">{erroresLineas[l.id]}</p>}</TableCell>
+            <TableCell className="min-w-48 whitespace-normal"><p className="font-medium">{l.description}</p><p className="text-[13px] text-muted-foreground">{l.code} · {l.kind === "PRODUCTO" ? "Producto" : l.kind === "MATERIA_PRIMA" ? "Materia prima" : "Servicio"}</p>{erroresLineas[l.id] && <p role="alert" id={`error-cantidad-${l.id}`} className="text-xs text-destructive">{erroresLineas[l.id]}</p>}</TableCell>
             <TableCell>{l.unitName}</TableCell><TableCell className="text-right tabular-nums">{formatearCantidad(l.quantity)}</TableCell><TableCell className="text-right tabular-nums">{s.seleccionada ? formatearCantidad(s.quantity) : "No contratada"}</TableCell>
             <TableCell className="text-right tabular-nums">{monedaOrden(l.unitPrice)}</TableCell><TableCell className="text-right tabular-nums">{preview ? monedaOrden(preview.lineAmounts.find(p => p.id === l.id)?.amount ?? "0") : "Revisar importes"}</TableCell>
-            <TableCell><div className="flex gap-2"><Button type="button" variant="outline" size="sm" disabled={bloqueado} onClick={() => abrirDetalle(l.id, true)}>Ver {l.description}</Button><Button type="button" variant="outline" size="sm" disabled={bloqueado || !s.seleccionada} aria-describedby={erroresLineas[l.id] ? `error-cantidad-${l.id}` : undefined} onClick={() => abrirDetalle(l.id, false)}>Editar cantidad de {l.description}</Button></div></TableCell>
+            <TableCell><div className="flex flex-wrap gap-2"><Button type="button" variant="outline" size="sm" disabled={bloqueado} onClick={() => abrirDetalle(l.id, true)}>Ver {l.description}</Button><Button type="button" variant="outline" size="sm" disabled={bloqueado || !s.seleccionada} aria-describedby={erroresLineas[l.id] ? `error-cantidad-${l.id}` : undefined} onClick={() => abrirDetalle(l.id, false)}>Editar cantidad de {l.description}</Button></div></TableCell>
           </TableRow>;
         })}</TableBody>
       </Table>
-      <p className="text-xs text-muted-foreground">Desplaza la tabla horizontalmente si es necesario. No se agregan ni eliminan partidas de la oferta; deseleccionar las excluye de esta aceptación.</p>
+      <p className="text-[13px] text-muted-foreground">Desplaza la tabla horizontalmente si es necesario. No se agregan ni eliminan partidas de la oferta; deseleccionar las excluye de esta aceptación.</p>
     </section>
     <div className="min-w-0 space-y-2"><p className="font-medium">Alcance técnico aceptado</p><p className="text-sm text-muted-foreground">Revisa el texto y retira trabajos no contratados. La cotización original conservará todo su contenido.</p>
       <EditorCotizacion valor={alcance} onChange={v => { setAlcance(v); setRevisado(false); cambiar(); }} draftKey={clave} disabled={bloqueado} permitirSubida={false} etiqueta="Alcance técnico aceptado" onBloqueo={bloquearEditor} onValidez={setValido} />

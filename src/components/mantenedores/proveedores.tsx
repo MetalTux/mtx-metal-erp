@@ -1,5 +1,5 @@
 "use client";
-import { Permiso } from "@/components/seguridad/permisos";
+import { Permiso, usePermiso } from "@/components/seguridad/permisos";
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -42,9 +42,9 @@ export function FormularioProveedor({ editor, pendiente, onCerrar, onGuardar }: 
       }
     }
   });
-  return <form onSubmit={consulta ? (event) => event.preventDefault() : submit} noValidate aria-busy={pendiente} className="space-y-4">
+  return <form onSubmit={consulta ? (event) => event.preventDefault() : submit} noValidate aria-busy={pendiente} className="min-w-0 space-y-4">
     {error && <Aviso titulo={error} />}
-    <div className="space-y-2"><Label htmlFor="proveedor-rut">RUT{!consulta && " *"}</Label><Input id="proveedor-rut" type="text" {...register("rut")} readOnly={consulta} disabled={pendiente} maxLength={20} autoComplete="off" placeholder="Ej.: 12.345.678-5" aria-invalid={Boolean(errors.rut)} aria-describedby={errors.rut ? "proveedor-rut-error" : "proveedor-rut-ayuda"} className="h-9" /><p id="proveedor-rut-ayuda" className="text-xs text-muted-foreground">Puedes ingresarlo con o sin puntos y guion.</p>{errors.rut && <p id="proveedor-rut-error" className="text-sm text-foreground" role="alert">{errors.rut.message}</p>}</div>
+    <div className="space-y-2"><Label htmlFor="proveedor-rut">RUT{!consulta && " *"}</Label><Input id="proveedor-rut" type="text" {...register("rut")} readOnly={consulta} disabled={pendiente} maxLength={20} autoComplete="off" placeholder="Ej.: 12.345.678-5" aria-invalid={Boolean(errors.rut)} aria-describedby={errors.rut ? "proveedor-rut-error" : "proveedor-rut-ayuda"} className="h-9" /><p id="proveedor-rut-ayuda" className="text-[13px] text-muted-foreground">Puedes ingresarlo con o sin puntos y guion.</p>{errors.rut && <p id="proveedor-rut-error" className="text-sm text-foreground" role="alert">{errors.rut.message}</p>}</div>
     <div className="space-y-2"><Label htmlFor="proveedor-name">Nombre{!consulta && " *"}</Label><Input id="proveedor-name" type="text" {...register("name")} readOnly={consulta} disabled={pendiente} maxLength={150} autoComplete="organization" placeholder="Ej.: Aceros del Sur" aria-invalid={Boolean(errors.name)} aria-describedby={errors.name ? "proveedor-name-error" : undefined} className="h-9" />{errors.name && <p id="proveedor-name-error" className="text-sm text-foreground" role="alert">{errors.name.message}</p>}</div>
     <div className="space-y-2"><Label htmlFor="proveedor-email">Correo (opcional)</Label><Input id="proveedor-email" type="email" {...register("email")} readOnly={consulta} disabled={pendiente} maxLength={254} autoComplete="email" placeholder="Ej.: ventas@proveedor.cl" aria-invalid={Boolean(errors.email)} aria-describedby={errors.email ? "proveedor-email-error" : undefined} className="h-9" />{errors.email && <p id="proveedor-email-error" className="text-sm text-foreground" role="alert">{errors.email.message}</p>}</div>
     <div className="space-y-2"><Label htmlFor="proveedor-phone">Teléfono (opcional)</Label><Input id="proveedor-phone" type="tel" {...register("phone")} readOnly={consulta} disabled={pendiente} maxLength={40} autoComplete="tel" placeholder="Ej.: +56 9 1234 5678" aria-invalid={Boolean(errors.phone)} aria-describedby={errors.phone ? "proveedor-phone-error" : undefined} className="h-9" />{errors.phone && <p id="proveedor-phone-error" className="text-sm text-foreground" role="alert">{errors.phone.message}</p>}</div>
@@ -57,6 +57,7 @@ export function FormularioProveedor({ editor, pendiente, onCerrar, onGuardar }: 
 }
 
 export function Proveedores({ proveedores }: { proveedores: Proveedor[] }) {
+  const puedeOperar = usePermiso("proveedores.operar");
   const router = useRouter();
   const [editor, setEditor] = useState<Editor>();
   const [aEliminar, setAEliminar] = useState<Proveedor>();
@@ -110,14 +111,14 @@ export function Proveedores({ proveedores }: { proveedores: Proveedor[] }) {
       <Permiso permiso="proveedores.operar"><Button variant="ghost" size="sm" disabled={pendiente} className="hover:bg-destructive/15" aria-label={`Eliminar ${row.original.name}`} onClick={() => { recordarFoco(); setErrorEliminar(undefined); setAEliminar(row.original); }}><Trash2 className="text-destructive" aria-hidden="true" />Eliminar</Button></Permiso>
     </div> },
   ];
-  return <div className="space-y-6">
+  return <div className="min-w-0 space-y-4">
     <PageHeader titulo="Proveedores" descripcion="Administra tus proveedores y sus datos de contacto." acciones={<Permiso permiso="proveedores.operar"><Button ref={crearBoton} disabled={pendiente} className="h-9" onClick={() => { recordarFoco(); setEditor({ modo: "crear" }); }}><Plus aria-hidden="true" />Crear proveedor</Button></Permiso>} />
     <SectionCard titulo="Catálogo de proveedores" descripcion="Consulta el RUT, los datos de contacto y las compras asociadas." contentClassName="p-0">
-      <DataTable datos={proveedores} columnas={columnas} textoBusqueda={buscarProveedor} filtroPlaceholder="Buscar por nombre, RUT o contacto…" nombre="proveedores" acciones={<Button variant="outline" size="sm" disabled={pendiente} onClick={() => router.refresh()}><RefreshCw aria-hidden="true" />Actualizar</Button>} vacio={<EmptyState icono={Truck} titulo="Todavía no hay proveedores" descripcion="Crea el primer proveedor para registrar tus compras." />} />
+      <DataTable datos={proveedores} columnas={columnas} textoBusqueda={buscarProveedor} filtroPlaceholder="Buscar por nombre, RUT o contacto…" nombre="proveedores" acciones={<Button variant="outline" size="sm" disabled={pendiente} onClick={() => router.refresh()}><RefreshCw aria-hidden="true" />Actualizar</Button>} vacio={<EmptyState icono={Truck} titulo="Todavía no hay proveedores" descripcion={puedeOperar ? "Crea el primer proveedor para registrar tus compras." : "Los proveedores aparecerán aquí cuando una persona con permisos los registre."} />} />
     </SectionCard>
     {pendiente && !editor && !aEliminar && <p role="status" className="flex items-center gap-2 text-sm text-muted-foreground"><LoaderCircle className="size-4 animate-spin" aria-hidden="true" />Consultando proveedor…</p>}
     <Dialog open={Boolean(editor)} onOpenChange={(abierto) => { if (!abierto && !pendiente) setEditor(undefined); }}>
-      <DialogContent showCloseButton={!pendiente} className="max-h-[90dvh] overflow-y-auto rounded-lg sm:max-w-lg" onCloseAutoFocus={(event) => { event.preventDefault(); restaurarFoco(); }} onEscapeKeyDown={(event) => { if (pendiente) event.preventDefault(); }} onInteractOutside={(event) => event.preventDefault()}>
+      <DialogContent showCloseButton={!pendiente} className="max-h-[90dvh] min-w-0 overflow-y-auto overscroll-contain rounded-lg sm:max-w-lg" onCloseAutoFocus={(event) => { event.preventDefault(); restaurarFoco(); }} onEscapeKeyDown={(event) => { if (pendiente) event.preventDefault(); }} onInteractOutside={(event) => event.preventDefault()}>
         <DialogHeader><DialogTitle>{editor?.modo === "crear" ? "Crear proveedor" : editor?.modo === "editar" ? "Editar proveedor" : "Ver proveedor"}</DialogTitle><DialogDescription>{editor?.modo === "ver" ? "Consulta los datos de contacto y las compras asociadas a este proveedor." : "Completa el RUT y el nombre. Los datos de contacto son opcionales."}</DialogDescription></DialogHeader>
         {editor && <FormularioProveedor key={`${editor.modo}-${editor.proveedor?.updatedAt ?? "nueva"}`} editor={editor} pendiente={pendiente} onCerrar={() => setEditor(undefined)} onGuardar={guardar} />}
       </DialogContent>

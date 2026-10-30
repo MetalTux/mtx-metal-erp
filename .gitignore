@@ -61,3 +61,18 @@ next-env.d.ts
 
 # Artefactos reproducibles de regresión; conservar en docs sólo muestras ficticias revisadas.
 /var/validacion/
+
+# Motor/caché de herramientas locales de diseño.
+/var/herramientas/
+# Evidencia y estado efímero de Impeccable; sus briefs/configuración pueden versionarse.
+/.impeccable/*.png
+/.impeccable/review/
+/.impeccable/config.local.json
+/.impeccable/hook.cache.json
+/.impeccable/hook.pending.json
+/.impeccable/questions/
+/.impeccable/live/server.json
+/.impeccable/live/sessions/
+/.impeccable/live/previews/
+/.impeccable/live/annotations/
+/.impeccable/live/cache/

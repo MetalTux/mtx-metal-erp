@@ -25,7 +25,7 @@ export function DataTable<T extends { id: number }>({ datos, columnas, textoBusq
   const table = useTable({ features, data: filtrados, columns: columnas, getRowId: (fila) => String(fila.id), autoResetPageIndex: false, defaultColumn: { sortFn: "alphanumeric" }, state: { pagination: paginacionActual }, onPaginationChange: setPagination });
   const cambiarFiltro = (valor: string) => { setFiltro(valor); table.setPageIndex(0); };
   return <>
-    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-4">
+    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-3">
       <div className="relative w-full sm:max-w-sm">
         <Search className="pointer-events-none absolute top-2.5 left-3 size-4 text-muted-foreground" aria-hidden="true" />
         <Input aria-label={`Filtrar ${nombre}`} placeholder={filtroPlaceholder} value={filtro} onChange={(event) => cambiarFiltro(event.target.value)} className="h-9 pr-10 pl-9" />
@@ -33,16 +33,17 @@ export function DataTable<T extends { id: number }>({ datos, columnas, textoBusq
       </div>
       {acciones}
     </div>
-    <Table aria-label={nombre}>
-      <TableHeader className="bg-card-header/30">{table.getHeaderGroups().map((grupo) => <TableRow key={grupo.id}>{grupo.headers.map((header) => <TableHead key={header.id} className="h-11 px-4 text-[13px]" aria-sort={header.column.getCanSort() ? (header.column.getIsSorted() === "asc" ? "ascending" : header.column.getIsSorted() === "desc" ? "descending" : "none") : undefined}>
+    <Table aria-label={nombre} containerProps={{ role: "region", "aria-label": `Desplazar tabla de ${nombre}`, tabIndex: 0, className: "focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring" }}>
+      <TableHeader className="bg-card-header/30">{table.getHeaderGroups().map((grupo) => <TableRow key={grupo.id}>{grupo.headers.map((header) => <TableHead key={header.id} className="h-10 px-3 text-[13px]" aria-sort={header.column.getCanSort() ? (header.column.getIsSorted() === "asc" ? "ascending" : header.column.getIsSorted() === "desc" ? "descending" : "none") : undefined}>
         {header.isPlaceholder ? null : header.column.getCanSort() ? <Button variant="ghost" className="-ml-2 h-8 px-2 text-[13px]" onClick={() => { header.column.toggleSorting(); table.setPageIndex(0); }}><table.FlexRender header={header} />{header.column.getIsSorted() === "asc" ? <ArrowUp aria-hidden="true" /> : header.column.getIsSorted() === "desc" ? <ArrowDown aria-hidden="true" /> : <ArrowUpDown aria-hidden="true" />}</Button> : <table.FlexRender header={header} />}
       </TableHead>)}</TableRow>)}</TableHeader>
-      <TableBody>{table.getRowModel().rows.length ? table.getRowModel().rows.map((fila) => <TableRow key={fila.id}>{fila.getAllCells().map((celda) => <TableCell key={celda.id} className="h-11 px-4 tabular-nums"><table.FlexRender cell={celda} /></TableCell>)}</TableRow>) : <TableRow><TableCell colSpan={columnas.length} className="h-48 text-center">{datos.length === 0 ? vacio : <div><p className="font-medium">No hay coincidencias</p><p className="mt-1 text-muted-foreground">Prueba otro filtro o limpia la búsqueda.</p></div>}</TableCell></TableRow>}</TableBody>
+      <TableBody>{table.getRowModel().rows.map((fila) => <TableRow key={fila.id}>{fila.getAllCells().map((celda) => <TableCell key={celda.id} className="h-10 px-3 tabular-nums"><table.FlexRender cell={celda} /></TableCell>)}</TableRow>)}</TableBody>
     </Table>
-    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border p-4 text-xs text-muted-foreground">
+    {!table.getRowModel().rows.length && <div role="status" className="flex min-h-32 items-center justify-center text-center">{datos.length === 0 ? vacio : <div className="p-4"><p className="font-medium">No hay coincidencias</p><p className="mt-1 text-muted-foreground">Prueba otro filtro o limpia la búsqueda.</p></div>}</div>}
+    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border p-3 text-xs text-muted-foreground">
       <span role="status" className="tabular-nums">{filtrados.length} de {datos.length} registros</span>
       <div className="flex flex-wrap items-center gap-3">
-        <label className="flex items-center gap-2">Filas por página<select aria-label="Filas por página" value={table.state.pagination.pageSize} onChange={(event) => { table.setPageSize(Number(event.target.value)); table.setPageIndex(0); }} className="h-8 rounded-md border border-border bg-card px-2 focus-visible:outline-ring">{[5, 10, 20, 50].map((n) => <option key={n} value={n}>{n}</option>)}</select></label>
+        <label className="flex items-center gap-2">Filas por página<select aria-label="Filas por página" value={table.state.pagination.pageSize} onChange={(event) => { table.setPageSize(Number(event.target.value)); table.setPageIndex(0); }} className="h-8 rounded-md border border-input bg-card px-2 focus-visible:outline-ring">{[5, 10, 20, 50].map((n) => <option key={n} value={n}>{n}</option>)}</select></label>
         <span className="tabular-nums">Página {Math.min(table.state.pagination.pageIndex + 1, paginas)} de {paginas}</span>
         <Button variant="outline" size="sm" disabled={!table.getCanPreviousPage()} onClick={() => table.previousPage()}>Anterior</Button>
         <Button variant="outline" size="sm" disabled={!table.getCanNextPage()} onClick={() => table.nextPage()}>Siguiente</Button>

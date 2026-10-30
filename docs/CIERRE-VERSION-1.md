@@ -1,14 +1,14 @@
 # Revisión para cerrar la versión 1
 
-Fecha: 20-10-2026. Revisión del código, esquema, rutas, pruebas disponibles y checkpoints de los hitos. Este documento propone el alcance y los criterios de salida; no supone aprobación de nuevas reglas ni autoriza implementar todos los pendientes.
+Auditoría original: 20-10-2026. Seguimiento documental actualizado: 30-10-2026. Revisión del código, esquema, rutas, pruebas disponibles y checkpoints de los hitos. Este documento propone el alcance y los criterios de salida; no supone aprobación de nuevas reglas ni autoriza implementar todos los pendientes.
 
 ## Resultado
 
 El circuito Cotización → Orden de Compra Cliente → Orden de Trabajo/Producción → Guía de Despacho está implementado. OCC y OT tienen cierre funcional registrado; Guías G0–G6 fue aprobado por el usuario el 20-10-2026. No es necesario reconstruir estos módulos para llegar a V1.
 
-Los principales faltantes comprobados son **cierre operativo en producción y aprobación funcional de seguridad**, **operación de Cobranza**, **Dashboard con consultas reales**, **facilidad de uso y manual completo** y **preparación verificable de la operación en producción**. Además hay revisiones funcionales y documentos antiguos por conciliar.
+Cobranzas y el Dashboard con consultas reales ya están implementados técnicamente; C1/C2 tienen aprobación funcional. El manual Markdown/PDF y la extensión visual también están disponibles. Permanecen **validaciones funcionales de C3/C4, Dashboard y Seguridad S7**, **revisión de usabilidad/manual con usuarios**, **lector de pantalla y aceptación visual final** y **preparación verificable del entorno definitivo**. La auditoría original y sus actualizaciones históricas se conservan debajo; no equivalen a una nueva auditoría integral del sistema.
 
-Se propone una V1 para una empresa, con inventario, compras, ventas, fabricación propia/comercial, despacho y cobranza; documentos internos y registro de factura externa, sin emisión tributaria electrónica. El destino de instalación y los roles concretos deben definirse antes de cerrar sus respectivos bloques. No se encontró una especificación única de V1 previamente cerrada.
+Se propone una V1 para una empresa, con inventario, compras, ventas, fabricación propia/comercial, despacho y cobranza; documentos internos y registro de factura externa, sin emisión tributaria electrónica. Los seis roles combinables están definidos en el hito de Seguridad; el destino definitivo de instalación sigue pendiente. No se encontró una especificación única de V1 previamente cerrada.
 
 ## Estado comprobado
 
@@ -73,10 +73,11 @@ Observación expresa del usuario: algunas funciones son difíciles de identifica
 - [ ] Explicar bloqueos con causa y solución, distinguir hechos independientes (guardar/recibir, producir/entregar, finalizar/facturar/cobrar) y usar términos consistentes.
 - [ ] Revisar ayudas de teclado/táctil, foco, móvil, errores y confirmaciones con usuarios representativos; no sustituir esta revisión por pruebas automáticas.
 - [x] Primera edición textual del manual por tareas/perfil, con ejemplos, configuración inicial, correcciones y recuperación: MANUAL-USUARIO.md.
-- [ ] Preparar capturas con datos ficticios/anonimizados y revisar el manual con usuarios. Existen guías específicas de Seguridad, OT, Guías, Cobranzas y Dashboard; no sustituyen un manual completo del ERP.
+- [x] Manual Markdown/PDF actualizado con ejemplos ficticios de la interfaz Claro/Oscuro (VG9.10).
+- [ ] Revisar claridad y recorridos del manual con usuarios representativos. Las capturas no sustituyen esta validación.
 - [ ] Validar el manual sobre la interfaz estabilizada, incluyendo Cobranza y acceso/roles.
 
-La revisión puede empezar ahora; las capturas y el manual definitivo deben cerrarse después de estabilizar esos módulos.
+La edición del manual del 30-10-2026 permite iniciar esa revisión; no implica aceptación funcional del sistema.
 
 ### V1.5 — Revisiones y regresión integral
 
@@ -125,7 +126,7 @@ Estas exclusiones son una propuesta de alcance, no decisiones nuevas del usuario
 
 V1 lista cuando un usuario autorizado pueda completar el circuito comercial y productivo, cobrarlo sin inconsistencias, corregir errores con historial, encontrar sus acciones sin asistencia constante y recuperar la instalación desde respaldo; con pruebas técnicas del conjunto y aprobación funcional global registradas.
 
-**Siguiente paso recomendado:** definir e implementar Acceso/Usuarios/Permisos y el hito de Cobranza, coordinar después Dashboard, usabilidad/manual y cierre operativo. Las decisiones de roles y reglas de pagos se deben resolver en esos hitos; esta auditoría no las fija por defecto.
+**Siguiente paso recomendado (seguimiento actual):** realizar VG9.11 con el usuario y completar las validaciones funcionales pendientes de S7, C3/C4, Dashboard, inventario y manual; preparar luego el entorno operativo definitivo. Las decisiones aprobadas se conservan en sus hitos.
 
 ## Alcance de esta revisión
 
@@ -163,3 +164,13 @@ Actualización manual/usabilidad, 24-10-2026: primera edición textual completa 
 
 
 Actualización grillas/manual, 27-10-2026: GD2–GD6 implementados y GD7 con regresión de componentes 7/7 usando CSS real/transporte simulado, quince capturas y manual Markdown/PDF actualizado con tres ejemplos ficticios. Corrección de desborde móvil OT y refuerzo de foco incluidos. Pendientes aprobación de usuario, integración real, build (bloqueado por entorno), zoom/teclado/contraste completos y cierre funcional de V1. No se resuelven por esta entrega las validaciones de Seguridad, Cobranzas o Dashboard. Continuidad en [GRILLAS-GD7-VALIDACION.md](GRILLAS-GD7-VALIDACION.md).
+
+
+## 30-10-2026 — VG9.10: Documentación final
+
+- [x] Manual Markdown/PDF edición 30-10-2026: 19 capítulos, 26 páginas Carta y ocho capturas actuales ficticias en Claro/Oscuro, con origen y huellas archivados.
+- [x] Ayudas de teclado, grillas, apariencia y estados vacíos; notas obsoletas del PDF retiradas y referencias de V1 conciliadas.
+- [x] Exportación local, texto/fecha/capítulos, imágenes, enlaces y muestra visual verificados. Sin cambios al exportador, aplicación, BD ni documentos comerciales.
+- [ ] Aceptación VG9.11, lector real VG9.4 y validaciones funcionales anteriores conservados.
+
+Detalle: [DISENO-GLOBAL-VG9-10-VALIDACION.md](DISENO-GLOBAL-VG9-10-VALIDACION.md). Siguiente VG9.11; no repetir las suites por cambios sólo documentales.

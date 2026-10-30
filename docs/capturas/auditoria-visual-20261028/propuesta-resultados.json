@@ -1,0 +1,42 @@
+{
+  "ok": true,
+  "solicitudes": 0,
+  "resultados": [
+    {
+      "tema": "oscuro",
+      "vista": "Dashboard",
+      "minimoTexto": 6.225226487218861,
+      "muestras": 71
+    },
+    {
+      "tema": "oscuro",
+      "vista": "Compras",
+      "minimoTexto": 6.225226487218861,
+      "muestras": 84
+    },
+    {
+      "tema": "oscuro",
+      "vista": "Formulario",
+      "minimoTexto": 6.225226487218861,
+      "muestras": 45
+    },
+    {
+      "tema": "claro",
+      "vista": "Dashboard",
+      "minimoTexto": 5.3670481230457945,
+      "muestras": 71
+    },
+    {
+      "tema": "claro",
+      "vista": "Compras",
+      "minimoTexto": 5.3670481230457945,
+      "muestras": 84
+    },
+    {
+      "tema": "claro",
+      "vista": "Formulario",
+      "minimoTexto": 5.3670481230457945,
+      "muestras": 45
+    }
+  ]
+}

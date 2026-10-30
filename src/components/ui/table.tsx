@@ -7,6 +7,11 @@ function Table({ className, containerProps, ...props }: React.ComponentProps<"ta
   return (
     <div
       data-slot="table-container"
+      onFocusCapture={(event) => {
+        if (event.target !== event.currentTarget) {
+          event.target.scrollIntoView({ block: "nearest", inline: "nearest" })
+        }
+      }}
       {...containerProps}
       className={cn("relative w-full overflow-x-auto", containerProps?.className)}
     >

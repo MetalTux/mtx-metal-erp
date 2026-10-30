@@ -42,7 +42,7 @@ function Formulario({ fila, consulta, onCerrar, onCambio, onGuardado, onBloqueo 
     finally { setPendiente(false); onBloqueo(false); }
   }
   return <>
-    <form className="space-y-4" onChange={onCambio} onSubmit={e => {
+    <form className="min-w-0 space-y-4" onChange={onCambio} onSubmit={e => {
       e.preventDefault(); if (consulta || pendiente) return;
       const validacion = numeracionSchema.safeParse({ id: fila.id, version: fila.version, prefix, padding: Number(digitos), nextNumber: numero });
       if (!validacion.success) { setError(validacion.error.issues[0].message); return; }
@@ -83,7 +83,7 @@ export function NumeracionDocumental({ filas }: { filas: Numeracion[] }) {
     <PageHeader titulo="Numeración documental" descripcion="Define los folios internos de cotizaciones, órdenes y guías." acciones={<BotonConAyuda ref={actualizar} ayuda="Vuelve a consultar las configuraciones guardadas." variant="outline" onClick={() => router.refresh()}><RefreshCw />Actualizar</BotonConAyuda>} />
     <Aviso tipo="informacion" titulo="Elige el número inicial de cada documento antes de utilizarlo" >El folio se asignará al guardar cada documento por primera vez. Los números externos de órdenes del cliente y facturas se registran por separado.</Aviso>
     <div className="mt-4"><DataTable datos={filas} columnas={columnas} textoBusqueda={f => `${tiposNumeracion[f.type]} ${estado(f)} ${f.prefix}`} filtroPlaceholder="Buscar documento, estado o prefijo…" nombre="configuraciones" vacio={<p>No se encontraron configuraciones.</p>} /></div>
-    <Dialog open={Boolean(editor)} onOpenChange={v => { if (!v) cerrar(); }}><DialogContent className="max-h-[90dvh] overflow-y-auto" onEscapeKeyDown={e => { if (bloqueado.current || descarte) e.preventDefault(); }} onInteractOutside={e => e.preventDefault()} onCloseAutoFocus={e => { e.preventDefault(); (retorno.current?.isConnected ? retorno.current : actualizar.current)?.focus(); }}>
+    <Dialog open={Boolean(editor)} onOpenChange={v => { if (!v) cerrar(); }}><DialogContent className="max-h-[90dvh] min-w-0 overflow-y-auto overscroll-contain" onEscapeKeyDown={e => { if (bloqueado.current || descarte) e.preventDefault(); }} onInteractOutside={e => e.preventDefault()} onCloseAutoFocus={e => { e.preventDefault(); (retorno.current?.isConnected ? retorno.current : actualizar.current)?.focus(); }}>
       <DialogHeader><DialogTitle>{editor?.consulta ? "Ver" : "Configurar"} numeración — {editor && tiposNumeracion[editor.fila.type]}</DialogTitle><DialogDescription>Consulta o configura el próximo folio. Los tipos documentales son fijos.</DialogDescription></DialogHeader>
       {editor && <Formulario key={`${editor.fila.id}-${editor.fila.version}-${editor.consulta}`} fila={editor.fila} consulta={editor.consulta} onCerrar={cerrar} onCambio={() => { modificado.current = true; }} onBloqueo={v => { bloqueado.current = v; }} onGuardado={() => { setEditor(undefined); router.refresh(); }} />}
     </DialogContent></Dialog>

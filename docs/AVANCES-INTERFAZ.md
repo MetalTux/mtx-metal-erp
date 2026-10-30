@@ -772,3 +772,225 @@ Sin nuevos datos, dependencias ni cambios de reglas. Manual/PDF TC2 vigentes. Co
 - [ ] Cierre técnico integral: zoom real 200%, lector de pantalla, contraste integral y recorridos privado/túnel/autenticados pendientes.
 
 Estado exacto en [HITO-TEMAS-CLARO-OSCURO.md](HITO-TEMAS-CLARO-OSCURO.md), sección 11. Sólo documentación; no se repiten comprobaciones de código ni se alteran otros hitos.
+
+## 28-10-2026 — Piloto visual de Dashboard y Compras
+
+- [x] IBM Plex Sans y paletas minerales, superficies planas y jerarquía compacta en ambos temas, con alcance por ruta.
+- [x] Dashboard reorganizado sin alterar cifras/permisos; Compras Ver/Recibir/Más, búsqueda móvil, formulario y errores accesibles.
+- [x] Contraste, teclado, tamaños, aislamiento, fuentes en Next real y grillas 7/7 correctos; build Webpack, lint/tipos correctos.
+- [x] Manual Markdown/PDF y capturas actualizados.
+- [x] Conformidad general del usuario y solicitud de planificar extensión recibidas.
+- [ ] Recorrido autenticado, zoom real y lector de pantalla pendientes.
+
+Continuidad: [HITO-PILOTO-VISUAL.md](HITO-PILOTO-VISUAL.md). Sin cambios de BD ni cierre de otros hitos.
+
+
+## 28-10-2026 — Plan de extensión del diseño aprobado
+
+- [x] Conformidad general del usuario con el piloto implementado registrada.
+- [x] Plan VG0–VG9 completo, iniciando por base global e Inicio de Sesión.
+- [ ] VG1–VG9 pendientes de desarrollo/verificación; no se promueven tokens ni se alteran pantallas en esta entrega.
+
+Continuidad en [HITO-DISENO-GLOBAL.md](HITO-DISENO-GLOBAL.md). Sólo documentación; aprobaciones y limitaciones previas conservadas.
+
+
+## 28-10-2026 — VG1: base visual global
+
+- [x] Promover Plex y paletas minerales a todas las rutas; retirar Inter y ámbito temporal del piloto.
+- [x] Cabeceras, títulos, tablas, controles y portales planos; conservar navegación, preferencia y tamaños específicos de diálogos.
+- [x] Corregir contraste destructivo Oscuro y tiradores del documento blanco; regresión de temas y grillas en Claro/Oscuro.
+- [x] Lint/compilación Webpack y acceso público real; manual Markdown/PDF actualizado.
+- [ ] Revisión del usuario de VG1 y desarrollo particular VG2.
+
+Evidencia y limitaciones: [DISENO-GLOBAL-VG1-VALIDACION.md](DISENO-GLOBAL-VG1-VALIDACION.md). Sin cambios de base de datos ni reglas del negocio. Los registros anteriores de Inter y cabeceras metálicas son históricos y quedan sustituidos por esta base.
+
+
+## 28-10-2026 — VG2: Inicio de Sesión y recuperación
+
+- [x] Acceso/activación/restablecimiento/denegado con la base plana VG1 y cabecera/selector compartidos.
+- [x] Campos y contraseña accesibles, mensajes visibles, foco y bloqueo mientras se solicita; estados de enlace ausente y segundo factor.
+- [x] Ensayo visual con API ficticia y páginas públicas reales; lint y compilación Webpack. Manual Markdown/PDF actualizado.
+- [ ] Conformidad, zoom 200%, lector de pantalla y recorridos autenticados reales: ver [DISENO-GLOBAL-VG2-VALIDACION.md](DISENO-GLOBAL-VG2-VALIDACION.md).
+
+Sin cambios de API, servicios, seguridad, datos ni despliegue. Siguiente desarrollo visual: VG3.
+
+
+## 28-10-2026 — VG3: catálogos y Configuración
+
+- [x] Compactar listados/ayudas y contener formularios de mantenedores, Productos, Empresa, cuentas, numeración e IVA.
+- [x] Acciones con texto en sucursales/recetas/IVA; códigos completos y superficies de imagen conservadas.
+- [x] Matriz de diez pantallas Claro/Oscuro con fixtures, regresión de grillas, lint y Webpack; manual actualizado.
+- [ ] Conformidad y verificaciones reales pendientes según [DISENO-GLOBAL-VG3-VALIDACION.md](DISENO-GLOBAL-VG3-VALIDACION.md).
+
+Sin cambios de servidor/base de datos ni reglas del dominio. Siguiente: VG4.
+
+
+## 28-10-2026 — VG4: Inventario
+
+- [x] Stock/Kardex, mínimos, carga inicial, ajustes, traslados y terminado con presentación consistente Claro/Oscuro.
+- [x] Alineación numérica explícita en TablaConsulta, desplazamiento horizontal accesible y acciones por registro identificadas.
+- [x] Ensayos con fixtures, regresión de grillas y Dashboard/Compras, lint y Webpack; manual actualizado.
+- [ ] Revisión funcional real, zoom y lector: ver [DISENO-GLOBAL-VG4-VALIDACION.md](DISENO-GLOBAL-VG4-VALIDACION.md).
+
+Sin cambios de transacciones, datos ni reglas de inventario. Siguiente VG5.
+
+
+## 28-10-2026 — VG5: Ventas
+
+- [x] Cotizaciones/OCC con filtros, grillas, diálogos e importes consistentes; acciones frecuentes con texto.
+- [x] Descripción neto/histórico correcta, editor blanco y controles PDF conservados; sin cambios de cálculos/documentos.
+- [x] Matriz visual con editor real y fixtures, GD2–GD6 en ambos temas, lint y Webpack; manual actualizado.
+- [ ] Revisión funcional, PDF real, zoom y lector según [DISENO-GLOBAL-VG5-VALIDACION.md](DISENO-GLOBAL-VG5-VALIDACION.md).
+
+Sin cambios de backend ni datos. Siguiente VG6.
+
+
+## 28-10-2026 — VG6.1: Trabajos
+
+- [x] Listado/consulta de OT y planificación comercial/propia con presentación consistente.
+- [x] Editor de partidas y distribuciones contenido; ayudas legibles y acciones accesibles.
+- [x] Matriz de 54 escenarios, regresión de grillas, lint y Webpack; manual actualizado.
+- [ ] Revisión funcional y siguientes partes: Producción y Despacho.
+
+Evidencia y límites: [DISENO-GLOBAL-VG6-TRABAJOS-VALIDACION.md](DISENO-GLOBAL-VG6-TRABAJOS-VALIDACION.md). VG6 permanece parcial, sin cambios de datos ni transacciones.
+
+
+## 29-10-2026 — VG6.2 Producción y VG6.3 Despacho
+
+- [x] Producción: ayudas legibles, acciones distribuibles, editor/consulta contenidos e historial PDF consistente.
+- [x] Despacho: listado compacto, grillas enfocables, cifras alineadas, detalle y editor contenidos; aviso de permisos actualizado.
+- [x] Galería de 78 escenarios con fixtures, grillas en ambos temas, lint y compilación Webpack.
+- [ ] Revisión funcional del usuario, zoom/lector y sesiones/emisiones reales.
+
+Sin cambios de esquema, servicios, stock, reservas, deuda ni archivos históricos. Evidencia y continuidad: [DISENO-GLOBAL-VG6-PRODUCCION-DESPACHO-VALIDACION.md](DISENO-GLOBAL-VG6-PRODUCCION-DESPACHO-VALIDACION.md). VG6 implementado técnicamente; siguiente VG7 Cobranzas.
+
+
+## 29-10-2026 — VG7: Cobranzas
+
+- [x] Listado con tabla compartida, cifras alineadas, filtros compactos y scroll enfocable; resumen de cuenta distingue importe, abonos y saldo.
+- [x] Diálogos de pagos, comprobantes y promesas contenidos; ayudas de historiales a 13 px y consulta anidada con overscroll.
+- [x] Ensayos con fixtures en ambos temas, conservación de datos/claves en reintentos y cambio de tema; regresión de grillas, lint y compilación Webpack.
+- [ ] Conformidad funcional del usuario, zoom/lector y sesiones/operaciones reales.
+
+No modifica servicios, transacciones, saldo, archivos ni permisos. Evidencia: [DISENO-GLOBAL-VG7-VALIDACION.md](DISENO-GLOBAL-VG7-VALIDACION.md). Siguiente VG8.
+
+
+## 29-10-2026 — VG8: Cuenta, administración y estados transversales
+
+- [x] Mi acceso: secciones planas, formularios contenidos, botones TOTP adaptables y diálogos con retorno de foco.
+- [x] Usuarios/Auditoría: tablas compartidas enfocables, filtros compactos y confirmaciones conservadas; reautenticación mantiene el cambio pendiente.
+- [x] Carga/error existentes consistentes y límite 404 personalizado en español, con retorno al Dashboard y sin URL adicional.
+- [x] Galería de 330 escenarios, navegación por roles, foco/reautenticación simulada, grillas en ambos temas, lint/tipos/Webpack y GET 404 real.
+- [ ] Revisión funcional, sesiones/factor reales, zoom y lector de pantalla.
+
+No cambia servicios, esquema, permisos, claves, TOTP, sesiones, autoría ni plazo de retención. La única lógica de cliente añadida guarda/restaura foco sin interferir con otro diálogo abierto. Evidencia e inventario de rutas: [DISENO-GLOBAL-VG8-VALIDACION.md](DISENO-GLOBAL-VG8-VALIDACION.md). Siguiente VG9.
+
+
+## 29-10-2026 — VG9.1: Matriz de rutas y evidencia
+
+- [x] Inventario de 29 páginas, 26 límites, 404 y ocho rutas HTTP; navegación sin destinos huérfanos.
+- [x] 224 PNG previos y resultados cotejados; ambas apariencias, móvil/escritorio y aceptación registrados por ruta.
+- [x] Dos conformidades generales del piloto distinguidas de las 29 aceptaciones finales pendientes.
+- [ ] Regeneración/regresión final y demás etapas VG9.2–VG9.11.
+
+Auditoría documental; sin aplicación, esquema, datos, servicios o manual modificados. Matriz y límites: [DISENO-GLOBAL-VG9-1-MATRIZ.md](DISENO-GLOBAL-VG9-1-MATRIZ.md). Siguiente VG9.2.
+
+
+## 29-10-2026 — VG9.2: Apariencia y persistencia
+
+- [x] Estado/bootstrap: Oscuro inicial, manual/Sistema, persistencia, pestañas, borradores y almacenamiento restringido.
+- [x] Ciclo de ingreso/salida con componentes reales y API simulada, conservando preferencias.
+- [x] Next público real con cero POST: restauración previa a React, recarga, navegación e hidratación; servidor temporal cerrado.
+- [x] Lint y compilación Webpack. Directorios de evidencia parametrizables en TC2 y piloto Next, sin alterar sus valores predeterminados ni sobrescribir resultados previos.
+- [ ] Recorrido con sesión real y aceptación final; demás etapas VG9.3–VG9.11.
+
+No cambia código de aplicación, servicios, datos ni manual. Evidencia y límites: [DISENO-GLOBAL-VG9-2-VALIDACION.md](DISENO-GLOBAL-VG9-2-VALIDACION.md). Siguiente VG9.3.
+
+
+## 29-10-2026 — VG9.3: Contraste de estados compartidos
+
+- [x] Deshabilitados legibles sin reducir opacidad de grupos; estados y bloqueos conservados.
+- [x] Foco/error sólidos, borde de controles outline, indicadores de selección y búsqueda/selector con contraste suficiente.
+- [x] Hover destructivo 5%/10% compatible con las cuatro superficies en ambos temas, sin cambiar colores base.
+- [x] 18.268 mediciones, cero fallos; grillas en ambos temas, TC2, lint y compilación Webpack.
+- [ ] Revisión del usuario y siguientes VG9.4–VG9.11; regeneración final de capturas anteriores.
+
+Cambios sólo de presentación compartida, sin servicios, permisos, datos o documentos históricos modificados. Evidencia: [DISENO-GLOBAL-VG9-3-VALIDACION.md](DISENO-GLOBAL-VG9-3-VALIDACION.md). Siguiente VG9.4.
+
+
+## 29-10-2026 — VG9.4: Accesibilidad compartida
+
+- [x] Retorno de foco en buscador global y menú móvil; foco visible en búsquedas.
+- [x] Nombres efectivos de listas en español, ausencia de coincidencias con anuncio polite e iconos decorativos ocultos a AX.
+- [x] Diálogos largos desplazables y contenidos en la ventana; buscador centrado.
+- [x] Teclado, árbol AX y zoom real 200% en Claro/Oscuro con fixtures sin PostgreSQL; perfil Chromium desechable.
+- [x] Grillas 7/7 por tema, contraste 18.268 mediciones sin fallos, regresión VG8, lint y build Turbopack correctos.
+- [ ] Prueba auditiva AT-01–AT-07 con lector de pantalla real y aceptación final. El árbol AX no la sustituye; VG9.4 permanece abierto.
+
+Evidencia y pauta: [DISENO-GLOBAL-VG9-4-VALIDACION.md](DISENO-GLOBAL-VG9-4-VALIDACION.md). No cambia servicios, permisos ni datos. Próximo desarrollo técnico VG9.5; manual/PDF final en VG9.10.
+
+
+## 29-10-2026 — VG9.5: Adaptación responsive
+
+- [x] Cabeceras, nombre de usuario y opciones extensas contenidos sin reducir tipografía.
+- [x] DataTable desplazable por teclado; Table muestra completo el control enfocado.
+- [x] Selector con altura limitada al espacio disponible y desplazamiento interior.
+- [x] Cinco tamaños por tema, contenido largo, ventanas bajas y pulsaciones táctiles emuladas; diez combinaciones exigentes correctas.
+- [x] Galerías VG2–VG8 (958 entradas) y piloto (22) correctos; tras el último ajuste del selector se repitieron VG9.5, VG9.4 y build. Lint correcto.
+- [ ] Revisión física/multinavegador y aceptación; lector real VG9.4 pendiente.
+
+Evidencia y límites: [DISENO-GLOBAL-VG9-5-VALIDACION.md](DISENO-GLOBAL-VG9-5-VALIDACION.md). Sin servicios ni datos modificados. Siguiente VG9.6; manual/PDF final en VG9.10.
+
+
+## 29-10-2026 — VG9.6: Estados y perfiles
+
+- [x] Cinco mensajes vacíos distinguen consulta de operación según el permiso existente.
+- [x] DataTable/TablaConsulta muestran el mensaje vacío fuera del desplazamiento de columnas, legible en móvil.
+- [x] 92 entradas nuevas con componentes reales y contratos ficticios: ocho perfiles/combinaciones, 0/1/125 registros, filtros/páginas, reducción de lista y consulta pendiente/error/recuperación.
+- [x] Matriz de permisos explícita, cobertura estática S4, regresión VG3 (160 escenarios), lint y Webpack correctos. Turbopack habitual se detuvo por espera sin progreso; script conservado.
+- [ ] Pruebas autenticadas, rechazo HTTP/DTO económicos y aceptación; pendientes de lector real y dispositivos físicos conservados.
+
+Evidencia: [DISENO-GLOBAL-VG9-6-VALIDACION.md](DISENO-GLOBAL-VG9-6-VALIDACION.md). Sin cambios de servicios, datos, esquema ni PDF históricos. Siguiente VG9.7; manual/PDF final en VG9.10.
+
+
+## 29-10-2026 — VG9.7: Flujos y grillas
+
+- [x] Grillas 7/7 en Claro y Oscuro; 30 capturas responsive, borradores, descarte, confirmaciones, reintentos y consultas anidadas.
+- [x] Recorridos de Ventas (92 entradas), Cobranzas (88) y piloto Compras/Dashboard (22) correctos con transporte ficticio.
+- [x] Soporte de grillas con IBM Plex Sans local, preferencia persistida y fuente/tema comprobados; sin modificar componentes productivos.
+- [x] Lint, Webpack, referencias y huellas correctos. Turbopack habitual agotó el límite de 90 s en compile; package.json intacto.
+- [ ] Integración real con Next/PostgreSQL/archivos/sesiones y aceptación; lector/dispositivos pendientes conservados.
+
+Evidencia y alcance: [DISENO-GLOBAL-VG9-7-VALIDACION.md](DISENO-GLOBAL-VG9-7-VALIDACION.md). Los reintentos idénticos del cliente no certifican idempotencia del servidor. Siguiente VG9.8; no se cierran hitos funcionales por estas simulaciones.
+
+
+## 29-10-2026 — VG9.8: Conservación de reglas y documentos
+
+- [x] 200 archivos protegidos iguales al commit d555de5; tres configuraciones raíz sin diferencias adicionales.
+- [x] 102 interfaces revisadas: 113 firmas de llamadas importadas conservadas; no equivalencia formal del control de flujo.
+- [x] Nueve pruebas puras correctas. Seis PDF locales conservados durante la auditoría, sin reemitirlos; huellas antes/después.
+- [x] Lint y Webpack correctos; Turbopack agotó límite de 90 s sin progreso, scripts intactos.
+- [ ] Conciliación de BD/archivos con snapshots, descargas reales y aceptación. Sin manifiesto PDF pre-rediseño, no se afirma conservación retrospectiva completa.
+
+Detalle: [DISENO-GLOBAL-VG9-8-VALIDACION.md](DISENO-GLOBAL-VG9-8-VALIDACION.md). Sólo auditor/registro nuevos; servicios, esquema, documentos y base sin escrituras de esta tarea. Siguiente VG9.9; manual/PDF final en VG9.10.
+
+
+## 29-10-2026 — VG9.9: Comprobaciones técnicas
+
+- [x] 32 pasos correctos con el nuevo ejecutor reproducible; lint, tipos y build Turbopack correctos.
+- [x] Next público real con cero POST y servidor temporal cerrado; nueve pruebas puras y galerías/regresiones de apariencia, contraste, teclado/zoom, responsive, perfiles y grillas correctas.
+- [x] 329 huellas de fuentes estables y conservación de PDF/fuentes protegidas al cierre.
+- [x] Primer intento del ejecutor corregido (entorno parcial), archivado en antes/; ejecución final completa correcta.
+- [ ] Integración real, lector/dispositivos y aceptación funcional, pendientes conservados.
+
+Detalle: [DISENO-GLOBAL-VG9-9-VALIDACION.md](DISENO-GLOBAL-VG9-9-VALIDACION.md). No cambia código productivo, servicios, esquema, datos ni documentos comerciales. Siguiente VG9.10: documentación y manual/PDF final.
+
+
+## 30-10-2026 — VG9.10: Documentación final
+
+- [x] Manual Markdown/PDF edición 30-10-2026: 19 capítulos, 26 páginas Carta y ocho capturas actuales ficticias en Claro/Oscuro, con origen y huellas archivados.
+- [x] Ayudas de teclado, grillas, apariencia y estados vacíos; notas obsoletas del PDF retiradas y referencias de V1 conciliadas.
+- [x] Exportación local, texto/fecha/capítulos, imágenes, enlaces y muestra visual verificados. Sin cambios al exportador, aplicación, BD ni documentos comerciales.
+- [ ] Aceptación VG9.11, lector real VG9.4 y validaciones funcionales anteriores conservados.
+
+Detalle: [DISENO-GLOBAL-VG9-10-VALIDACION.md](DISENO-GLOBAL-VG9-10-VALIDACION.md). Siguiente VG9.11; no repetir las suites por cambios sólo documentales.

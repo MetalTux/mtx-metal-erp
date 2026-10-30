@@ -23,7 +23,7 @@ export function EditorSalidaGuia({ inicial, descripcion, origen, unidad, maximo,
     if (r.data.warehouseId === null && (!r.data.conformityName?.trim() || !r.data.conformityDate || r.data.conformityDate > fechaSalida)) { setError("Indica nombre y fecha de conformidad, sin superar la fecha de salida."); return; }
     onAceptar(r.data);
   }
-  return <><Dialog open onOpenChange={v=>{if(!v)cerrar();}}><DialogContent showCloseButton={false} className="max-h-[90dvh] overflow-y-auto" onInteractOutside={e=>e.preventDefault()} onEscapeKeyDown={e=>{e.preventDefault();cerrar();}} onCloseAutoFocus={e=>{e.preventDefault();devolverFoco();}}>
+  return <><Dialog open onOpenChange={v=>{if(!v)cerrar();}}><DialogContent showCloseButton={false} className="max-h-[90dvh] min-w-0 overflow-y-auto overscroll-contain" onInteractOutside={e=>e.preventDefault()} onEscapeKeyDown={e=>{e.preventDefault();cerrar();}} onCloseAutoFocus={e=>{e.preventDefault();devolverFoco();}}>
     <DialogHeader><DialogTitle>Editar partida de salida</DialogTitle><DialogDescription>Aceptar modifica sólo el borrador. Dejar la cantidad vacía excluye esta distribución; no elimina la partida de origen.</DialogDescription></DialogHeader>
     <form className="space-y-4" onSubmit={e=>{e.preventDefault();e.stopPropagation();aceptar();}}>
       <p className="whitespace-pre-wrap break-words font-medium">{descripcion}</p><p className="text-sm">{origen} · Máximo orientativo {formatearCantidad(maximo)} {unidad}. Se revalidará al confirmar.</p>

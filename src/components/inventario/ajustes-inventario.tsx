@@ -91,12 +91,12 @@ export function AjustesInventario({
       contenido: (a) => motivosAjuste[a.motivo as keyof typeof motivosAjuste],
     },
     {
-      id: "diferencia",
+      id: "diferencia", numerica: true,
       titulo: "Diferencia",
       contenido: (a) => `${formatearCantidad(a.diferencia)} ${a.unidad}`,
     },
     {
-      id: "final",
+      id: "final", numerica: true,
       titulo: "Saldo final registrado",
       contenido: (a) => `${formatearCantidad(a.final)} ${a.unidad}`,
     },
@@ -104,11 +104,12 @@ export function AjustesInventario({
       id: "acciones",
       titulo: "Acciones",
       contenido: (a) => (
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button
             size="sm"
             variant="outline"
             disabled={pendiente}
+            aria-label={`Ver ajuste ${a.id}`}
             onClick={(e) => {
               ultimoBoton.current = e.currentTarget;
               setVista(a);
@@ -120,6 +121,7 @@ export function AjustesInventario({
             size="sm"
             variant="outline"
             disabled={pendiente}
+            aria-label={`Corregir ajuste ${a.id}`}
             onClick={(e) => abrir(e, false, a)}
           >
             Corregir
@@ -135,11 +137,11 @@ export function AjustesInventario({
     day: "2-digit",
   }).format(new Date());
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Ajustes de stock</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <h1 className="text-[23px] leading-tight font-semibold">Ajustes de stock</h1>
+          <p className="mt-1 text-[13px] text-muted-foreground">
             Conteos físicos, carga inicial y correcciones con historial
             conservado.
           </p>
@@ -311,7 +313,7 @@ export function AjustesInventario({
           />
         </div>
       )}
-      <p className="text-xs text-muted-foreground">
+      <p className="text-[13px] text-muted-foreground">
         Los saldos mostrados son históricos. Consulta Stock por bodega para ver
         existencias actuales. Los ajustes no se editan ni eliminan.
       </p>
@@ -337,7 +339,7 @@ export function AjustesInventario({
             }
           }}
         >
-          <DialogContent className="max-h-[90dvh] overflow-y-auto">
+          <DialogContent className="max-h-[90dvh] min-w-0 overflow-y-auto overscroll-contain">
             <DialogHeader>
               <DialogTitle>Ver ajuste #{vista.id}</DialogTitle>
               <DialogDescription>

@@ -68,3 +68,13 @@ Se prepara [HITO-GRILLAS-DETALLE.md](HITO-GRILLAS-DETALLE.md) con evidencia por 
 - [ ] Capturas integrales de todos los recorridos, validación de claridad con usuarios y cierre de M1/M2/M3. Los ejemplos de componentes no sustituyen esas revisiones.
 
 La edición actual sustituye el PDF de revisión del 25-10-2026 sin alterar sus aprobaciones pendientes. Evidencia y límites: [GRILLAS-GD7-VALIDACION.md](GRILLAS-GD7-VALIDACION.md).
+
+
+## 30-10-2026 — VG9.10: Documentación final
+
+- [x] Manual Markdown/PDF edición 30-10-2026: 19 capítulos, 26 páginas Carta y ocho capturas actuales ficticias en Claro/Oscuro, con origen y huellas archivados.
+- [x] Ayudas de teclado, grillas, apariencia y estados vacíos; notas obsoletas del PDF retiradas y referencias de V1 conciliadas.
+- [x] Exportación local, texto/fecha/capítulos, imágenes, enlaces y muestra visual verificados. Sin cambios al exportador, aplicación, BD ni documentos comerciales.
+- [ ] Aceptación VG9.11, lector real VG9.4 y validaciones funcionales anteriores conservados.
+
+Detalle: [DISENO-GLOBAL-VG9-10-VALIDACION.md](DISENO-GLOBAL-VG9-10-VALIDACION.md). Siguiente VG9.11; no repetir las suites por cambios sólo documentales.

@@ -8,7 +8,7 @@ export default function ErrorInventario({ reset }: { reset: () => void }) {
   const router = useRouter();
   const [pendiente, iniciar] = useTransition();
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         titulo="Ajustes de stock"
         descripcion="Conteos físicos e inventario inicial."

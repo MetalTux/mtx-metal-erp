@@ -33,7 +33,7 @@ function FormularioCuenta({ editor, pendiente, onCerrar, onCambio, onGuardar }: 
   const [valores, setValores] = useState<DatosCuentaBancaria>({ bankName: cuenta?.bankName ?? "", accountType: cuenta?.accountType ?? "", accountNumber: cuenta?.accountNumber ?? "", holderName: cuenta?.holderName ?? "", holderRut: cuenta ? formatearRut(cuenta.holderRut) : "", email: cuenta?.email ?? "" });
   const [error, setError] = useState<string>();
   const [errores, setErrores] = useState<Partial<Record<keyof DatosCuentaBancaria, string[]>>>({});
-  return <form className="space-y-4" noValidate aria-busy={pendiente} onSubmit={async e => {
+  return <form className="min-w-0 space-y-4" noValidate aria-busy={pendiente} onSubmit={async e => {
     e.preventDefault(); if (consulta || pendiente) return;
     const validacion = cuentaBancariaSchema.safeParse(valores);
     if (!validacion.success) { setErrores(validacion.error.flatten().fieldErrors); setError("Revisa los campos del formulario."); return; }
@@ -48,7 +48,7 @@ function FormularioCuenta({ editor, pendiente, onCerrar, onCambio, onGuardar }: 
       <Input id={`cuenta-${campo.nombre}`} value={valores[campo.nombre]} type={campo.nombre === "email" ? "email" : "text"} onChange={e => { setValores(v => ({ ...v, [campo.nombre]: e.target.value })); onCambio(); }} readOnly={consulta} disabled={pendiente} maxLength={campo.max} autoComplete="off" aria-invalid={Boolean(errores[campo.nombre])} aria-describedby={errores[campo.nombre] ? `cuenta-${campo.nombre}-error` : undefined} />
       {errores[campo.nombre] && <p className="text-sm" role="alert" id={`cuenta-${campo.nombre}-error`}>{errores[campo.nombre]?.[0]}</p>}
     </div>)}</div>
-    {cuenta && <p className="text-xs text-muted-foreground">{cuenta.isActive ? "Activa" : "Inactiva"}{cuenta.isPrimary && " · Principal"} · Cotizaciones asociadas: {cuenta.cotizaciones}. Los documentos anteriores conservan la copia de sus datos.</p>}
+    {cuenta && <p className="text-[13px] text-muted-foreground">{cuenta.isActive ? "Activa" : "Inactiva"}{cuenta.isPrimary && " · Principal"} · Cotizaciones asociadas: {cuenta.cotizaciones}. Los documentos anteriores conservan la copia de sus datos.</p>}
     <DialogFooter><Button type="button" variant="outline" disabled={pendiente} onClick={onCerrar}>{consulta ? "Cerrar" : "Cancelar"}</Button>{!consulta && <Permiso permiso="configuracion.operar"><Button type="submit" disabled={pendiente}>{pendiente ? "Guardando…" : editor.modo === "crear" ? "Crear cuenta" : "Guardar cambios"}</Button></Permiso>}</DialogFooter>
   </form>;
 }
@@ -110,7 +110,7 @@ export function CuentasBancariasEmpresa({ cuentasIniciales, empresaConfigurada }
     {!empresaConfigurada && <div className="p-4"><Aviso tipo="informacion" titulo="Configura primero Empresa">Guarda el perfil para poder asociar cuentas bancarias. No es obligatorio agregar cuentas para configurar Empresa.</Aviso></div>}
     {errorOperacion && <div className="p-4"><Aviso titulo={errorOperacion} /></div>}
     <DataTable datos={cuentas} columnas={columnas} textoBusqueda={c => `${c.bankName} ${c.accountType} ${c.accountNumber} ${c.holderName} ${c.holderRut} ${c.isActive ? "Activa" : "Inactiva"} ${c.isPrimary ? "Principal" : ""}`} filtroPlaceholder="Buscar banco, cuenta, titular o estado…" nombre="cuentas bancarias" vacio={<p>No hay cuentas bancarias configuradas.</p>} />
-    <Dialog open={Boolean(editor)} onOpenChange={v => { if (!v) cerrar(); }}><DialogContent showCloseButton={!pendiente} className="max-h-[90dvh] overflow-y-auto sm:max-w-2xl" onInteractOutside={e => e.preventDefault()} onEscapeKeyDown={e => { if (pendiente || descarte) e.preventDefault(); }} onCloseAutoFocus={e => { e.preventDefault(); restaurarFoco(); }}>
+    <Dialog open={Boolean(editor)} onOpenChange={v => { if (!v) cerrar(); }}><DialogContent showCloseButton={!pendiente} className="max-h-[90dvh] min-w-0 overflow-y-auto overscroll-contain sm:max-w-2xl" onInteractOutside={e => e.preventDefault()} onEscapeKeyDown={e => { if (pendiente || descarte) e.preventDefault(); }} onCloseAutoFocus={e => { e.preventDefault(); restaurarFoco(); }}>
       <DialogHeader><DialogTitle>{editor?.modo === "crear" ? "Crear cuenta bancaria" : editor?.modo === "ver" ? "Ver cuenta bancaria" : "Editar cuenta bancaria"}</DialogTitle><DialogDescription>Banco, tipo, número, titular y RUT son obligatorios. El correo es opcional.</DialogDescription></DialogHeader>
       {editor && <FormularioCuenta key={`${editor.modo}-${editor.cuenta?.id}-${editor.cuenta?.version}`} editor={editor} pendiente={pendiente} onCerrar={cerrar} onCambio={() => { dirty.current = true; }} onGuardar={guardar} />}
     </DialogContent></Dialog>

@@ -1,5 +1,5 @@
 "use client";
-import { Permiso } from "@/components/seguridad/permisos";
+import { Permiso, usePermiso } from "@/components/seguridad/permisos";
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -44,13 +44,13 @@ export function FormularioMaterial({ editor, unidades, pendiente, onCerrar, onGu
       }
     }
   });
-  return <form onSubmit={consulta ? (event) => event.preventDefault() : submit} noValidate aria-busy={pendiente} className="space-y-4">
+  return <form onSubmit={consulta ? (event) => event.preventDefault() : submit} noValidate aria-busy={pendiente} className="min-w-0 space-y-4">
     {error && <Aviso titulo={error} />}
     <div className="space-y-2"><Label htmlFor="material-code">Código{!consulta && " *"}</Label><Input id="material-code" {...register("code")} readOnly={consulta} disabled={pendiente} maxLength={50} autoComplete="off" placeholder="Ej.: PERF-001" aria-invalid={Boolean(errors.code)} aria-describedby={errors.code ? "material-code-error" : undefined} className="h-9" />{errors.code && <p id="material-code-error" className="text-sm text-foreground" role="alert">{errors.code.message}</p>}</div>
     <div className="space-y-2"><Label htmlFor="material-name">Nombre{!consulta && " *"}</Label><Input id="material-name" {...register("name")} readOnly={consulta} disabled={pendiente} maxLength={150} autoComplete="off" placeholder="Ej.: Perfil cuadrado 40 × 40" aria-invalid={Boolean(errors.name)} aria-describedby={errors.name ? "material-name-error" : undefined} className="h-9" />{errors.name && <p id="material-name-error" className="text-sm text-foreground" role="alert">{errors.name.message}</p>}</div>
     <div className="space-y-2"><Label htmlFor="material-unidad">Unidad de medida{!consulta && " *"}</Label>
       {consulta || unidadBloqueada ? <Input id="material-unidad" readOnly value={`${editor.material?.unidad.name} (${editor.material?.unidad.abbreviation})`} aria-describedby={unidadBloqueada ? "material-unidad-ayuda" : undefined} className="h-9" /> : <Controller name="unitMeasureId" control={control} render={({ field }) => <SelectorBuscable ref={field.ref} id="material-unidad" opciones={unidades.map(unidad => ({ valor: String(unidad.id), etiqueta: `${unidad.name} (${unidad.abbreviation})` }))} valor={String(field.value)} onChange={valor => field.onChange(Number(valor))} onBlur={field.onBlur} nombre="unidad" placeholder="Selecciona una unidad…" disabled={pendiente || unidades.length === 0} invalido={Boolean(errors.unitMeasureId)} descripcionId={errors.unitMeasureId ? "material-unidad-error" : "material-unidad-ayuda"} />} />}
-      <p id="material-unidad-ayuda" className="text-xs text-muted-foreground">{unidadBloqueada ? "La unidad no puede cambiarse porque este material tiene stock, movimientos o documentos asociados." : "Todas las cantidades del material utilizan esta unidad, sin conversiones."}</p>
+      <p id="material-unidad-ayuda" className="text-[13px] text-muted-foreground">{unidadBloqueada ? "La unidad no puede cambiarse porque este material tiene stock, movimientos o documentos asociados." : "Todas las cantidades del material utilizan esta unidad, sin conversiones."}</p>
       {errors.unitMeasureId && <p id="material-unidad-error" className="text-sm text-foreground" role="alert">{errors.unitMeasureId.message}</p>}
       {!unidades.length && !consulta && <Aviso titulo="No hay unidades disponibles">Crea una unidad en Unidades de medida y actualiza este listado antes de guardar.</Aviso>}
     </div>
@@ -73,6 +73,7 @@ export function FormularioMaterial({ editor, unidades, pendiente, onCerrar, onGu
 }
 
 export function Materiales({ materiales, unidades }: { materiales: Material[]; unidades: UnidadMaterial[] }) {
+  const puedeOperar = usePermiso("catalogos.operar");
   const router = useRouter();
   const [editor, setEditor] = useState<Editor>();
   const [aEliminar, setAEliminar] = useState<Material>();
@@ -125,14 +126,14 @@ export function Materiales({ materiales, unidades }: { materiales: Material[]; u
       <Permiso permiso="catalogos.operar"><Button variant="ghost" size="sm" disabled={pendiente} className="hover:bg-destructive/15" aria-label={`Eliminar ${row.original.name}`} onClick={() => { recordarFoco(); setErrorEliminar(undefined); setAEliminar(row.original); }}><Trash2 className="text-destructive" aria-hidden="true" />Eliminar</Button></Permiso>
     </div> },
   ];
-  return <div className="space-y-6">
+  return <div className="min-w-0 space-y-4">
     <PageHeader titulo="Materias primas" descripcion="Administra los materiales y sus unidades de medida." acciones={<Permiso permiso="catalogos.operar"><Button ref={crearBoton} disabled={pendiente} className="h-9" onClick={() => { recordarFoco(); setEditor({ modo: "crear" }); }}><Plus aria-hidden="true" />Crear material</Button></Permiso>} />
     <SectionCard titulo="Catálogo de materias primas" descripcion="Consulta códigos, unidades y referencias de inventario y documentos." contentClassName="p-0">
-      <DataTable datos={materiales} columnas={columnas} textoBusqueda={buscarMaterial} filtroPlaceholder="Buscar por código, nombre o unidad…" nombre="materiales" acciones={<Button variant="outline" size="sm" disabled={pendiente} onClick={() => router.refresh()}><RefreshCw aria-hidden="true" />Actualizar</Button>} vacio={<EmptyState icono={Package} titulo="Todavía no hay materiales" descripcion="Crea el primer material y asigna su unidad de medida." />} />
+      <DataTable datos={materiales} columnas={columnas} textoBusqueda={buscarMaterial} filtroPlaceholder="Buscar por código, nombre o unidad…" nombre="materiales" acciones={<Button variant="outline" size="sm" disabled={pendiente} onClick={() => router.refresh()}><RefreshCw aria-hidden="true" />Actualizar</Button>} vacio={<EmptyState icono={Package} titulo="Todavía no hay materiales" descripcion={puedeOperar ? "Crea el primer material y asigna su unidad de medida." : "Los materiales aparecerán aquí cuando una persona con permisos los registre."} />} />
     </SectionCard>
     {pendiente && !editor && !aEliminar && <p role="status" className="flex items-center gap-2 text-sm text-muted-foreground"><LoaderCircle className="size-4 animate-spin" aria-hidden="true" />Consultando material…</p>}
     <Dialog open={Boolean(editor)} onOpenChange={(abierto) => { if (!abierto && !pendiente) setEditor(undefined); }}>
-      <DialogContent showCloseButton={!pendiente} className="max-h-[90dvh] overflow-y-auto rounded-lg sm:max-w-lg" onCloseAutoFocus={(event) => { event.preventDefault(); restaurarFoco(); }} onEscapeKeyDown={(event) => { if (pendiente) event.preventDefault(); }} onInteractOutside={(event) => event.preventDefault()}>
+      <DialogContent showCloseButton={!pendiente} className="max-h-[90dvh] min-w-0 overflow-y-auto overscroll-contain rounded-lg sm:max-w-lg" onCloseAutoFocus={(event) => { event.preventDefault(); restaurarFoco(); }} onEscapeKeyDown={(event) => { if (pendiente) event.preventDefault(); }} onInteractOutside={(event) => event.preventDefault()}>
         <DialogHeader><DialogTitle>{editor?.modo === "crear" ? "Crear material" : editor?.modo === "editar" ? "Editar material" : "Ver material"}</DialogTitle><DialogDescription>{editor?.modo === "ver" ? "Consulta los datos, la unidad y las referencias del material." : "Completa el código, el nombre y selecciona una unidad existente."}</DialogDescription></DialogHeader>
         {editor && <FormularioMaterial key={`${editor.modo}-${editor.material?.updatedAt ?? "nueva"}`} editor={editor} unidades={unidades} pendiente={pendiente} onCerrar={() => setEditor(undefined)} onGuardar={guardar} />}
       </DialogContent>

@@ -1,0 +1,46 @@
+{
+  "fecha": "2026-10-30",
+  "fuente": "Ejecución final VG9.9; componentes reales con datos ficticios y transporte simulado",
+  "capturas": [
+    {
+      "archivo": "ingreso-claro.png",
+      "origen": "var/validacion/diseno-global-vg9-9/vg2/claro-ingreso-1280.png",
+      "sha256": "30f3855cce817e27501119192c7081b24676c4817dad6dbe959bf10b9d39fb89"
+    },
+    {
+      "archivo": "ingreso-oscuro.png",
+      "origen": "var/validacion/diseno-global-vg9-9/vg2/oscuro-ingreso-1280.png",
+      "sha256": "6548fdd358df910e8e9ca7187d5aff28a43c53fbc2f00315acc086625b3b56af"
+    },
+    {
+      "archivo": "dashboard-claro.png",
+      "origen": "var/validacion/diseno-global-vg9-9/piloto/dashboard-claro-1440.png",
+      "sha256": "86d844ca9eff5ec2a143d4d5e2edd47307ba70291f05af5e0605c20736b8080c"
+    },
+    {
+      "archivo": "dashboard-oscuro.png",
+      "origen": "var/validacion/diseno-global-vg9-9/piloto/dashboard-oscuro-1440.png",
+      "sha256": "6c7b3af4c44ba82854bd1f11b791e1d17cd3f611a9a51c6698d28d9a86f821ab"
+    },
+    {
+      "archivo": "compra-claro.png",
+      "origen": "var/validacion/diseno-global-vg9-9/piloto/formulario-claro-1440.png",
+      "sha256": "cc289e79e6431dd07e41ae929bf938b51ae4e80a51957b181d4ca9325ece8ac8"
+    },
+    {
+      "archivo": "compra-oscuro.png",
+      "origen": "var/validacion/diseno-global-vg9-9/piloto/formulario-oscuro-1440.png",
+      "sha256": "f80b5c0576f4cac01eee945effd4aeac9e5aa72b17bbd424e204af85f7f57da9"
+    },
+    {
+      "archivo": "compras-movil.png",
+      "origen": "var/validacion/diseno-global-vg9-9/piloto/compras-claro-360.png",
+      "sha256": "b7e713ae15103e00c04fa33bc5cb9c11a52d0f28e9219b0709f9aa214aed737a"
+    },
+    {
+      "archivo": "abono-oscuro.png",
+      "origen": "var/validacion/diseno-global-vg9-9/vg7/oscuro-abono-1280.png",
+      "sha256": "5930d59d4a3e62c2a6639ec5e85a38a166f55f2cd3ff6c1c1007b8055d119b81"
+    }
+  ]
+}

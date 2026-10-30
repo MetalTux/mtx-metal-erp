@@ -1,11 +1,17 @@
 import { SCRIPT_INICIAL_TEMA } from "@/lib/tema-config";
+import localFont from "next/font/local";
 import type { Metadata } from "next";
-import { Inter, Geist_Mono } from "next/font/google";
+import { Geist_Mono } from "next/font/google";
 import "./globals.css";
 
-const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin"],
+const plex = localFont({
+  src: [
+    { path: "./fuentes/IBMPlexSans-Regular.woff2", weight: "400", style: "normal" },
+    { path: "./fuentes/IBMPlexSans-SemiBold.woff2", weight: "600", style: "normal" },
+  ],
+  variable: "--font-plex",
+  display: "swap",
+  preload: true,
 });
 
 const geistMono = Geist_Mono({
@@ -27,7 +33,7 @@ export default function RootLayout({
     <html
       lang="es"
       suppressHydrationWarning
-      className={`dark ${inter.variable} ${geistMono.variable} min-h-full antialiased`}
+      className={`dark ${geistMono.variable} ${plex.variable} min-h-full antialiased`}
     >
       <head><script dangerouslySetInnerHTML={{ __html: SCRIPT_INICIAL_TEMA }} /></head>
       <body>{children}</body>
